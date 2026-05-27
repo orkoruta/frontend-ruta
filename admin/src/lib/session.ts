@@ -1,0 +1,8 @@
+export const SESSION_KEY = 'ruta_session'
+
+export interface RutaSession {
+  user_id: number
+  client_id: number | null
+  user_type: 'ADMIN_RUTA' | 'ADMIN_CLIENT' | 'OPERATOR_CLIENT' | 'COURIER' | 'BUYER'
+  acting_via_control_view: boolean
+}
