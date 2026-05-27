@@ -5,9 +5,9 @@ services:
     repo: https://github.com/orkoruta/frontend-ruta
     rootDir: .
     buildCommand: >-
-      npm install pnpm@11.3.0 --no-save &&
-      node_modules/.bin/pnpm install --frozen-lockfile &&
-      node_modules/.bin/pnpm --filter @ruta/admin build
+      npm install pnpm@11.3.0 --prefix=/tmp/pnpm-bin --no-save &&
+      /tmp/pnpm-bin/node_modules/.bin/pnpm install --frozen-lockfile &&
+      /tmp/pnpm-bin/node_modules/.bin/pnpm --filter @ruta/admin build
     staticPublishPath: ./admin/out
     envVars:
       - key: NPM_TOKEN
@@ -21,9 +21,9 @@ services:
     repo: https://github.com/orkoruta/frontend-ruta
     rootDir: .
     buildCommand: >-
-      npm install pnpm@11.3.0 --no-save &&
-      node_modules/.bin/pnpm install --frozen-lockfile &&
-      node_modules/.bin/pnpm --filter @ruta/storefront build
+      npm install pnpm@11.3.0 --prefix=/tmp/pnpm-bin --no-save &&
+      /tmp/pnpm-bin/node_modules/.bin/pnpm install --frozen-lockfile &&
+      /tmp/pnpm-bin/node_modules/.bin/pnpm --filter @ruta/storefront build
     staticPublishPath: ./storefront/out
     envVars:
       - key: NPM_TOKEN
