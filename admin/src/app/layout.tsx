@@ -9,7 +9,17 @@ export const metadata: Metadata = {
 export default function RootLayout({ children }: { children: React.ReactNode }) {
   return (
     <html lang="es" suppressHydrationWarning>
-      <body>{children}</body>
+      <head>
+        {/* Prevent FOUC: apply saved theme class before first paint */}
+        <script
+          dangerouslySetInnerHTML={{
+            __html: `(function(){try{var t=localStorage.getItem('ruta-theme');if(t==='dark')document.documentElement.classList.add('dark')}catch(e){}})()`,
+          }}
+        />
+      </head>
+      <body className="bg-[#f3f4f6] dark:bg-[#111214] text-slate-950 dark:text-slate-100 font-sans antialiased">
+        {children}
+      </body>
     </html>
   )
 }
