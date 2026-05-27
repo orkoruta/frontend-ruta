@@ -1,0 +1,16 @@
+{
+  "name": "ruta-frontend",
+  "version": "0.0.0",
+  "private": true,
+  "scripts": {
+    "dev:admin": "pnpm --filter @ruta/admin dev",
+    "dev:storefront": "pnpm --filter @ruta/storefront dev",
+    "dev": "pnpm dev:admin & pnpm dev:storefront",
+    "build:admin": "pnpm --filter @ruta/admin build",
+    "build:storefront": "pnpm --filter @ruta/storefront build",
+    "build": "pnpm --filter @orkoruta/ui build && pnpm build:admin && pnpm build:storefront",
+    "typecheck": "pnpm --filter @orkoruta/ui typecheck && pnpm --filter @ruta/admin typecheck && pnpm --filter @ruta/storefront typecheck",
+    "lint": "pnpm --filter @ruta/admin lint && pnpm --filter @ruta/storefront lint",
+    "ci": "pnpm typecheck && pnpm build"
+  }
+}

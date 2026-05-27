@@ -1,0 +1,8 @@
+packages:
+  - 'admin'
+  - 'storefront'
+  - 'packages/ui'
+allowBuilds:
+  unrs-resolver: true
+minimumReleaseAgeExclude:
+  - '@orkoruta/shared@1.0.0'
