@@ -1,0 +1,20 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+@import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;900&display=swap');
+
+:root {
+  --foreground-rgb: 15, 23, 42;
+  --background-rgb: 243, 244, 246;
+}
+
+.dark {
+  --foreground-rgb: 241, 245, 249;
+  --background-rgb: 17, 18, 20;
+}
+
+body {
+  color: rgb(var(--foreground-rgb));
+  background: rgb(var(--background-rgb));
+}
