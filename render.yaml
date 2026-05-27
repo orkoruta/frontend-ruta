@@ -1,38 +1,32 @@
 services:
   - type: web
     name: ruta-admin
-    runtime: node
+    runtime: static
     repo: https://github.com/orkoruta/frontend-ruta
     rootDir: .
-    buildCommand: |
-      npm install -g pnpm
-      pnpm install --frozen-lockfile
-      pnpm --filter @ruta/admin build
-    startCommand: pnpm --filter @ruta/admin start
-    plan: starter
+    buildCommand: >-
+      npm install pnpm@11.3.0 --no-save &&
+      node_modules/.bin/pnpm install --frozen-lockfile &&
+      node_modules/.bin/pnpm --filter @ruta/admin build
+    staticPublishPath: ./admin/out
     envVars:
-      - key: NODE_ENV
-        value: production
-      - key: NEXT_PUBLIC_API_URL
-        value: https://ruta-api.onrender.com
       - key: NPM_TOKEN
         sync: false
+      - key: NEXT_PUBLIC_API_URL
+        value: https://ruta-api.onrender.com
 
   - type: web
     name: ruta-storefront
-    runtime: node
+    runtime: static
     repo: https://github.com/orkoruta/frontend-ruta
     rootDir: .
-    buildCommand: |
-      npm install -g pnpm
-      pnpm install --frozen-lockfile
-      pnpm --filter @ruta/storefront build
-    startCommand: pnpm --filter @ruta/storefront start
-    plan: starter
+    buildCommand: >-
+      npm install pnpm@11.3.0 --no-save &&
+      node_modules/.bin/pnpm install --frozen-lockfile &&
+      node_modules/.bin/pnpm --filter @ruta/storefront build
+    staticPublishPath: ./storefront/out
     envVars:
-      - key: NODE_ENV
-        value: production
-      - key: NEXT_PUBLIC_API_URL
-        value: https://ruta-api.onrender.com
       - key: NPM_TOKEN
         sync: false
+      - key: NEXT_PUBLIC_API_URL
+        value: https://ruta-api.onrender.com
