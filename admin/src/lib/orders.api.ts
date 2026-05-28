@@ -1,0 +1,263 @@
+const API_BASE = process.env.NEXT_PUBLIC_API_URL ?? 'http://localhost:3001/v1'
+
+export type OrderStatus =
+  | 'DRAFT'
+  | 'PENDING_CONFIRM'
+  | 'ORDER_SUBMITTED'
+  | 'EXPIRED'
+  | 'ORDER_VALIDATING'
+  | 'MANUAL_REVIEW'
+  | 'VALIDATION_APPROVED'
+  | 'VALIDATION_REJECTED'
+  | 'SELLER_CONFIRMED'
+  | 'PREPARING'
+  | 'AWAITING_COURIER_ASSIGNMENT'
+  | 'COURIER_ASSIGNED'
+  | 'READY_TO_SHIP'
+  | 'READY_FOR_PICKUP'
+  | 'SHIPMENT_HOLD'
+  | 'SHIPPED'
+  | 'IN_TRANSIT'
+  | 'ON_HOLD'
+  | 'OUT_FOR_DELIVERY'
+  | 'ARRIVED_AT_CUSTOMER'
+  | 'DELIVERY_ATTEMPTED'
+  | 'DELIVERY_RESCHEDULED'
+  | 'LOST_IN_TRANSIT'
+  | 'AT_PICKUP_POINT'
+  | 'CUSTOMER_ARRIVED_AT_PICKUP_POINT'
+  | 'DELIVERED'
+  | 'DELIVERY_DISPUTED'
+  | 'CONFIRMED_BY_CUSTOMER'
+  | 'CONFIRMED_BY_SYSTEM'
+  | 'CANCELLED_BY_CUSTOMER'
+  | 'CANCELLED_BY_SELLER'
+  | 'CANCELLED_BY_SYSTEM'
+  | 'CANCELLED_BY_ADMIN'
+  | 'CANCELLED_NO_PAYMENT'
+  | 'CUSTOMER_CANCEL_REQUEST'
+  | 'RETURN_REQUESTED'
+  | 'RETURN_APPROVED'
+  | 'RETURN_IN_TRANSIT'
+  | 'RETURN_RECEIVED'
+  | 'RETURN_REJECTED'
+  | 'RETURN_CANCELLED'
+  | 'REFUND_PENDING'
+  | 'REFUNDED'
+  | 'CLOSED'
+  | 'COMPLETED_SUCCESSFULLY'
+
+export type PaymentStatus =
+  | 'PENDING'
+  | 'PENDING_ONLINE_PAYMENT'
+  | 'PROCESSING'
+  | 'CONFIRMED'
+  | 'FAILED'
+  | 'CANCELLED'
+  | 'REFUNDED'
+  | 'PARTIAL'
+
+export type DeliveryType = 'SHIP' | 'PICKUP'
+
+export interface ApiError {
+  code: string
+  message: string
+  details?: unknown
+}
+
+export interface OrderSummary {
+  id: number
+  order_status: OrderStatus
+  payment_status: PaymentStatus
+  delivery_type: DeliveryType
+  buyer_name: string
+  item_count: number
+  total: number
+  courier_name: string | null
+  created_at: string
+}
+
+export interface OrderListResponse {
+  items: OrderSummary[]
+  pagination: {
+    page: number
+    page_size: number
+    total: number
+  }
+}
+
+export interface OrderListFilters {
+  status?: OrderStatus
+  payment_status?: PaymentStatus
+  courier_id?: number
+  date_from?: string
+  date_to?: string
+  q?: string
+  page?: number
+  page_size?: number
+}
+
+export interface OrderItem {
+  id: number
+  product_name: string
+  product_sku: string | null
+  quantity: number
+  unit_price: number
+  subtotal: number
+}
+
+export interface OrderStateHistoryEntry {
+  id: number
+  dimension: string
+  from_state: string
+  to_state: string
+  reason: string | null
+  actor_role: string | null
+  created_at: string
+}
+
+export interface PaymentDetail {
+  id: number
+  status: PaymentStatus
+  method: string
+  amount: number
+  confirmed_at: string | null
+  evidence_url: string | null
+}
+
+export interface OrderDetail {
+  id: number
+  order_status: OrderStatus
+  payment_status: PaymentStatus
+  delivery_type: DeliveryType
+  subtotal: number
+  shipping_fee: number | null
+  total: number
+  notes: string | null
+  delivery_address: string | null
+  pickup_point_name: string | null
+  buyer: {
+    id: number
+    name: string
+    email: string
+    phone: string | null
+  }
+  courier: {
+    id: number
+    name: string
+    phone: string | null
+  } | null
+  items: OrderItem[]
+  history: OrderStateHistoryEntry[]
+  payment: PaymentDetail | null
+  created_at: string
+  updated_at: string
+}
+
+function idempotencyKey(): string {
+  if (typeof crypto !== 'undefined' && 'randomUUID' in crypto) {
+    return crypto.randomUUID()
+  }
+  return `${Date.now()}-${Math.random().toString(16).slice(2)}`
+}
+
+function buildQuery(filters: OrderListFilters): string {
+  const params = new URLSearchParams()
+
+  if (filters.status) params.set('status', filters.status)
+  if (filters.payment_status) params.set('payment_status', filters.payment_status)
+  if (filters.courier_id) params.set('courier_id', String(filters.courier_id))
+  if (filters.date_from) params.set('date_from', filters.date_from)
+  if (filters.date_to) params.set('date_to', filters.date_to)
+  if (filters.q?.trim()) params.set('q', filters.q.trim())
+  if (filters.page) params.set('page', String(filters.page))
+  if (filters.page_size) params.set('page_size', String(filters.page_size))
+
+  const query = params.toString()
+  return query ? `?${query}` : ''
+}
+
+async function parseError(res: Response): Promise<ApiError> {
+  try {
+    return (await res.json()) as ApiError
+  } catch {
+    return {
+      code: 'REQUEST_FAILED',
+      message: 'No pudimos completar la solicitud.',
+    }
+  }
+}
+
+async function request<T>(path: string, init?: RequestInit): Promise<T> {
+  const res = await fetch(`${API_BASE}${path}`, {
+    ...init,
+    credentials: 'include',
+    headers: {
+      ...(init?.body ? { 'Content-Type': 'application/json' } : {}),
+      ...init?.headers,
+    },
+  })
+
+  if (!res.ok) throw await parseError(res)
+  if (res.status === 204) return undefined as T
+  return (await res.json()) as T
+}
+
+export function listOrders(filters: OrderListFilters = {}): Promise<OrderListResponse> {
+  return request<OrderListResponse>(`/admin/orders${buildQuery(filters)}`)
+}
+
+export function getOrder(orderId: number): Promise<OrderDetail> {
+  return request<OrderDetail>(`/admin/orders/${orderId}`)
+}
+
+export function acceptOrder(orderId: number): Promise<OrderDetail> {
+  return request<OrderDetail>(`/admin/orders/${orderId}/accept`, {
+    method: 'POST',
+    headers: { 'X-Idempotency-Key': idempotencyKey() },
+  })
+}
+
+export function rejectOrder(orderId: number, reason?: string): Promise<OrderDetail> {
+  return request<OrderDetail>(`/admin/orders/${orderId}/reject`, {
+    method: 'POST',
+    headers: { 'X-Idempotency-Key': idempotencyKey() },
+    body: JSON.stringify({ reason }),
+  })
+}
+
+export function markPreparing(orderId: number): Promise<OrderDetail> {
+  return request<OrderDetail>(`/admin/orders/${orderId}/mark-preparing`, {
+    method: 'POST',
+    headers: { 'X-Idempotency-Key': idempotencyKey() },
+  })
+}
+
+export function markReady(orderId: number): Promise<OrderDetail> {
+  return request<OrderDetail>(`/admin/orders/${orderId}/mark-ready`, {
+    method: 'POST',
+    headers: { 'X-Idempotency-Key': idempotencyKey() },
+  })
+}
+
+export function cancelOrder(orderId: number, reason?: string): Promise<OrderDetail> {
+  return request<OrderDetail>(`/admin/orders/${orderId}/cancel`, {
+    method: 'POST',
+    headers: { 'X-Idempotency-Key': idempotencyKey() },
+    body: JSON.stringify({ reason }),
+  })
+}
+
+export function approveCancelRequest(orderId: number): Promise<OrderDetail> {
+  return request<OrderDetail>(`/admin/orders/${orderId}/cancel-request/approve`, {
+    method: 'POST',
+    headers: { 'X-Idempotency-Key': idempotencyKey() },
+  })
+}
+
+export function rejectCancelRequest(orderId: number): Promise<OrderDetail> {
+  return request<OrderDetail>(`/admin/orders/${orderId}/cancel-request/reject`, {
+    method: 'POST',
+    headers: { 'X-Idempotency-Key': idempotencyKey() },
+  })
+}
