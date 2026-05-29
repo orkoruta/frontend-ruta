@@ -8,10 +8,10 @@ import { SESSION_KEY, type RutaSession } from '@/lib/session'
 
 const REDIRECT: Record<string, string> = {
   ADMIN_RUTA: '/ruta-admin/clients',
-  ADMIN_CLIENT: '/admin/dashboard',
-  OPERATOR_CLIENT: '/admin/dashboard',
+  ADMIN_CLIENT: '/admin/orders',
+  OPERATOR_CLIENT: '/admin/orders',
   COURIER: '/courier',
-  BUYER: '/admin/dashboard',
+  BUYER: '/admin/orders',
 }
 
 export default function LoginPage() {
@@ -27,7 +27,7 @@ export default function LoginPage() {
       const stored = sessionStorage.getItem(SESSION_KEY)
       if (stored) {
         const session = JSON.parse(stored) as RutaSession
-        router.replace(REDIRECT[session.user_type] ?? '/admin/dashboard')
+        router.replace(REDIRECT[session.user_type] ?? '/admin/orders')
       }
     } catch {
       // sessionStorage not available or invalid; proceed to login
@@ -51,7 +51,7 @@ export default function LoginPage() {
         acting_via_control_view: data.acting_via_control_view ?? false,
       }
       sessionStorage.setItem(SESSION_KEY, JSON.stringify(session))
-      router.replace(REDIRECT[data.user_type] ?? '/admin/dashboard')
+      router.replace(REDIRECT[data.user_type] ?? '/admin/orders')
     } catch (err) {
       const apiErr = err as ApiError
       setError(apiErr?.message ?? 'Error al iniciar sesión. Verifique sus credenciales.')
