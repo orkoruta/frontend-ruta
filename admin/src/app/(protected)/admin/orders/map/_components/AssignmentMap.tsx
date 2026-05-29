@@ -111,6 +111,7 @@ export function AssignmentMap({
     if (!containerRef.current || mapRef.current) return
 
     let cancelled = false
+    const markers = markersRef.current
 
     void tryLoadLeaflet().then((L) => {
       if (cancelled || !L || !containerRef.current || mapRef.current) return
@@ -140,7 +141,6 @@ export function AssignmentMap({
     return () => {
       cancelled = true
       const map = mapRef.current
-      const markers = markersRef.current
       if (map) {
         map.remove()
         mapRef.current = null

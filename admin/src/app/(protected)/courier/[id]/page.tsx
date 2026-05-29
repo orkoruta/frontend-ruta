@@ -1,7 +1,7 @@
 import CourierOrderDetail from './_components/CourierOrderDetail'
 
 export function generateStaticParams() {
-  return [{ id: '_' }]
+  return [{ id: '_' }, { id: '501' }, { id: '502' }, { id: '503' }]
 }
 
 interface PageProps {
