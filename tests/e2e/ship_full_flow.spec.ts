@@ -175,4 +175,87 @@ test.describe('Sprint 3 SHIP flow', () => {
     await expect(page.getByText('Pedido entregado.')).toBeVisible()
     await expect(page.getByText('Entregado').first()).toBeVisible()
   })
+
+  test('courier records failed delivery attempt', async ({ page }) => {
+    await setSession(page, 'COURIER')
+
+    let status = 'OUT_FOR_DELIVERY'
+
+    const orderDetail = () => ({
+      id: 502,
+      order_status: status,
+      delivery_address: 'Carrera 7 #72-10, Bogota',
+      buyer: {
+        name: 'Luis Cliente',
+        phone: '+573007778899',
+      },
+      items: [
+        {
+          id: 2,
+          product_name: 'Producto alterno',
+          quantity: 2,
+          unit_price: 45000,
+          subtotal: 90000,
+        },
+      ],
+      total: 90000,
+      payment_method: 'ONLINE_AT_ORDER',
+      collection_recorded: false,
+      history: [
+        {
+          id: 2,
+          to_state: status,
+          created_at: NOW,
+        },
+      ],
+      created_at: NOW,
+    })
+
+    await page.route(`${API_BASE}/courier/orders/502`, async (route) => {
+      await fulfillJson(route, orderDetail())
+    })
+
+    await page.route(`${API_BASE}/courier/orders/502/attempt-failed`, async (route) => {
+      status = 'DELIVERY_ATTEMPTED'
+      await fulfillJson(route, orderDetail())
+    })
+
+    await page.goto('/courier/502')
+
+    await page.getByRole('button', { name: 'Registrar intento fallido' }).click()
+    await page.getByPlaceholder(/cliente no respondi./).fill('Cliente no responde el telefono')
+    await page.getByRole('button', { name: 'Confirmar' }).click()
+
+    await expect(page.getByText('Intento de entrega registrado.')).toBeVisible()
+    await expect(page.getByText('Intento fallido').first()).toBeVisible()
+  })
+
+  test('courier dashboard shows system-confirmed completed orders', async ({ page }) => {
+    await setSession(page, 'COURIER')
+
+    await page.route(`${API_BASE}/courier/orders/assigned`, async (route) => {
+      await fulfillJson(route, {
+        active: [
+          {
+            id: 503,
+            order_status: 'CONFIRMED_BY_SYSTEM',
+            delivery_address: 'Avenida Chile #10-10',
+            buyer_name: 'Marta Cliente',
+            buyer_phone: '+573009990000',
+            total: 72000,
+            payment_method: 'ONLINE_AT_ORDER',
+            created_at: NOW,
+          },
+        ],
+        completed_today: 1,
+      })
+    })
+
+    await page.goto('/courier')
+
+    await expect(page.getByText('Confirmado').first()).toBeVisible()
+    await page.getByRole('button', { name: /Completados hoy/ }).click()
+    await expect(page.getByText('entregas completadas hoy')).toBeVisible()
+    await expect(page.getByText('1')).toBeVisible()
+  })
 })
