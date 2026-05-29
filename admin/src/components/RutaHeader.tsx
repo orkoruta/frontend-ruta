@@ -7,7 +7,7 @@ import { SessionContext } from '@/lib/session-context'
 import { SESSION_KEY } from '@/lib/session'
 import { logout } from '@/lib/auth.api'
 
-const API_BASE = process.env.NEXT_PUBLIC_API_URL ?? 'http://localhost:3001/v1'
+const API_BASE = process.env.NEXT_PUBLIC_API_URL ?? 'http://localhost:3001'
 
 interface RutaHeaderProps {
   onToggleSidebar: () => void

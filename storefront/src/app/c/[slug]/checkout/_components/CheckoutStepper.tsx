@@ -9,7 +9,7 @@ import AddressStep from './AddressStep'
 import DeliveryStep from './DeliveryStep'
 import PaymentStep from './PaymentStep'
 
-const API_BASE = process.env.NEXT_PUBLIC_API_URL ?? 'http://localhost:3001/v1'
+const API_BASE = process.env.NEXT_PUBLIC_API_URL ?? 'http://localhost:3001'
 
 export type DeliveryType = 'SHIP' | 'PICKUP'
 export type PaymentMethod = 'ONLINE_AT_ORDER' | 'ELECTRONIC_ON_DELIVERY' | 'CASH_ON_DELIVERY'

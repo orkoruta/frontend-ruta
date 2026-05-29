@@ -1,4 +1,4 @@
-const API_BASE = process.env.NEXT_PUBLIC_API_URL ?? 'http://localhost:3001/v1'
+const API_BASE = process.env.NEXT_PUBLIC_API_URL ?? 'http://localhost:3001'
 
 export type ClientType = 'API' | 'FULL'
 export type ClientStatus = 'ACTIVE' | 'INACTIVE'
