@@ -1,6 +1,5 @@
 import { expect, test, type Page, type Route } from '@playwright/test'
 
-const API_BASE = 'http://127.0.0.1:3001/v1'
 const NOW = '2026-05-29T12:00:00.000Z'
 
 type UserType = 'ADMIN_CLIENT' | 'COURIER'
@@ -27,13 +26,17 @@ async function fulfillJson(route: Route, data: unknown) {
   })
 }
 
+function apiRoute(path: string) {
+  return `**/v1${path}`
+}
+
 test.describe('Sprint 3 SHIP flow', () => {
   test('admin assigns a courier from /admin/orders/map', async ({ page }) => {
     await setSession(page, 'ADMIN_CLIENT')
 
     let assigned = false
 
-    await page.route(`${API_BASE}/admin/orders/map`, async (route) => {
+    await page.route(apiRoute('/admin/orders/map'), async (route) => {
       await fulfillJson(route, {
         data: assigned
           ? []
@@ -54,7 +57,7 @@ test.describe('Sprint 3 SHIP flow', () => {
       })
     })
 
-    await page.route(`${API_BASE}/admin/orders/501/available-couriers`, async (route) => {
+    await page.route(apiRoute('/admin/orders/501/available-couriers'), async (route) => {
       await fulfillJson(route, {
         data: [
           {
@@ -68,7 +71,7 @@ test.describe('Sprint 3 SHIP flow', () => {
       })
     })
 
-    await page.route(`${API_BASE}/admin/orders/501/assign-courier`, async (route) => {
+    await page.route(apiRoute('/admin/orders/501/assign-courier'), async (route) => {
       assigned = true
       await route.fulfill({ status: 204 })
     })
@@ -123,31 +126,31 @@ test.describe('Sprint 3 SHIP flow', () => {
       created_at: NOW,
     })
 
-    await page.route(`${API_BASE}/courier/orders/501`, async (route) => {
+    await page.route(apiRoute('/courier/orders/501'), async (route) => {
       await fulfillJson(route, orderDetail())
     })
 
-    await page.route(`${API_BASE}/courier/orders/501/start-shipping`, async (route) => {
+    await page.route(apiRoute('/courier/orders/501/start-shipping'), async (route) => {
       status = 'SHIPPED'
       await fulfillJson(route, orderDetail())
     })
 
-    await page.route(`${API_BASE}/courier/orders/501/mark-out-for-delivery`, async (route) => {
+    await page.route(apiRoute('/courier/orders/501/mark-out-for-delivery'), async (route) => {
       status = 'OUT_FOR_DELIVERY'
       await fulfillJson(route, orderDetail())
     })
 
-    await page.route(`${API_BASE}/courier/orders/501/arrive`, async (route) => {
+    await page.route(apiRoute('/courier/orders/501/arrive'), async (route) => {
       status = 'ARRIVED_AT_CUSTOMER'
       await fulfillJson(route, orderDetail())
     })
 
-    await page.route(`${API_BASE}/courier/orders/501/record-collection`, async (route) => {
+    await page.route(apiRoute('/courier/orders/501/record-collection'), async (route) => {
       collectionRecorded = true
       await fulfillJson(route, orderDetail())
     })
 
-    await page.route(`${API_BASE}/courier/orders/501/mark-delivered`, async (route) => {
+    await page.route(apiRoute('/courier/orders/501/mark-delivered'), async (route) => {
       status = 'DELIVERED'
       await fulfillJson(route, orderDetail())
     })
@@ -211,11 +214,11 @@ test.describe('Sprint 3 SHIP flow', () => {
       created_at: NOW,
     })
 
-    await page.route(`${API_BASE}/courier/orders/502`, async (route) => {
+    await page.route(apiRoute('/courier/orders/502'), async (route) => {
       await fulfillJson(route, orderDetail())
     })
 
-    await page.route(`${API_BASE}/courier/orders/502/attempt-failed`, async (route) => {
+    await page.route(apiRoute('/courier/orders/502/attempt-failed'), async (route) => {
       status = 'DELIVERY_ATTEMPTED'
       await fulfillJson(route, orderDetail())
     })
@@ -233,7 +236,7 @@ test.describe('Sprint 3 SHIP flow', () => {
   test('courier dashboard shows system-confirmed completed orders', async ({ page }) => {
     await setSession(page, 'COURIER')
 
-    await page.route(`${API_BASE}/courier/orders/assigned`, async (route) => {
+    await page.route(apiRoute('/courier/orders/assigned'), async (route) => {
       await fulfillJson(route, {
         active: [
           {
@@ -256,6 +259,6 @@ test.describe('Sprint 3 SHIP flow', () => {
     await expect(page.getByText('Confirmado').first()).toBeVisible()
     await page.getByRole('button', { name: /Completados hoy/ }).click()
     await expect(page.getByText('entregas completadas hoy')).toBeVisible()
-    await expect(page.getByText('1')).toBeVisible()
+    await expect(page.getByText('1', { exact: true }).last()).toBeVisible()
   })
 })
