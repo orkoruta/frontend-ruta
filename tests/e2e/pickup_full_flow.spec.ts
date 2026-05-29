@@ -160,12 +160,17 @@ test.describe('Flujo PICKUP completo', () => {
     })
 
     await page.goto('/admin/orders/601')
+    await page.waitForLoadState('networkidle')
 
     await expect(page.getByText('Operación PICKUP')).toBeVisible()
     await expect(page.getByText('Verificar identidad del comprador')).toBeVisible()
 
-    await page.locator('#pickup-doc-number').fill('1010101010')
-    await page.getByRole('button', { name: 'Verificar identidad' }).click()
+    await page.locator('#pickup-doc-number').click()
+    await page.locator('#pickup-doc-number').type('1010101010')
+    const btnVerify = page.getByRole('button', { name: 'Verificar identidad' })
+    await btnVerify.waitFor({ state: 'visible' })
+    await expect(btnVerify).toBeEnabled()
+    await btnVerify.click()
     await expect(page.getByText('Identidad verificada correctamente.')).toBeVisible()
 
     await page.getByRole('button', { name: 'Marcar como entregado' }).click()
@@ -199,12 +204,17 @@ test.describe('Flujo PICKUP completo', () => {
     })
 
     await page.goto('/admin/orders/602')
+    await page.waitForLoadState('networkidle')
 
     await expect(page.getByText('Operación PICKUP')).toBeVisible()
     await expect(page.getByText('Registrar cobro (pago contra entrega)')).toBeVisible()
 
-    await page.locator('#pickup-doc-number').fill('2020202020')
-    await page.getByRole('button', { name: 'Verificar identidad' }).click()
+    await page.locator('#pickup-doc-number').click()
+    await page.locator('#pickup-doc-number').type('2020202020')
+    const btnVerify2 = page.getByRole('button', { name: 'Verificar identidad' })
+    await btnVerify2.waitFor({ state: 'visible' })
+    await expect(btnVerify2).toBeEnabled()
+    await btnVerify2.click()
     await expect(page.getByText('Identidad verificada correctamente.')).toBeVisible()
 
     await page.locator('#pickup-amount').fill('9000')
@@ -262,11 +272,16 @@ test.describe('Flujo PICKUP completo', () => {
     })
 
     await page.goto('/admin/orders/605')
+    await page.waitForLoadState('networkidle')
 
     await expect(page.getByText('Operación PICKUP')).toBeVisible()
 
-    await page.locator('#pickup-doc-number').fill('3030303030')
-    await page.getByRole('button', { name: 'Verificar identidad' }).click()
+    await page.locator('#pickup-doc-number').click()
+    await page.locator('#pickup-doc-number').type('3030303030')
+    const btnVerify5 = page.getByRole('button', { name: 'Verificar identidad' })
+    await btnVerify5.waitFor({ state: 'visible' })
+    await expect(btnVerify5).toBeEnabled()
+    await btnVerify5.click()
     await expect(page.getByText('Identidad verificada correctamente.')).toBeVisible()
   })
 
@@ -289,9 +304,13 @@ test.describe('Flujo PICKUP completo', () => {
     })
 
     await page.goto('/admin/orders/606')
+    await page.waitForLoadState('networkidle')
 
-    await page.locator('#pickup-doc-number').fill('9999999999')
-    await page.getByRole('button', { name: 'Verificar identidad' }).click()
+    await page.locator('#pickup-doc-number').click()
+    await page.locator('#pickup-doc-number').type('9999999999')
+    const btnVerify6 = page.getByRole('button', { name: 'Verificar identidad' })
+    await expect(btnVerify6).toBeEnabled()
+    await btnVerify6.click()
 
     await expect(page.getByRole('alert').first()).toContainText(
       'Documento no coincide con el comprador del pedido.',
