@@ -18,6 +18,7 @@ import {
   type OrderStatus,
   type OrderStateHistoryEntry,
 } from '@/lib/orders.api'
+import { PickupActions } from './_components/PickupActions'
 
 function formatCOP(amount: number) {
   return new Intl.NumberFormat('es-CO', {
@@ -253,6 +254,17 @@ export default function OrderDetailClient({ orderId }: OrderDetailClientProps) {
 
     return () => { active = false }
   }, [isAllowed, orderId])
+
+  async function refetch() {
+    if (!Number.isFinite(orderId) || orderId <= 0) return
+    try {
+      const data = await getOrder(orderId)
+      setOrder(data)
+    } catch (err) {
+      const apiErr = err as ApiError
+      setError(apiErr.message ?? 'No pudimos recargar el pedido.')
+    }
+  }
 
   async function runAction(fn: () => Promise<OrderDetail>, msg: string) {
     setActing(true)
@@ -679,6 +691,14 @@ export default function OrderDetailClient({ orderId }: OrderDetailClientProps) {
                 )}
             </div>
           </RutaCard>
+
+          {order.delivery_type === 'PICKUP' && order.order_status === 'READY_FOR_PICKUP' && (
+            <PickupActions
+              orderId={order.id}
+              isCod={order.payment?.method === 'ON_DELIVERY'}
+              onActionComplete={() => { void refetch() }}
+            />
+          )}
         </div>
       </div>
     </div>
