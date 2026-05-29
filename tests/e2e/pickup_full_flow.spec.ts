@@ -5,10 +5,8 @@ import { expect, test, type Page, type Route } from '@playwright/test'
 //
 // Patrón: idéntico a ship_full_flow.spec.ts.
 // - Sesión inyectada vía addInitScript (sessionStorage).
-// - API mockeada vía page.route() — no requiere backend real para ejecutarse.
-// - Todos los tests navegan a /admin/orders/_ (el único ID en generateStaticParams).
-//   El componente usa useParams() para leer el ID y hace fetch de la orden,
-//   que es interceptada por el mock de Playwright.
+// - API mockeada vía page.route() con URLs exactas (sin glob ni prefijo /v1).
+// - IDs de test (601-606) declarados en generateStaticParams del page.tsx.
 // ─────────────────────────────────────────────────────────────────────────────
 
 const NOW = '2026-05-29T12:00:00.000Z'
@@ -38,7 +36,7 @@ async function fulfillJson(route: Route, data: unknown) {
 }
 
 function apiRoute(path: string) {
-  return `**${path}`
+  return `http://127.0.0.1:3001${path}`
 }
 
 // ─── Helpers de datos de pedido ──────────────────────────────────────────────
@@ -47,12 +45,13 @@ type PaymentMethod = 'ONLINE_AT_ORDER' | 'ON_DELIVERY'
 type OrderStatus = string
 
 function makePickupOrder(
+  id: number,
   status: OrderStatus,
   paymentMethod: PaymentMethod,
   paymentStatus: string,
 ) {
   return {
-    id: '_',
+    id,
     order_status: status,
     delivery_type: 'PICKUP',
     pickup_point_name: 'Sede Chapinero',
@@ -97,9 +96,9 @@ function makePickupOrder(
   }
 }
 
-function makeShipOrder() {
+function makeShipOrder(id: number) {
   return {
-    id: '_',
+    id,
     order_status: 'READY_TO_SHIP',
     delivery_type: 'SHIP',
     delivery_address: 'Cll 72 #10-45 Oficina 301, Bogota',
@@ -115,7 +114,6 @@ function makeShipOrder() {
       {
         id: 2,
         product_name: 'Banano',
-        product_sku: 'FRU-002',
         quantity: 1,
         unit_price: 3200,
         subtotal: 3200,
@@ -133,13 +131,7 @@ function makeShipOrder() {
       evidence_url: null,
     },
     history: [
-      {
-        id: 10,
-        to_state: 'READY_TO_SHIP',
-        reason: null,
-        actor_role: 'ADMIN_CLIENT',
-        created_at: NOW,
-      },
+      { id: 10, to_state: 'READY_TO_SHIP', reason: null, actor_role: 'ADMIN_CLIENT', created_at: NOW },
     ],
     created_at: NOW,
   }
@@ -153,37 +145,32 @@ test.describe('Flujo PICKUP completo', () => {
     await setSession(page, 'ADMIN_CLIENT')
 
     let status: OrderStatus = 'READY_FOR_PICKUP'
+    const getOrder = () => makePickupOrder(601, status, 'ONLINE_AT_ORDER', 'PAID')
 
-    const getOrder = () => makePickupOrder(status, 'ONLINE_AT_ORDER', 'PAID')
-
-    await page.route(apiRoute('/admin/orders/_'), async (route) => {
+    await page.route(apiRoute('/admin/orders/601'), async (route) => {
       await fulfillJson(route, getOrder())
     })
-
-    await page.route(apiRoute('/admin/orders/_/verify-pickup-identity'), async (route) => {
+    await page.route(apiRoute('/admin/orders/601/verify-pickup-identity'), async (route) => {
       status = 'IDENTITY_VALIDATED'
       await route.fulfill({ status: 204 })
     })
-
-    await page.route(apiRoute('/admin/orders/_/mark-pickup-delivered'), async (route) => {
+    await page.route(apiRoute('/admin/orders/601/mark-pickup-delivered'), async (route) => {
       status = 'DELIVERED'
       await route.fulfill({ status: 204 })
     })
 
-    await page.goto('/admin/orders/_')
+    await page.goto('/admin/orders/601')
 
     await expect(page.getByText('Operación PICKUP')).toBeVisible()
     await expect(page.getByText('Verificar identidad del comprador')).toBeVisible()
 
     await page.locator('#pickup-doc-number').fill('1010101010')
     await page.getByRole('button', { name: 'Verificar identidad' }).click()
-
     await expect(page.getByText('Identidad verificada correctamente.')).toBeVisible()
 
     await page.getByRole('button', { name: 'Marcar como entregado' }).click()
     await expect(page.getByText('¿Confirmar entrega del pedido?')).toBeVisible()
     await page.getByRole('button', { name: 'Confirmar entrega' }).click()
-
     await expect(page.getByText('Entregado')).toBeVisible()
   })
 
@@ -193,35 +180,25 @@ test.describe('Flujo PICKUP completo', () => {
 
     let status: OrderStatus = 'READY_FOR_PICKUP'
     let collectionDone = false
-
     const getOrder = () =>
-      makePickupOrder(
-        status,
-        'ON_DELIVERY',
-        collectionDone ? 'PAYMENT_COLLECTED' : 'PENDING_COLLECTION',
-      )
+      makePickupOrder(602, status, 'ON_DELIVERY', collectionDone ? 'PAYMENT_COLLECTED' : 'PENDING_COLLECTION')
 
-    await page.route(apiRoute('/admin/orders/_'), async (route) => {
-      await fulfillJson(route, getOrder())
-    })
-
-    await page.route(apiRoute('/admin/orders/_/verify-pickup-identity'), async (route) => {
+    await page.route(apiRoute('/admin/orders/602'), async (route) => { await fulfillJson(route, getOrder()) })
+    await page.route(apiRoute('/admin/orders/602/verify-pickup-identity'), async (route) => {
       status = 'IDENTITY_VALIDATED'
       await route.fulfill({ status: 204 })
     })
-
-    await page.route(apiRoute('/admin/orders/_/pickup-collection'), async (route) => {
+    await page.route(apiRoute('/admin/orders/602/pickup-collection'), async (route) => {
       collectionDone = true
       status = 'PAYMENT_COLLECTED_CASH'
       await route.fulfill({ status: 204 })
     })
-
-    await page.route(apiRoute('/admin/orders/_/mark-pickup-delivered'), async (route) => {
+    await page.route(apiRoute('/admin/orders/602/mark-pickup-delivered'), async (route) => {
       status = 'DELIVERED'
       await route.fulfill({ status: 204 })
     })
 
-    await page.goto('/admin/orders/_')
+    await page.goto('/admin/orders/602')
 
     await expect(page.getByText('Operación PICKUP')).toBeVisible()
     await expect(page.getByText('Registrar cobro (pago contra entrega)')).toBeVisible()
@@ -244,11 +221,11 @@ test.describe('Flujo PICKUP completo', () => {
   test('PickupActions NO aparece para pedidos SHIP', async ({ page }) => {
     await setSession(page, 'ADMIN_CLIENT')
 
-    await page.route(apiRoute('/admin/orders/_'), async (route) => {
-      await fulfillJson(route, makeShipOrder())
+    await page.route(apiRoute('/admin/orders/603'), async (route) => {
+      await fulfillJson(route, makeShipOrder(603))
     })
 
-    await page.goto('/admin/orders/_')
+    await page.goto('/admin/orders/603')
 
     await expect(page.getByText('Punto físico (PICKUP)')).not.toBeVisible()
     await expect(page.getByText('Domicilio (SHIP)')).toBeVisible()
@@ -260,11 +237,11 @@ test.describe('Flujo PICKUP completo', () => {
   test('PickupActions NO aparece cuando el estado no es READY_FOR_PICKUP', async ({ page }) => {
     await setSession(page, 'ADMIN_CLIENT')
 
-    await page.route(apiRoute('/admin/orders/_'), async (route) => {
-      await fulfillJson(route, makePickupOrder('PREPARING', 'ONLINE_AT_ORDER', 'PAID'))
+    await page.route(apiRoute('/admin/orders/604'), async (route) => {
+      await fulfillJson(route, makePickupOrder(604, 'PREPARING', 'ONLINE_AT_ORDER', 'PAID'))
     })
 
-    await page.goto('/admin/orders/_')
+    await page.goto('/admin/orders/604')
 
     await expect(page.getByText('Punto físico (PICKUP)')).toBeVisible()
     await expect(page.getByText('Operación PICKUP')).not.toBeVisible()
@@ -276,19 +253,15 @@ test.describe('Flujo PICKUP completo', () => {
     await setSession(page, 'OPERATOR_CLIENT')
 
     let status: OrderStatus = 'READY_FOR_PICKUP'
+    const getOrder = () => makePickupOrder(605, status, 'ONLINE_AT_ORDER', 'PAID')
 
-    const getOrder = () => makePickupOrder(status, 'ONLINE_AT_ORDER', 'PAID')
-
-    await page.route(apiRoute('/admin/orders/_'), async (route) => {
-      await fulfillJson(route, getOrder())
-    })
-
-    await page.route(apiRoute('/admin/orders/_/verify-pickup-identity'), async (route) => {
+    await page.route(apiRoute('/admin/orders/605'), async (route) => { await fulfillJson(route, getOrder()) })
+    await page.route(apiRoute('/admin/orders/605/verify-pickup-identity'), async (route) => {
       status = 'IDENTITY_VALIDATED'
       await route.fulfill({ status: 204 })
     })
 
-    await page.goto('/admin/orders/_')
+    await page.goto('/admin/orders/605')
 
     await expect(page.getByText('Operación PICKUP')).toBeVisible()
 
@@ -301,11 +274,10 @@ test.describe('Flujo PICKUP completo', () => {
   test('Error de identidad muestra mensaje de alerta inline', async ({ page }) => {
     await setSession(page, 'ADMIN_CLIENT')
 
-    await page.route(apiRoute('/admin/orders/_'), async (route) => {
-      await fulfillJson(route, makePickupOrder('READY_FOR_PICKUP', 'ONLINE_AT_ORDER', 'PAID'))
+    await page.route(apiRoute('/admin/orders/606'), async (route) => {
+      await fulfillJson(route, makePickupOrder(606, 'READY_FOR_PICKUP', 'ONLINE_AT_ORDER', 'PAID'))
     })
-
-    await page.route(apiRoute('/admin/orders/_/verify-pickup-identity'), async (route) => {
+    await page.route(apiRoute('/admin/orders/606/verify-pickup-identity'), async (route) => {
       await route.fulfill({
         status: 422,
         contentType: 'application/json',
@@ -316,7 +288,7 @@ test.describe('Flujo PICKUP completo', () => {
       })
     })
 
-    await page.goto('/admin/orders/_')
+    await page.goto('/admin/orders/606')
 
     await page.locator('#pickup-doc-number').fill('9999999999')
     await page.getByRole('button', { name: 'Verificar identidad' }).click()
@@ -324,7 +296,6 @@ test.describe('Flujo PICKUP completo', () => {
     await expect(page.getByRole('alert').first()).toContainText(
       'Documento no coincide con el comprador del pedido.',
     )
-
     await expect(page.getByRole('button', { name: 'Verificar identidad' })).toBeEnabled()
   })
 })
