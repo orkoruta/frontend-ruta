@@ -88,14 +88,16 @@ test.describe('Flujo PICKUP completo', () => {
     await page.route('**/v1/**', async (route) => {
       const path = new URL(route.request().url()).pathname
       const method = route.request().method()
-      if (path === `/v1/admin/orders/${orderId}` && method === 'GET') {
-        await route.fulfill({ status: 200, contentType: 'application/json', body: JSON.stringify(makePickupOrder(orderId, status, 'ONLINE_AT_ORDER', 'PAID')) })
+      if (method === 'OPTIONS') {
+        await route.fulfill({ status: 204, headers: { 'Access-Control-Allow-Origin': 'http://127.0.0.1:3002', 'Access-Control-Allow-Methods': 'GET,POST,OPTIONS', 'Access-Control-Allow-Headers': 'Content-Type,X-Idempotency-Key', 'Access-Control-Allow-Credentials': 'true' } })
+      } else if (path === `/v1/admin/orders/${orderId}` && method === 'GET') {
+        await route.fulfill({ status: 200, contentType: 'application/json', headers: { 'Access-Control-Allow-Origin': 'http://127.0.0.1:3002', 'Access-Control-Allow-Credentials': 'true' }, body: JSON.stringify(makePickupOrder(orderId, status, 'ONLINE_AT_ORDER', 'PAID')) })
       } else if (path === `/v1/admin/orders/${orderId}/verify-pickup-identity`) {
-        status = 'IDENTITY_VALIDATED'
-        await route.fulfill({ status: 204 })
+        // No cambiar status: PickupActions debe seguir visible (condición READY_FOR_PICKUP)
+        await route.fulfill({ status: 204, headers: { 'Access-Control-Allow-Origin': 'http://127.0.0.1:3002', 'Access-Control-Allow-Credentials': 'true' } })
       } else if (path === `/v1/admin/orders/${orderId}/mark-pickup-delivered`) {
         status = 'DELIVERED'
-        await route.fulfill({ status: 204 })
+        await route.fulfill({ status: 204, headers: { 'Access-Control-Allow-Origin': 'http://127.0.0.1:3002', 'Access-Control-Allow-Credentials': 'true' } })
       } else {
         await route.continue()
       }
@@ -134,11 +136,11 @@ test.describe('Flujo PICKUP completo', () => {
       if (path === `/v1/admin/orders/${orderId}` && method === 'GET') {
         await route.fulfill({ status: 200, contentType: 'application/json', body: JSON.stringify(makePickupOrder(orderId, status, 'ON_DELIVERY', collectionDone ? 'PAYMENT_COLLECTED' : 'PENDING_COLLECTION')) })
       } else if (path === `/v1/admin/orders/${orderId}/verify-pickup-identity`) {
-        status = 'IDENTITY_VALIDATED'
+        // No cambiar status: PickupActions sigue visible (condición READY_FOR_PICKUP)
         await route.fulfill({ status: 204 })
       } else if (path === `/v1/admin/orders/${orderId}/pickup-collection`) {
         collectionDone = true
-        status = 'PAYMENT_COLLECTED_CASH'
+        // No cambiar status: PickupActions sigue visible
         await route.fulfill({ status: 204 })
       } else if (path === `/v1/admin/orders/${orderId}/mark-pickup-delivered`) {
         status = 'DELIVERED'
@@ -230,7 +232,7 @@ test.describe('Flujo PICKUP completo', () => {
       if (path === `/v1/admin/orders/${orderId}` && method === 'GET') {
         await route.fulfill({ status: 200, contentType: 'application/json', body: JSON.stringify(makePickupOrder(orderId, status, 'ONLINE_AT_ORDER', 'PAID')) })
       } else if (path === `/v1/admin/orders/${orderId}/verify-pickup-identity`) {
-        status = 'IDENTITY_VALIDATED'
+        // No cambiar status: PickupActions sigue visible (condición READY_FOR_PICKUP)
         await route.fulfill({ status: 204 })
       } else {
         await route.continue()
