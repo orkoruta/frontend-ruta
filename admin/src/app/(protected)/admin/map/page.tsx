@@ -1,5 +1,5 @@
-import { AssignmentMapView } from './_components/AssignmentMapView'
+import { redirect } from 'next/navigation'
 
-export default function MapPage() {
-  return <AssignmentMapView />
+export default function LegacyMapPage() {
+  redirect('/admin/orders/map')
 }
