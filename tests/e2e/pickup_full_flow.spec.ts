@@ -36,7 +36,7 @@ async function fulfillJson(route: Route, data: unknown) {
 }
 
 function apiRoute(path: string) {
-  return (url: URL) => url.pathname === path
+  return `**/v1${path}`
 }
 
 // ─── Helpers de datos de pedido ──────────────────────────────────────────────
