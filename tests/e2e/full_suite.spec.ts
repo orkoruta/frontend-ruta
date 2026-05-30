@@ -94,7 +94,7 @@ test.describe('Cancelación solicitada por buyer', () => {
         return
       }
 
-      if (path === `/v1/admin/orders/${orderId}/approve-cancel-request`) {
+      if (path === `/v1/admin/orders/${orderId}/cancel-request/approve`) {
         status = 'CANCELLED_BY_ADMIN'
         await route.fulfill({
           status: 200,
