@@ -6,8 +6,7 @@ import { RutaThemeToggle } from '@orkoruta/ui'
 import { SessionContext } from '@/lib/session-context'
 import { SESSION_KEY } from '@/lib/session'
 import { logout } from '@/lib/auth.api'
-
-const API_BASE = process.env.NEXT_PUBLIC_API_URL ?? 'http://localhost:3001'
+import { exitControlView } from '@/lib/control_view.api'
 
 interface RutaHeaderProps {
   onToggleSidebar: () => void
@@ -28,13 +27,10 @@ export function RutaHeader({ onToggleSidebar }: RutaHeaderProps) {
 
   async function handleExitControlView() {
     try {
-      await fetch(`${API_BASE}/auth/control-view/exit`, {
-        method: 'POST',
-        credentials: 'include',
-      })
+      await exitControlView()
     } finally {
       sessionStorage.removeItem(SESSION_KEY)
-      router.replace('/login')
+      router.replace('/ruta-admin/clients')
     }
   }
 
@@ -44,9 +40,13 @@ export function RutaHeader({ onToggleSidebar }: RutaHeaderProps) {
       {session?.acting_via_control_view && (
         <div className="flex items-center justify-between gap-4 bg-amber-500/[0.12] border-b border-amber-400/25 px-4 py-2">
           <p className="text-xs font-medium text-amber-700 dark:text-amber-300">
-            ⚠ Estás en Vista de Control del Cliente{' '}
-            {session.client_id ? `#${session.client_id}` : ''}. Todas tus
-            acciones quedan auditadas.
+            ⚠ Vista de Control activa —{' '}
+            {session.target_client_name
+              ? session.target_client_name
+              : session.client_id
+                ? `Cliente #${session.client_id}`
+                : 'Cliente desconocido'}
+            . Todas tus acciones quedan auditadas.
           </p>
           <button
             onClick={handleExitControlView}
