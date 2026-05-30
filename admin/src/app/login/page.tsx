@@ -8,10 +8,10 @@ import { SESSION_KEY, type RutaSession } from '@/lib/session'
 
 const REDIRECT: Record<string, string> = {
   ADMIN_RUTA: '/ruta-admin/clients',
-  ADMIN_CLIENT: '/admin/orders',
-  OPERATOR_CLIENT: '/admin/orders',
+  ADMIN_CLIENT: '/admin/dashboard',
+  OPERATOR_CLIENT: '/admin/dashboard',
   COURIER: '/courier',
-  BUYER: '/admin/orders',
+  BUYER: '/admin/dashboard',
 }
 
 export default function LoginPage() {
