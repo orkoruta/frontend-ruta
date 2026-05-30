@@ -119,7 +119,7 @@ test.describe('Flujo PICKUP completo', () => {
     await page.getByRole('button', { name: 'Marcar como entregado' }).click()
     await expect(page.getByText('¿Confirmar entrega del pedido?')).toBeVisible()
     await page.getByRole('button', { name: 'Confirmar entrega' }).click()
-    await expect(page.getByText('Entregado')).toBeVisible()
+    await expect(page.getByText('Entregado').first()).toBeVisible()
   })
 
   // ── Test 2 ─────────────────────────────────────────────────────────────────
@@ -171,7 +171,7 @@ test.describe('Flujo PICKUP completo', () => {
     await page.getByRole('button', { name: 'Marcar como entregado' }).click()
     await expect(page.getByText('¿Confirmar entrega del pedido?')).toBeVisible()
     await page.getByRole('button', { name: 'Confirmar entrega' }).click()
-    await expect(page.getByText('Entregado')).toBeVisible()
+    await expect(page.getByText('Entregado').first()).toBeVisible()
   })
 
   // ── Test 3 ─────────────────────────────────────────────────────────────────
