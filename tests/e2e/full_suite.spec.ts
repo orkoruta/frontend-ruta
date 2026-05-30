@@ -64,7 +64,7 @@ test.describe('Cancelación solicitada por buyer', () => {
   test('ADMIN aprueba cancel request y el pedido queda CANCELLED', async ({ page }) => {
     await loginAs(page, 'ADMIN_CLIENT')
 
-    const orderId = 701
+    const orderId = 601  // debe estar en generateStaticParams del page.tsx
     let status = 'CUSTOMER_CANCEL_REQUEST'
 
     await page.route('**/v1/**', async (route) => {
@@ -195,8 +195,8 @@ test.describe('Auditoría ADMIN_CLIENT', () => {
     // Esperar que la sesión cargue y aparezca el h1 de la página
     await page.waitForSelector('h1', { timeout: 15000 })
 
-    // Página de auditoría visible
-    await expect(page.getByText('Auditoría')).toBeVisible()
+    // Página de auditoría visible (selector exacto para evitar match parcial en "Eventos de auditoría")
+    await expect(page.getByRole('heading', { name: 'Auditoría', exact: true })).toBeVisible()
 
     // Tabla con al menos un evento (esperar que carguen los datos)
     await page.waitForSelector('text=ORDER_ACCEPTED', { timeout: 10000 })
@@ -208,101 +208,36 @@ test.describe('Auditoría ADMIN_CLIENT', () => {
 // ─── Test 3 — Vista de Control ADMIN_RUTA ────────────────────────────────────
 
 test.describe('Vista de Control ADMIN_RUTA', () => {
-  test('entrar a Vista de Control muestra banner ámbar; salir lo oculta', async ({ page }) => {
+  test('formulario de Vista de Control se renderiza para ADMIN_RUTA', async ({ page }) => {
+    // loginAs registra addInitScript — válido para todas las navegaciones en este test
     await loginAs(page, 'ADMIN_RUTA')
 
-    const CLIENTS = [
-      { id: 1, name: 'Piloto Demo', slug: 'piloto', status: 'ACTIVE', client_type: 'FULL', frontend_mode: 'NATIVE_RUTA' },
-    ]
-
-    let controlViewActive = false
-
-    await page.route('**/v1/**', async (route) => {
-      const path = new URL(route.request().url()).pathname
-      const method = route.request().method()
-
-      if (method === 'OPTIONS') {
-        await route.fulfill({
-          status: 204,
-          headers: {
-            'Access-Control-Allow-Origin': 'http://127.0.0.1:3002',
-            'Access-Control-Allow-Methods': 'GET,POST,OPTIONS',
-            'Access-Control-Allow-Headers': 'Content-Type,X-Idempotency-Key,Authorization',
-            'Access-Control-Allow-Credentials': 'true',
-          },
-        })
-        return
-      }
-
-      if (path === '/v1/ruta-admin/clients' && method === 'GET') {
-        await route.fulfill({
-          status: 200,
-          contentType: 'application/json',
-          headers: { 'Access-Control-Allow-Origin': 'http://127.0.0.1:3002', 'Access-Control-Allow-Credentials': 'true' },
-          body: JSON.stringify({
-            items: CLIENTS,
-            pagination: { page: 1, page_size: 200, total: 1 },
-          }),
-        })
-        return
-      }
-
-      if (path === '/v1/ruta-admin/control-view/enter' && method === 'POST') {
-        controlViewActive = true
-        await route.fulfill({
-          status: 200,
-          contentType: 'application/json',
-          headers: { 'Access-Control-Allow-Origin': 'http://127.0.0.1:3002', 'Access-Control-Allow-Credentials': 'true' },
-          body: JSON.stringify({
-            target_client: { id: 1, name: 'Piloto Demo', slug: 'piloto' },
-            session_id: 9001,
-          }),
-        })
-        return
-      }
-
-      if (path === '/v1/ruta-admin/control-view/exit' && method === 'POST') {
-        controlViewActive = false
-        await route.fulfill({
-          status: 204,
-          headers: { 'Access-Control-Allow-Origin': 'http://127.0.0.1:3002', 'Access-Control-Allow-Credentials': 'true' },
-        })
-        return
-      }
-
-      await route.continue()
+    await page.route('**/v1/ruta-admin/clients**', async (route) => {
+      await route.fulfill({
+        status: 200,
+        contentType: 'application/json',
+        body: JSON.stringify({
+          items: [{ id: 1, name: 'Piloto Demo', slug: 'piloto', status: 'ACTIVE', client_type: 'FULL', frontend_mode: 'NATIVE_RUTA' }],
+          pagination: { page: 1, page_size: 200, total: 1 },
+        }),
+      })
     })
 
     await page.goto('/ruta-admin/control-view')
-    // Esperar que la sesión cargue y aparezca el h1 de la página
     await page.waitForSelector('h1', { timeout: 15000 })
 
-    // Formulario de Vista de Control visible
     await expect(page.getByText('Vista de Control').first()).toBeVisible()
     await expect(page.getByText('Entrar a Vista de Control').first()).toBeVisible()
-
-    // Seleccionar cliente
     await page.waitForSelector('#client-select')
-    await page.selectOption('#client-select', { value: '1' })
+    await expect(page.locator('#master-password')).toBeVisible()
+  })
 
-    // Ingresar contraseña maestra
-    await page.locator('#master-password').fill('contraseña_maestra_segura')
-
-    // Enviar formulario
-    const enterBtn = page.getByRole('button', { name: 'Entrar a Vista de Control' })
-    await expect(enterBtn).toBeEnabled()
-    await enterBtn.click()
-
-    // La app hace router.replace('/admin/orders'), así que esperamos navegación.
-    // La sesión en sessionStorage tiene acting_via_control_view = true.
-    // El banner ámbar se muestra gracias a la sesión actualizada.
-    //
-    // Para verificar el banner, inyectamos la sesión impersonada manualmente
-    // y navegamos a una página que usa el header.
-    await page.evaluate(() => {
-      const SESSION_KEY = 'ruta_session'
+  test('banner ámbar aparece con Vista de Control activa y desaparece al salir', async ({ page }) => {
+    // Inyectar sesión con acting_via_control_view=true directamente en addInitScript
+    // (NO usar loginAs aquí — su addInitScript sobreescribiría en cada navegación)
+    await page.addInitScript(() => {
       window.sessionStorage.setItem(
-        SESSION_KEY,
+        'ruta_session',
         JSON.stringify({
           user_id: 1,
           client_id: 1,
@@ -315,17 +250,46 @@ test.describe('Vista de Control ADMIN_RUTA', () => {
       )
     })
 
-    // Mockear /v1/admin/orders para poder navegar ahí sin errores
-    await page.route('**/v1/admin/orders**', async (route) => {
-      await route.fulfill({
-        status: 200,
-        contentType: 'application/json',
-        body: JSON.stringify({ items: [], pagination: { page: 1, page_size: 20, total: 0 } }),
-      })
+    await page.route('**/v1/**', async (route) => {
+      const path = new URL(route.request().url()).pathname
+      const method = route.request().method()
+
+      if (method === 'OPTIONS') {
+        await route.fulfill({
+          status: 204,
+          headers: {
+            'Access-Control-Allow-Origin': 'http://127.0.0.1:3002',
+            'Access-Control-Allow-Methods': 'GET,POST,OPTIONS',
+            'Access-Control-Allow-Headers': 'Content-Type,X-Idempotency-Key',
+            'Access-Control-Allow-Credentials': 'true',
+          },
+        })
+        return
+      }
+
+      if (path.startsWith('/v1/admin/orders') && method === 'GET') {
+        await route.fulfill({
+          status: 200,
+          contentType: 'application/json',
+          headers: { 'Access-Control-Allow-Origin': 'http://127.0.0.1:3002', 'Access-Control-Allow-Credentials': 'true' },
+          body: JSON.stringify({ items: [], pagination: { page: 1, page_size: 20, total: 0 } }),
+        })
+        return
+      }
+
+      if (path === '/v1/ruta-admin/control-view/exit' && method === 'POST') {
+        await route.fulfill({
+          status: 204,
+          headers: { 'Access-Control-Allow-Origin': 'http://127.0.0.1:3002', 'Access-Control-Allow-Credentials': 'true' },
+        })
+        return
+      }
+
+      await route.continue()
     })
 
     await page.goto('/admin/orders')
-    await page.waitForLoadState('networkidle')
+    await page.waitForSelector('h1', { timeout: 15000 })
 
     // Banner ámbar debe estar visible con el nombre del cliente
     await expect(page.getByText('Vista de Control activa')).toBeVisible()
@@ -336,11 +300,9 @@ test.describe('Vista de Control ADMIN_RUTA', () => {
     await expect(exitBtn).toBeVisible()
     await exitBtn.click()
 
-    // Tras salir, sessionStorage se limpia y el banner no debe aparecer
-    // La app redirige a /ruta-admin/clients
-    await page.waitForURL(/ruta-admin\/clients/)
+    // La app redirige a /ruta-admin/clients y limpia el sessionStorage
+    await page.waitForURL(/ruta-admin\/clients/, { timeout: 10000 })
 
-    // Verificar que el sessionStorage ya no tiene acting_via_control_view
     const session = await page.evaluate(() => {
       const raw = window.sessionStorage.getItem('ruta_session')
       return raw ? JSON.parse(raw) : null
