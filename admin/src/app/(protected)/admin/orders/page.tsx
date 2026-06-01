@@ -182,12 +182,17 @@ const ORDER_STATUS_OPTIONS: Array<[OrderStatus | '', string]> = [
 
 const PAYMENT_STATUS_OPTIONS: Array<[PaymentStatus | '', string]> = [
   ['', 'Todos los pagos'],
-  ['PENDING', 'Pendiente'],
+  ['PAYMENT_NOT_STARTED', 'Sin iniciar'],
   ['PENDING_ONLINE_PAYMENT', 'Pend. pago online'],
-  ['CONFIRMED', 'Confirmado'],
-  ['FAILED', 'Fallido'],
-  ['REFUNDED', 'Reembolsado'],
-  ['CANCELLED', 'Cancelado'],
+  ['PAYMENT_PROCESSING', 'Procesando'],
+  ['PAID', 'Pagado'],
+  ['PAYMENT_FAILED_RETRYABLE', 'Fallo (reintentable)'],
+  ['PAYMENT_REJECTED_FINAL', 'Rechazado (final)'],
+  ['PENDING_COLLECTION', 'Pend. cobro (COD)'],
+  ['COLLECTION_PROCESSING', 'Cobrando (COD)'],
+  ['PAYMENT_COLLECTED', 'Cobrado (COD)'],
+  ['PAYMENT_COLLECTION_FAILED', 'Cobro fallido (COD)'],
+  ['PAYMENT_NOT_COLLECTED', 'No cobrado'],
 ]
 
 const SELECT_CLASS =
