@@ -1,6 +1,9 @@
 # External AI tool manifests (must not be committed)
 CODEBUFF.md
 
+# Playwright test output
+test-results/
+
 # Environment
 .env
 .env.local
