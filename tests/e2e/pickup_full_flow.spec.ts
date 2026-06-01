@@ -3,7 +3,7 @@ import { expect, test, type Page } from '@playwright/test'
 // ─────────────────────────────────────────────────────────────────────────────
 // Flujo PICKUP completo — E2E Suite (4.QA-1)
 //
-// Usa un único catch-all handler **/v1/** por test con dispatch por
+// Usa un único catch-all handler **/** por test con dispatch por
 // pathname + method para evitar ambigüedades de matching en Playwright.
 // ─────────────────────────────────────────────────────────────────────────────
 
@@ -85,17 +85,17 @@ test.describe('Flujo PICKUP completo', () => {
     let status: OrderStatus = 'READY_FOR_PICKUP'
     const orderId = 601
 
-    await page.route('**/v1/**', async (route) => {
+    await page.route('**/**', async (route) => {
       const path = new URL(route.request().url()).pathname
       const method = route.request().method()
       if (method === 'OPTIONS') {
         await route.fulfill({ status: 204, headers: { 'Access-Control-Allow-Origin': 'http://127.0.0.1:3002', 'Access-Control-Allow-Methods': 'GET,POST,OPTIONS', 'Access-Control-Allow-Headers': 'Content-Type,X-Idempotency-Key', 'Access-Control-Allow-Credentials': 'true' } })
-      } else if (path === `/v1/admin/orders/${orderId}` && method === 'GET') {
+      } else if (path === `/admin/orders/${orderId}` && method === 'GET') {
         await route.fulfill({ status: 200, contentType: 'application/json', headers: { 'Access-Control-Allow-Origin': 'http://127.0.0.1:3002', 'Access-Control-Allow-Credentials': 'true' }, body: JSON.stringify(makePickupOrder(orderId, status, 'ONLINE_AT_ORDER', 'PAID')) })
-      } else if (path === `/v1/admin/orders/${orderId}/verify-pickup-identity`) {
+      } else if (path === `/admin/orders/${orderId}/verify-pickup-identity`) {
         // No cambiar status: PickupActions debe seguir visible (condición READY_FOR_PICKUP)
         await route.fulfill({ status: 204, headers: { 'Access-Control-Allow-Origin': 'http://127.0.0.1:3002', 'Access-Control-Allow-Credentials': 'true' } })
-      } else if (path === `/v1/admin/orders/${orderId}/mark-pickup-delivered`) {
+      } else if (path === `/admin/orders/${orderId}/mark-pickup-delivered`) {
         status = 'DELIVERED'
         await route.fulfill({ status: 204, headers: { 'Access-Control-Allow-Origin': 'http://127.0.0.1:3002', 'Access-Control-Allow-Credentials': 'true' } })
       } else {
@@ -130,19 +130,19 @@ test.describe('Flujo PICKUP completo', () => {
     let collectionDone = false
     const orderId = 602
 
-    await page.route('**/v1/**', async (route) => {
+    await page.route('**/**', async (route) => {
       const path = new URL(route.request().url()).pathname
       const method = route.request().method()
-      if (path === `/v1/admin/orders/${orderId}` && method === 'GET') {
+      if (path === `/admin/orders/${orderId}` && method === 'GET') {
         await route.fulfill({ status: 200, contentType: 'application/json', body: JSON.stringify(makePickupOrder(orderId, status, 'ON_DELIVERY', collectionDone ? 'PAYMENT_COLLECTED' : 'PENDING_COLLECTION')) })
-      } else if (path === `/v1/admin/orders/${orderId}/verify-pickup-identity`) {
+      } else if (path === `/admin/orders/${orderId}/verify-pickup-identity`) {
         // No cambiar status: PickupActions sigue visible (condición READY_FOR_PICKUP)
         await route.fulfill({ status: 204 })
-      } else if (path === `/v1/admin/orders/${orderId}/pickup-collection`) {
+      } else if (path === `/admin/orders/${orderId}/pickup-collection`) {
         collectionDone = true
         // No cambiar status: PickupActions sigue visible
         await route.fulfill({ status: 204 })
-      } else if (path === `/v1/admin/orders/${orderId}/mark-pickup-delivered`) {
+      } else if (path === `/admin/orders/${orderId}/mark-pickup-delivered`) {
         status = 'DELIVERED'
         await route.fulfill({ status: 204 })
       } else {
@@ -179,9 +179,9 @@ test.describe('Flujo PICKUP completo', () => {
     await setSession(page, 'ADMIN_CLIENT')
     const orderId = 603
 
-    await page.route('**/v1/**', async (route) => {
+    await page.route('**/**', async (route) => {
       const path = new URL(route.request().url()).pathname
-      if (path === `/v1/admin/orders/${orderId}`) {
+      if (path === `/admin/orders/${orderId}`) {
         await route.fulfill({ status: 200, contentType: 'application/json', body: JSON.stringify(makeShipOrder(orderId)) })
       } else {
         await route.continue()
@@ -202,9 +202,9 @@ test.describe('Flujo PICKUP completo', () => {
     await setSession(page, 'ADMIN_CLIENT')
     const orderId = 604
 
-    await page.route('**/v1/**', async (route) => {
+    await page.route('**/**', async (route) => {
       const path = new URL(route.request().url()).pathname
-      if (path === `/v1/admin/orders/${orderId}`) {
+      if (path === `/admin/orders/${orderId}`) {
         await route.fulfill({ status: 200, contentType: 'application/json', body: JSON.stringify(makePickupOrder(orderId, 'PREPARING', 'ONLINE_AT_ORDER', 'PAID')) })
       } else {
         await route.continue()
@@ -226,12 +226,12 @@ test.describe('Flujo PICKUP completo', () => {
     let status: OrderStatus = 'READY_FOR_PICKUP'
     const orderId = 605
 
-    await page.route('**/v1/**', async (route) => {
+    await page.route('**/**', async (route) => {
       const path = new URL(route.request().url()).pathname
       const method = route.request().method()
-      if (path === `/v1/admin/orders/${orderId}` && method === 'GET') {
+      if (path === `/admin/orders/${orderId}` && method === 'GET') {
         await route.fulfill({ status: 200, contentType: 'application/json', body: JSON.stringify(makePickupOrder(orderId, status, 'ONLINE_AT_ORDER', 'PAID')) })
-      } else if (path === `/v1/admin/orders/${orderId}/verify-pickup-identity`) {
+      } else if (path === `/admin/orders/${orderId}/verify-pickup-identity`) {
         // No cambiar status: PickupActions sigue visible (condición READY_FOR_PICKUP)
         await route.fulfill({ status: 204 })
       } else {
@@ -257,12 +257,12 @@ test.describe('Flujo PICKUP completo', () => {
     await setSession(page, 'ADMIN_CLIENT')
     const orderId = 606
 
-    await page.route('**/v1/**', async (route) => {
+    await page.route('**/**', async (route) => {
       const path = new URL(route.request().url()).pathname
       const method = route.request().method()
-      if (path === `/v1/admin/orders/${orderId}` && method === 'GET') {
+      if (path === `/admin/orders/${orderId}` && method === 'GET') {
         await route.fulfill({ status: 200, contentType: 'application/json', body: JSON.stringify(makePickupOrder(orderId, 'READY_FOR_PICKUP', 'ONLINE_AT_ORDER', 'PAID')) })
-      } else if (path === `/v1/admin/orders/${orderId}/verify-pickup-identity`) {
+      } else if (path === `/admin/orders/${orderId}/verify-pickup-identity`) {
         await route.fulfill({
           status: 422,
           contentType: 'application/json',

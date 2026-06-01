@@ -27,7 +27,7 @@ async function fulfillJson(route: Route, data: unknown) {
 }
 
 function apiRoute(path: string) {
-  return `**/v1${path}`
+  return `**${path}`
 }
 
 test.describe('Sprint 3 SHIP flow', () => {

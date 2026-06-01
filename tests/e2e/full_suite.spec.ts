@@ -10,7 +10,7 @@
  *
  * Patrón idéntico al resto de la suite:
  *  - sessionStorage para simular sesión (page.addInitScript)
- *  - page.route() catch-all *\/v1\/** para mockear la API
+ *  - page.route() catch-all ** para mockear la API
  */
 
 import { expect, test, type Page } from '@playwright/test'
@@ -67,7 +67,7 @@ test.describe('Cancelación solicitada por buyer', () => {
     const orderId = 601  // debe estar en generateStaticParams del page.tsx
     let status = 'CUSTOMER_CANCEL_REQUEST'
 
-    await page.route('**/v1/**', async (route) => {
+    await page.route('**/**', async (route) => {
       const path = new URL(route.request().url()).pathname
       const method = route.request().method()
 
@@ -84,7 +84,7 @@ test.describe('Cancelación solicitada por buyer', () => {
         return
       }
 
-      if (path === `/v1/admin/orders/${orderId}` && method === 'GET') {
+      if (path === `/admin/orders/${orderId}` && method === 'GET') {
         await route.fulfill({
           status: 200,
           contentType: 'application/json',
@@ -94,7 +94,7 @@ test.describe('Cancelación solicitada por buyer', () => {
         return
       }
 
-      if (path === `/v1/admin/orders/${orderId}/cancel-request/approve`) {
+      if (path === `/admin/orders/${orderId}/cancel-request/approve`) {
         status = 'CANCELLED_BY_ADMIN'
         await route.fulfill({
           status: 200,
@@ -158,7 +158,7 @@ test.describe('Auditoría ADMIN_CLIENT', () => {
       },
     ]
 
-    await page.route('**/v1/**', async (route) => {
+    await page.route('**/**', async (route) => {
       const path = new URL(route.request().url()).pathname
       const method = route.request().method()
 
@@ -175,7 +175,7 @@ test.describe('Auditoría ADMIN_CLIENT', () => {
         return
       }
 
-      if (path === '/v1/admin/audit-events' && method === 'GET') {
+      if (path === '/admin/audit-events' && method === 'GET') {
         await route.fulfill({
           status: 200,
           contentType: 'application/json',
@@ -212,7 +212,7 @@ test.describe('Vista de Control ADMIN_RUTA', () => {
     // loginAs registra addInitScript — válido para todas las navegaciones en este test
     await loginAs(page, 'ADMIN_RUTA')
 
-    await page.route('**/v1/ruta-admin/clients**', async (route) => {
+    await page.route('**/ruta-admin/clients**', async (route) => {
       await route.fulfill({
         status: 200,
         contentType: 'application/json',
@@ -250,7 +250,7 @@ test.describe('Vista de Control ADMIN_RUTA', () => {
       )
     })
 
-    await page.route('**/v1/**', async (route) => {
+    await page.route('**/**', async (route) => {
       const path = new URL(route.request().url()).pathname
       const method = route.request().method()
 
@@ -267,7 +267,7 @@ test.describe('Vista de Control ADMIN_RUTA', () => {
         return
       }
 
-      if (path.startsWith('/v1/admin/orders') && method === 'GET') {
+      if (path.startsWith('/admin/orders') && method === 'GET') {
         await route.fulfill({
           status: 200,
           contentType: 'application/json',
@@ -277,7 +277,7 @@ test.describe('Vista de Control ADMIN_RUTA', () => {
         return
       }
 
-      if (path === '/v1/ruta-admin/control-view/exit' && method === 'POST') {
+      if (path === '/ruta-admin/control-view/exit' && method === 'POST') {
         await route.fulfill({
           status: 204,
           headers: { 'Access-Control-Allow-Origin': 'http://127.0.0.1:3002', 'Access-Control-Allow-Credentials': 'true' },
