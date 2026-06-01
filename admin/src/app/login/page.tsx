@@ -7,7 +7,7 @@ import { loginClient, loginRutaAdmin, type ApiError } from '@/lib/auth.api'
 import { SESSION_KEY, type RutaSession } from '@/lib/session'
 
 const REDIRECT: Record<string, string> = {
-  ADMIN_RUTA: '/ruta-admin/clients',
+  ADMIN_RUTA: '/ruta-admin/dashboard',
   ADMIN_CLIENT: '/admin/dashboard',
   OPERATOR_CLIENT: '/admin/dashboard',
   COURIER: '/courier',
