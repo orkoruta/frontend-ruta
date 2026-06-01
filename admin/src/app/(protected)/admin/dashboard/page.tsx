@@ -134,7 +134,7 @@ export default function AdminDashboardPage() {
                 color="blue"
               />
               <MetricCard
-                label="Couriers activos"
+                label="Repartidores activos"
                 value={metrics.active_couriers}
                 color="green"
               />
