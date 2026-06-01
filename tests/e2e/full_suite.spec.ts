@@ -67,7 +67,7 @@ test.describe('Cancelación solicitada por buyer', () => {
     const orderId = 601  // debe estar en generateStaticParams del page.tsx
     let status = 'CUSTOMER_CANCEL_REQUEST'
 
-    await page.route('**/**', async (route) => {
+    await page.route('http://127.0.0.1:3001/**', async (route) => {
       const path = new URL(route.request().url()).pathname
       const method = route.request().method()
 
@@ -158,7 +158,7 @@ test.describe('Auditoría ADMIN_CLIENT', () => {
       },
     ]
 
-    await page.route('**/**', async (route) => {
+    await page.route('http://127.0.0.1:3001/**', async (route) => {
       const path = new URL(route.request().url()).pathname
       const method = route.request().method()
 
@@ -212,7 +212,7 @@ test.describe('Vista de Control ADMIN_RUTA', () => {
     // loginAs registra addInitScript — válido para todas las navegaciones en este test
     await loginAs(page, 'ADMIN_RUTA')
 
-    await page.route('**/ruta-admin/clients**', async (route) => {
+    await page.route('http://127.0.0.1:3001/ruta-admin/clients**', async (route) => {
       await route.fulfill({
         status: 200,
         contentType: 'application/json',
@@ -250,7 +250,7 @@ test.describe('Vista de Control ADMIN_RUTA', () => {
       )
     })
 
-    await page.route('**/**', async (route) => {
+    await page.route('http://127.0.0.1:3001/**', async (route) => {
       const path = new URL(route.request().url()).pathname
       const method = route.request().method()
 

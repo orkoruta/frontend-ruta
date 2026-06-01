@@ -85,7 +85,7 @@ test.describe('Flujo PICKUP completo', () => {
     let status: OrderStatus = 'READY_FOR_PICKUP'
     const orderId = 601
 
-    await page.route('**/**', async (route) => {
+    await page.route('http://127.0.0.1:3001/**', async (route) => {
       const path = new URL(route.request().url()).pathname
       const method = route.request().method()
       if (method === 'OPTIONS') {
@@ -130,7 +130,7 @@ test.describe('Flujo PICKUP completo', () => {
     let collectionDone = false
     const orderId = 602
 
-    await page.route('**/**', async (route) => {
+    await page.route('http://127.0.0.1:3001/**', async (route) => {
       const path = new URL(route.request().url()).pathname
       const method = route.request().method()
       if (path === `/admin/orders/${orderId}` && method === 'GET') {
@@ -179,7 +179,7 @@ test.describe('Flujo PICKUP completo', () => {
     await setSession(page, 'ADMIN_CLIENT')
     const orderId = 603
 
-    await page.route('**/**', async (route) => {
+    await page.route('http://127.0.0.1:3001/**', async (route) => {
       const path = new URL(route.request().url()).pathname
       if (path === `/admin/orders/${orderId}`) {
         await route.fulfill({ status: 200, contentType: 'application/json', body: JSON.stringify(makeShipOrder(orderId)) })
@@ -202,7 +202,7 @@ test.describe('Flujo PICKUP completo', () => {
     await setSession(page, 'ADMIN_CLIENT')
     const orderId = 604
 
-    await page.route('**/**', async (route) => {
+    await page.route('http://127.0.0.1:3001/**', async (route) => {
       const path = new URL(route.request().url()).pathname
       if (path === `/admin/orders/${orderId}`) {
         await route.fulfill({ status: 200, contentType: 'application/json', body: JSON.stringify(makePickupOrder(orderId, 'PREPARING', 'ONLINE_AT_ORDER', 'PAID')) })
@@ -226,7 +226,7 @@ test.describe('Flujo PICKUP completo', () => {
     let status: OrderStatus = 'READY_FOR_PICKUP'
     const orderId = 605
 
-    await page.route('**/**', async (route) => {
+    await page.route('http://127.0.0.1:3001/**', async (route) => {
       const path = new URL(route.request().url()).pathname
       const method = route.request().method()
       if (path === `/admin/orders/${orderId}` && method === 'GET') {
@@ -257,7 +257,7 @@ test.describe('Flujo PICKUP completo', () => {
     await setSession(page, 'ADMIN_CLIENT')
     const orderId = 606
 
-    await page.route('**/**', async (route) => {
+    await page.route('http://127.0.0.1:3001/**', async (route) => {
       const path = new URL(route.request().url()).pathname
       const method = route.request().method()
       if (path === `/admin/orders/${orderId}` && method === 'GET') {
