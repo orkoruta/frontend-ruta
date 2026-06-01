@@ -88,7 +88,7 @@ export function RutaHeader({ onToggleSidebar }: RutaHeaderProps) {
             </span>
           ) : session?.client_id ? (
             <span className="text-sm font-medium text-slate-700 dark:text-slate-300">
-              Cliente #{session.client_id}
+              {session.client_slug ?? `Cliente #${session.client_id}`}
             </span>
           ) : null}
         </div>

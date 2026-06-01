@@ -47,6 +47,7 @@ export default function LoginPage() {
       const session: RutaSession = {
         user_id: data.user_id,
         client_id: data.client_id,
+        client_slug: clientSlug.trim() || undefined,
         user_type: data.user_type,
         acting_via_control_view: data.acting_via_control_view ?? false,
       }
