@@ -291,13 +291,21 @@ export default function AdminOrdersPage() {
 
   return (
     <div className="mx-auto flex max-w-7xl flex-col gap-5">
-      <div>
-        <p className="text-[11px] font-bold uppercase tracking-[0.24em] text-slate-500 dark:text-slate-400">
-          operaciones
-        </p>
-        <h1 className="mt-1 text-2xl font-black tracking-tight text-slate-900 dark:text-slate-100">
-          Pedidos
-        </h1>
+      <div className="flex items-start justify-between gap-4">
+        <div>
+          <p className="text-[11px] font-bold uppercase tracking-[0.24em] text-slate-500 dark:text-slate-400">
+            operaciones
+          </p>
+          <h1 className="mt-1 text-2xl font-black tracking-tight text-slate-900 dark:text-slate-100">
+            Pedidos
+          </h1>
+        </div>
+        <Link
+          href="/admin/orders/corporate/new"
+          className="mt-1 inline-flex items-center rounded-md border border-violet-400/40 bg-violet-500/[0.12] px-4 py-2 text-sm font-medium text-violet-700 hover:bg-violet-500/[0.2] dark:border-violet-400/25 dark:text-violet-300"
+        >
+          + Nuevo pedido corporativo
+        </Link>
       </div>
 
       <RutaCard>

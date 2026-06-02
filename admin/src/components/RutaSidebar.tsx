@@ -23,6 +23,7 @@ const CLIENT_NAV: NavItem[] = [
   { label: 'Mapa', href: '/admin/orders/map', icon: '◎' },
   { label: 'Reembolsos', href: '/admin/refunds', icon: '↩' },
   { label: 'Recurrencia', href: '/admin/recurrence', icon: '↻' },
+  { label: 'Corporativos', href: '/admin/orders/corporate/new', icon: '⊞' },
   { label: 'Productos', href: '/admin/products', icon: '▣' },
   { label: 'Compradores', href: '/admin/buyers', icon: '◐' },
   { label: 'Repartidores', href: '/admin/couriers', icon: '▷' },
