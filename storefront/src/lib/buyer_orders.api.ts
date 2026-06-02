@@ -146,7 +146,8 @@ export interface BuyerOrder {
   payment_status: PaymentStatus
   refund_status: RefundStatus
   refund_modality: RefundModality | null
-  return_status: string | null
+  return_status: import('./returns.api').ReturnStatus | null
+  return_mechanism: import('./returns.api').ReturnMechanism | null
   dispute_status: string | null
   delivery_type: DeliveryType
   delivery_carrier_type: string | null
