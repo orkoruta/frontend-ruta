@@ -8,13 +8,17 @@ import {
   cancelBuyerOrder,
   confirmBuyerOrderReceipt,
   getBuyerOrder,
+  getBuyerOrderRefund,
   requestBuyerOrderCancel,
   type ApiError,
   type BuyerOrder,
   type BuyerOrderHistoryEntry,
+  type BuyerOrderRefundResponse,
   type OrderStatus,
   type PaymentStatus,
+  type RefundStatus,
 } from '@/lib/buyer_orders.api'
+import { requestReturn, type ReturnStatus, type ReturnMechanism } from '@/lib/returns.api'
 
 type StatusColor = 'slate' | 'violet' | 'amber' | 'blue' | 'green' | 'red'
 type ActionKind = 'cancel' | 'request-cancel' | 'confirm-receipt'
@@ -147,6 +151,107 @@ function paymentMethodLabel(method: string): string {
   }
   return labels[method] ?? method
 }
+
+const REFUND_STATUSES_VISIBLE: RefundStatus[] = [
+  'REFUND_PENDING',
+  'REFUND_PROCESSING',
+  'REFUND_PROVIDER_REQUESTED',
+  'REFUNDED',
+  'PARTIALLY_REFUNDED',
+  'REFUND_FAILED',
+]
+
+function refundStatusLabel(status: RefundStatus): string {
+  const labels: Record<RefundStatus, string> = {
+    REFUND_NOT_REQUIRED: '',
+    REFUND_PENDING: 'Pendiente',
+    REFUND_PROCESSING: 'En proceso',
+    REFUND_PROVIDER_REQUESTED: 'Solicitado al banco',
+    REFUNDED: 'Completado',
+    PARTIALLY_REFUNDED: 'Parcial',
+    REFUND_FAILED: 'Fallido',
+  }
+  return labels[status] ?? status
+}
+
+function refundStatusMessage(status: RefundStatus): string {
+  const messages: Record<RefundStatus, string> = {
+    REFUND_NOT_REQUIRED: '',
+    REFUND_PENDING: 'Tu reembolso está pendiente de procesamiento',
+    REFUND_PROCESSING: 'Tu reembolso está siendo procesado',
+    REFUND_PROVIDER_REQUESTED: 'Tu reembolso fue solicitado a tu banco',
+    REFUNDED: 'Tu reembolso fue completado exitosamente',
+    PARTIALLY_REFUNDED: 'Tu reembolso fue completado parcialmente',
+    REFUND_FAILED: 'Hubo un problema con tu reembolso — contacta al vendedor',
+  }
+  return messages[status] ?? ''
+}
+
+function refundModalityLabel(modality: string | null): string {
+  if (modality === 'STORE_CREDIT') return 'Crédito interno'
+  if (modality === 'BANK_REFUND') return 'Devolución bancaria'
+  return modality ?? '—'
+}
+
+function refundStatusColor(status: RefundStatus): StatusColor {
+  if (status === 'REFUND_FAILED') return 'red'
+  if (status === 'REFUNDED') return 'green'
+  if (status === 'PARTIALLY_REFUNDED') return 'amber'
+  if (status === 'REFUND_PROVIDER_REQUESTED' || status === 'REFUND_PROCESSING') return 'blue'
+  return 'slate'
+}
+
+type ReturnStatusType = ReturnStatus
+
+function returnStatusLabel(status: ReturnStatusType): string {
+  const labels: Partial<Record<ReturnStatusType, string>> = {
+    RETURN_REQUESTED: 'Solicitud enviada',
+    RETURN_UNDER_REVIEW: 'En revisión',
+    RETURN_APPROVED: 'Aprobada',
+    RETURN_REJECTED: 'Rechazada',
+    CUSTOMER_RETURN_IN_TRANSIT: 'En tránsito',
+    RETURN_RECEIVED: 'Recibida',
+    PICKUP_SCHEDULED: 'Recogida agendada',
+    PICKUP_COLLECTED: 'Recogido',
+    RETURN_CANCELLED: 'Cancelada',
+    RETURN_LOST: 'Perdida',
+  }
+  return labels[status] ?? status
+}
+
+function returnStatusColor(status: ReturnStatusType): StatusColor {
+  if (status === 'RETURN_REJECTED' || status === 'RETURN_LOST') return 'red'
+  if (status === 'RETURN_RECEIVED') return 'green'
+  if (status === 'RETURN_REQUESTED' || status === 'RETURN_UNDER_REVIEW') return 'amber'
+  if (status === 'RETURN_APPROVED' || status === 'PICKUP_SCHEDULED' || status === 'CUSTOMER_RETURN_IN_TRANSIT') return 'blue'
+  return 'slate'
+}
+
+function returnStatusMessage(status: ReturnStatusType, mechanism?: ReturnMechanism | null): string {
+  const messages: Partial<Record<ReturnStatusType, string>> = {
+    RETURN_REQUESTED: 'Tu solicitud de devolución fue enviada. El vendedor la revisará pronto.',
+    RETURN_UNDER_REVIEW: 'El vendedor está revisando tu solicitud.',
+    RETURN_APPROVED: mechanism === 'BUYER_SHIPS_VIA_COURIER'
+      ? 'Tu devolución fue aprobada. Por favor envía el producto al vendedor.'
+      : 'Tu devolución fue aprobada. El vendedor coordinará la recogida.',
+    RETURN_REJECTED: 'Tu solicitud de devolución fue rechazada.',
+    CUSTOMER_RETURN_IN_TRANSIT: 'El producto está en camino al vendedor.',
+    RETURN_RECEIVED: 'El vendedor recibió tu devolución. El proceso de reembolso continúa.',
+    PICKUP_SCHEDULED: 'Se ha agendado la recogida del producto.',
+    PICKUP_COLLECTED: 'El repartidor recogió el producto.',
+    RETURN_CANCELLED: 'La devolución fue cancelada.',
+    RETURN_LOST: 'El producto se perdió durante la devolución.',
+  }
+  return messages[status] ?? 'Tu devolución está en proceso.'
+}
+
+const RETURN_REASONS = [
+  'Producto dañado',
+  'Producto incorrecto',
+  'No era lo esperado',
+  'Producto defectuoso',
+  'Otro',
+]
 
 function statusColor(status: OrderStatus | string): StatusColor {
   const orderStatus = status as OrderStatus
@@ -310,12 +415,19 @@ export default function OrderDetailView() {
   const orderId = Number(id)
 
   const [order, setOrder] = useState<BuyerOrder | null>(null)
+  const [refundData, setRefundData] = useState<BuyerOrderRefundResponse | null>(null)
   const [loading, setLoading] = useState(true)
   const [acting, setActing] = useState(false)
   const [actionKind, setActionKind] = useState<ActionKind | null>(null)
   const [reason, setReason] = useState('')
   const [error, setError] = useState<string | null>(null)
   const [success, setSuccess] = useState<string | null>(null)
+  const [showReturnForm, setShowReturnForm] = useState(false)
+  const [returnReason, setReturnReason] = useState(RETURN_REASONS[0])
+  const [returnComplaint, setReturnComplaint] = useState('')
+  const [returnActing, setReturnActing] = useState(false)
+  const [returnError, setReturnError] = useState<string | null>(null)
+  const [returnSuccess, setReturnSuccess] = useState(false)
 
   const loadOrder = useCallback(async () => {
     if (!Number.isFinite(orderId) || orderId <= 0) {
@@ -329,6 +441,14 @@ export default function OrderDetailView() {
     try {
       const result = await getBuyerOrder(orderId)
       setOrder(result)
+      if (REFUND_STATUSES_VISIBLE.includes(result.refund_status)) {
+        try {
+          const refund = await getBuyerOrderRefund(orderId)
+          setRefundData(refund)
+        } catch {
+          // Refund detail is optional — don't block the order view if it fails
+        }
+      }
     } catch (err) {
       const apiError = err as ApiError
       if (apiError.code === 'AUTHENTICATION_REQUIRED') {
@@ -385,6 +505,28 @@ export default function OrderDetailView() {
   }
 
   if (loading) return <OrderDetailSkeleton />
+
+  const activeReturnStatus = order?.return_status ?? null
+  const activeReturnMechanism = order?.return_mechanism ?? null
+  const canRequestReturn =
+    order?.order_status === 'CLOSED' &&
+    !activeReturnStatus &&
+    !returnSuccess
+
+  async function runRequestReturn() {
+    if (!order) return
+    setReturnActing(true)
+    setReturnError(null)
+    try {
+      await requestReturn(order.id, { reason: returnReason, buyer_complaint: returnComplaint || undefined })
+      setReturnSuccess(true)
+      setShowReturnForm(false)
+    } catch {
+      setReturnError('No se pudo enviar la solicitud. Inténtalo de nuevo.')
+    } finally {
+      setReturnActing(false)
+    }
+  }
 
   if (error && !order) {
     return (
@@ -589,6 +731,136 @@ export default function OrderDetailView() {
               </div>
             </dl>
           </RutaCard>
+
+          {REFUND_STATUSES_VISIBLE.includes(order.refund_status) && (
+            <RutaCard>
+              <RutaSectionHeader title="Reembolso" subtitle="estado de tu devolución" />
+              <dl className="mt-3 space-y-3 text-sm">
+                <div>
+                  <dt className="text-[11px] font-bold uppercase tracking-[0.18em] text-slate-500 dark:text-slate-400">
+                    Estado
+                  </dt>
+                  <dd className="mt-1 flex items-center gap-2">
+                    <RutaPill variant={refundStatusColor(order.refund_status)}>
+                      {refundStatusLabel(order.refund_status)}
+                    </RutaPill>
+                  </dd>
+                </div>
+                {refundData?.refund_modality && (
+                  <div>
+                    <dt className="text-[11px] font-bold uppercase tracking-[0.18em] text-slate-500 dark:text-slate-400">
+                      Modalidad
+                    </dt>
+                    <dd className="mt-1 text-slate-700 dark:text-slate-300">
+                      {refundModalityLabel(refundData.refund_modality)}
+                    </dd>
+                  </div>
+                )}
+                {refundData?.refund?.amount != null && (
+                  <div>
+                    <dt className="text-[11px] font-bold uppercase tracking-[0.18em] text-slate-500 dark:text-slate-400">
+                      Monto
+                    </dt>
+                    <dd className="mt-1 font-semibold text-slate-900 dark:text-slate-100">
+                      {formatCOP(refundData.refund.amount)}
+                    </dd>
+                  </div>
+                )}
+                <div>
+                  <p
+                    className={[
+                      'rounded-md border px-3 py-2 text-xs',
+                      order.refund_status === 'REFUND_FAILED'
+                        ? 'border-rose-400/25 bg-rose-500/[0.12] text-rose-700 dark:text-rose-300'
+                        : order.refund_status === 'REFUNDED'
+                          ? 'border-emerald-400/25 bg-emerald-500/[0.12] text-emerald-700 dark:text-emerald-300'
+                          : 'border-sky-400/25 bg-sky-500/[0.10] text-sky-700 dark:text-sky-300',
+                    ].join(' ')}
+                  >
+                    {refundStatusMessage(order.refund_status)}
+                  </p>
+                </div>
+              </dl>
+            </RutaCard>
+          )}
+
+          {activeReturnStatus && (
+            <RutaCard>
+              <RutaSectionHeader title="Devolución" subtitle="estado de tu solicitud" />
+              <dl className="mt-3 space-y-3 text-sm">
+                <div>
+                  <dt className="text-[11px] font-bold uppercase tracking-[0.18em] text-slate-500 dark:text-slate-400">
+                    Estado
+                  </dt>
+                  <dd className="mt-1 flex items-center gap-2">
+                    <RutaPill variant={returnStatusColor(activeReturnStatus)}>
+                      {returnStatusLabel(activeReturnStatus)}
+                    </RutaPill>
+                  </dd>
+                </div>
+                <div>
+                  <p
+                    className={[
+                      'rounded-md border px-3 py-2 text-xs',
+                      activeReturnStatus === 'RETURN_REJECTED' || activeReturnStatus === 'RETURN_LOST'
+                        ? 'border-rose-400/25 bg-rose-500/[0.12] text-rose-700 dark:text-rose-300'
+                        : activeReturnStatus === 'RETURN_RECEIVED'
+                          ? 'border-emerald-400/25 bg-emerald-500/[0.12] text-emerald-700 dark:text-emerald-300'
+                          : activeReturnStatus === 'RETURN_REQUESTED' || activeReturnStatus === 'RETURN_UNDER_REVIEW'
+                            ? 'border-amber-400/25 bg-amber-500/[0.10] text-amber-700 dark:text-amber-300'
+                            : 'border-sky-400/25 bg-sky-500/[0.10] text-sky-700 dark:text-sky-300',
+                    ].join(' ')}
+                  >
+                    {returnStatusMessage(activeReturnStatus, activeReturnMechanism)}
+                  </p>
+                </div>
+              </dl>
+            </RutaCard>
+          )}
+
+          {returnSuccess && (
+            <p role="status" className="rounded-md border border-emerald-400/25 bg-emerald-500/[0.12] px-3 py-2 text-sm text-emerald-700 dark:text-emerald-300">
+              Devolución solicitada. El vendedor revisará tu solicitud.
+            </p>
+          )}
+
+          {canRequestReturn && !returnSuccess && (
+            <RutaCard>
+              <RutaSectionHeader title="Solicitar devolución" subtitle="disponible para pedidos entregados" />
+              <div className="mt-3">
+                {!showReturnForm ? (
+                  <RutaButton variant="secondary" className="w-full justify-center" onClick={() => setShowReturnForm(true)}>
+                    Solicitar devolución
+                  </RutaButton>
+                ) : (
+                  <div className="flex flex-col gap-3">
+                    {returnError && (
+                      <p role="alert" className="rounded-md border border-rose-400/25 bg-rose-500/[0.12] px-3 py-2 text-xs text-rose-700 dark:text-rose-300">
+                        {returnError}
+                      </p>
+                    )}
+                    <div>
+                      <label htmlFor="return-reason" className="text-xs font-semibold text-slate-700 dark:text-slate-300">Razón</label>
+                      <select id="return-reason" value={returnReason} onChange={(e) => setReturnReason(e.target.value)} disabled={returnActing}
+                        className="mt-2 w-full rounded-md border border-slate-200 bg-white/[0.8] px-3 py-2 text-sm text-slate-900 outline-none transition-colors focus:border-sky-400 dark:border-white/10 dark:bg-[#111214] dark:text-slate-100">
+                        {RETURN_REASONS.map((r) => (<option key={r} value={r}>{r}</option>))}
+                      </select>
+                    </div>
+                    <div>
+                      <label htmlFor="return-complaint" className="text-xs font-semibold text-slate-700 dark:text-slate-300">Descripción (opcional)</label>
+                      <textarea id="return-complaint" value={returnComplaint} onChange={(e) => setReturnComplaint(e.target.value)} rows={3} disabled={returnActing}
+                        className="mt-2 w-full rounded-md border border-slate-200 bg-white/[0.8] px-3 py-2 text-sm text-slate-900 outline-none transition-colors focus:border-sky-400 dark:border-white/10 dark:bg-[#111214] dark:text-slate-100"
+                        placeholder="Cuéntanos más detalles sobre el problema." />
+                    </div>
+                    <div className="flex justify-end gap-2">
+                      <RutaButton variant="neutral" onClick={() => { setShowReturnForm(false); setReturnError(null) }} disabled={returnActing}>Cerrar</RutaButton>
+                      <RutaButton variant="primary" onClick={runRequestReturn} disabled={returnActing}>{returnActing ? 'Enviando...' : 'Enviar'}</RutaButton>
+                    </div>
+                  </div>
+                )}
+              </div>
+            </RutaCard>
+          )}
 
           {(canCancel || canRequestCancel || canConfirmReceipt) && (
             <RutaCard>
