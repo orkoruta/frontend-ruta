@@ -8,12 +8,15 @@ import {
   cancelBuyerOrder,
   confirmBuyerOrderReceipt,
   getBuyerOrder,
+  getBuyerOrderRefund,
   requestBuyerOrderCancel,
   type ApiError,
   type BuyerOrder,
   type BuyerOrderHistoryEntry,
+  type BuyerOrderRefundResponse,
   type OrderStatus,
   type PaymentStatus,
+  type RefundStatus,
 } from '@/lib/buyer_orders.api'
 
 type StatusColor = 'slate' | 'violet' | 'amber' | 'blue' | 'green' | 'red'
@@ -146,6 +149,55 @@ function paymentMethodLabel(method: string): string {
     ELECTRONIC_ON_DELIVERY: 'Contra entrega electrónico',
   }
   return labels[method] ?? method
+}
+
+const REFUND_STATUSES_VISIBLE: RefundStatus[] = [
+  'REFUND_PENDING',
+  'REFUND_PROCESSING',
+  'REFUND_PROVIDER_REQUESTED',
+  'REFUNDED',
+  'PARTIALLY_REFUNDED',
+  'REFUND_FAILED',
+]
+
+function refundStatusLabel(status: RefundStatus): string {
+  const labels: Record<RefundStatus, string> = {
+    REFUND_NOT_REQUIRED: '',
+    REFUND_PENDING: 'Pendiente',
+    REFUND_PROCESSING: 'En proceso',
+    REFUND_PROVIDER_REQUESTED: 'Solicitado al banco',
+    REFUNDED: 'Completado',
+    PARTIALLY_REFUNDED: 'Parcial',
+    REFUND_FAILED: 'Fallido',
+  }
+  return labels[status] ?? status
+}
+
+function refundStatusMessage(status: RefundStatus): string {
+  const messages: Record<RefundStatus, string> = {
+    REFUND_NOT_REQUIRED: '',
+    REFUND_PENDING: 'Tu reembolso está pendiente de procesamiento',
+    REFUND_PROCESSING: 'Tu reembolso está siendo procesado',
+    REFUND_PROVIDER_REQUESTED: 'Tu reembolso fue solicitado a tu banco',
+    REFUNDED: 'Tu reembolso fue completado exitosamente',
+    PARTIALLY_REFUNDED: 'Tu reembolso fue completado parcialmente',
+    REFUND_FAILED: 'Hubo un problema con tu reembolso — contacta al vendedor',
+  }
+  return messages[status] ?? ''
+}
+
+function refundModalityLabel(modality: string | null): string {
+  if (modality === 'STORE_CREDIT') return 'Crédito interno'
+  if (modality === 'BANK_REFUND') return 'Devolución bancaria'
+  return modality ?? '—'
+}
+
+function refundStatusColor(status: RefundStatus): StatusColor {
+  if (status === 'REFUND_FAILED') return 'red'
+  if (status === 'REFUNDED') return 'green'
+  if (status === 'PARTIALLY_REFUNDED') return 'amber'
+  if (status === 'REFUND_PROVIDER_REQUESTED' || status === 'REFUND_PROCESSING') return 'blue'
+  return 'slate'
 }
 
 function statusColor(status: OrderStatus | string): StatusColor {
@@ -310,6 +362,7 @@ export default function OrderDetailView() {
   const orderId = Number(id)
 
   const [order, setOrder] = useState<BuyerOrder | null>(null)
+  const [refundData, setRefundData] = useState<BuyerOrderRefundResponse | null>(null)
   const [loading, setLoading] = useState(true)
   const [acting, setActing] = useState(false)
   const [actionKind, setActionKind] = useState<ActionKind | null>(null)
@@ -329,6 +382,14 @@ export default function OrderDetailView() {
     try {
       const result = await getBuyerOrder(orderId)
       setOrder(result)
+      if (REFUND_STATUSES_VISIBLE.includes(result.refund_status)) {
+        try {
+          const refund = await getBuyerOrderRefund(orderId)
+          setRefundData(refund)
+        } catch {
+          // Refund detail is optional — don't block the order view if it fails
+        }
+      }
     } catch (err) {
       const apiError = err as ApiError
       if (apiError.code === 'AUTHENTICATION_REQUIRED') {
@@ -589,6 +650,58 @@ export default function OrderDetailView() {
               </div>
             </dl>
           </RutaCard>
+
+          {REFUND_STATUSES_VISIBLE.includes(order.refund_status) && (
+            <RutaCard>
+              <RutaSectionHeader title="Reembolso" subtitle="estado de tu devolución" />
+              <dl className="mt-3 space-y-3 text-sm">
+                <div>
+                  <dt className="text-[11px] font-bold uppercase tracking-[0.18em] text-slate-500 dark:text-slate-400">
+                    Estado
+                  </dt>
+                  <dd className="mt-1 flex items-center gap-2">
+                    <RutaPill variant={refundStatusColor(order.refund_status)}>
+                      {refundStatusLabel(order.refund_status)}
+                    </RutaPill>
+                  </dd>
+                </div>
+                {refundData?.refund_modality && (
+                  <div>
+                    <dt className="text-[11px] font-bold uppercase tracking-[0.18em] text-slate-500 dark:text-slate-400">
+                      Modalidad
+                    </dt>
+                    <dd className="mt-1 text-slate-700 dark:text-slate-300">
+                      {refundModalityLabel(refundData.refund_modality)}
+                    </dd>
+                  </div>
+                )}
+                {refundData?.refund?.amount != null && (
+                  <div>
+                    <dt className="text-[11px] font-bold uppercase tracking-[0.18em] text-slate-500 dark:text-slate-400">
+                      Monto
+                    </dt>
+                    <dd className="mt-1 font-semibold text-slate-900 dark:text-slate-100">
+                      {formatCOP(refundData.refund.amount)}
+                    </dd>
+                  </div>
+                )}
+                <div>
+                  <p
+                    className={[
+                      'rounded-md border px-3 py-2 text-xs',
+                      order.refund_status === 'REFUND_FAILED'
+                        ? 'border-rose-400/25 bg-rose-500/[0.12] text-rose-700 dark:text-rose-300'
+                        : order.refund_status === 'REFUNDED'
+                          ? 'border-emerald-400/25 bg-emerald-500/[0.12] text-emerald-700 dark:text-emerald-300'
+                          : 'border-sky-400/25 bg-sky-500/[0.10] text-sky-700 dark:text-sky-300',
+                    ].join(' ')}
+                  >
+                    {refundStatusMessage(order.refund_status)}
+                  </p>
+                </div>
+              </dl>
+            </RutaCard>
+          )}
 
           {(canCancel || canRequestCancel || canConfirmReceipt) && (
             <RutaCard>
