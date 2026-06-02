@@ -19,6 +19,7 @@ import {
   type RefundStatus,
 } from '@/lib/buyer_orders.api'
 import { requestReturn, type ReturnStatus, type ReturnMechanism } from '@/lib/returns.api'
+import { openDispute, type DisputeStatus } from '@/lib/disputes.api'
 
 type StatusColor = 'slate' | 'violet' | 'amber' | 'blue' | 'green' | 'red'
 type ActionKind = 'cancel' | 'request-cancel' | 'confirm-receipt'
@@ -253,6 +254,42 @@ const RETURN_REASONS = [
   'Otro',
 ]
 
+const DISPUTE_ELIGIBLE_STATUSES: OrderStatus[] = [
+  'DELIVERED',
+  'CONFIRMED_BY_CUSTOMER',
+  'CONFIRMED_BY_SYSTEM',
+  'COMPLETED_SUCCESSFULLY',
+]
+
+function disputeStatusLabel(status: DisputeStatus): string {
+  const labels: Record<DisputeStatus, string> = {
+    DISPUTED: 'Disputa abierta',
+    DISPUTE_UNDER_REVIEW: 'En revisión',
+    DISPUTE_RESOLVED_NO_ACTION: 'Cerrada sin acción',
+    DISPUTE_RESOLVED_WITH_RETURN: 'Resuelta con devolución',
+    DISPUTE_RESOLVED_WITH_REFUND: 'Resuelta con reembolso',
+  }
+  return labels[status] ?? status
+}
+
+function disputeStatusColor(status: DisputeStatus): StatusColor {
+  if (status === 'DISPUTED') return 'amber'
+  if (status === 'DISPUTE_UNDER_REVIEW') return 'blue'
+  if (status === 'DISPUTE_RESOLVED_WITH_RETURN' || status === 'DISPUTE_RESOLVED_WITH_REFUND') return 'green'
+  return 'slate'
+}
+
+function disputeStatusMessage(status: DisputeStatus): string {
+  const messages: Record<DisputeStatus, string> = {
+    DISPUTED: 'Tu disputa fue recibida',
+    DISPUTE_UNDER_REVIEW: 'El vendedor está revisando tu disputa',
+    DISPUTE_RESOLVED_NO_ACTION: 'Tu disputa fue cerrada sin acción',
+    DISPUTE_RESOLVED_WITH_RETURN: 'Tu disputa fue resuelta con una devolución',
+    DISPUTE_RESOLVED_WITH_REFUND: 'Tu disputa fue resuelta con un reembolso',
+  }
+  return messages[status] ?? ''
+}
+
 function statusColor(status: OrderStatus | string): StatusColor {
   const orderStatus = status as OrderStatus
   if (CANCELLED_STATUSES.includes(orderStatus) || status.includes('FAILED') || status.includes('LOST')) {
@@ -428,6 +465,11 @@ export default function OrderDetailView() {
   const [returnActing, setReturnActing] = useState(false)
   const [returnError, setReturnError] = useState<string | null>(null)
   const [returnSuccess, setReturnSuccess] = useState(false)
+  const [showDisputeForm, setShowDisputeForm] = useState(false)
+  const [disputeReason, setDisputeReason] = useState('')
+  const [disputeActing, setDisputeActing] = useState(false)
+  const [disputeError, setDisputeError] = useState<string | null>(null)
+  const [disputeSuccess, setDisputeSuccess] = useState(false)
 
   const loadOrder = useCallback(async () => {
     if (!Number.isFinite(orderId) || orderId <= 0) {
@@ -513,6 +555,12 @@ export default function OrderDetailView() {
     !activeReturnStatus &&
     !returnSuccess
 
+  const activeDisputeStatus = order?.dispute_status ?? null
+  const canOpenDispute =
+    DISPUTE_ELIGIBLE_STATUSES.includes(order?.order_status as OrderStatus) &&
+    !activeDisputeStatus &&
+    !disputeSuccess
+
   async function runRequestReturn() {
     if (!order) return
     setReturnActing(true)
@@ -525,6 +573,25 @@ export default function OrderDetailView() {
       setReturnError('No se pudo enviar la solicitud. Inténtalo de nuevo.')
     } finally {
       setReturnActing(false)
+    }
+  }
+
+  async function runOpenDispute() {
+    if (!order) return
+    if (disputeReason.trim().length === 0) {
+      setDisputeError('Escribe una razón para continuar.')
+      return
+    }
+    setDisputeActing(true)
+    setDisputeError(null)
+    try {
+      await openDispute(String(order.id), { reason: disputeReason.trim() })
+      setDisputeSuccess(true)
+      setShowDisputeForm(false)
+    } catch {
+      setDisputeError('No se pudo registrar la disputa. Inténtalo de nuevo.')
+    } finally {
+      setDisputeActing(false)
     }
   }
 
@@ -855,6 +922,83 @@ export default function OrderDetailView() {
                     <div className="flex justify-end gap-2">
                       <RutaButton variant="neutral" onClick={() => { setShowReturnForm(false); setReturnError(null) }} disabled={returnActing}>Cerrar</RutaButton>
                       <RutaButton variant="primary" onClick={runRequestReturn} disabled={returnActing}>{returnActing ? 'Enviando...' : 'Enviar'}</RutaButton>
+                    </div>
+                  </div>
+                )}
+              </div>
+            </RutaCard>
+          )}
+
+          {activeDisputeStatus && (
+            <RutaCard>
+              <RutaSectionHeader title="Disputa" subtitle="estado de tu reclamación" />
+              <dl className="mt-3 space-y-3 text-sm">
+                <div>
+                  <dt className="text-[11px] font-bold uppercase tracking-[0.18em] text-slate-500 dark:text-slate-400">
+                    Estado
+                  </dt>
+                  <dd className="mt-1 flex items-center gap-2">
+                    <RutaPill variant={disputeStatusColor(activeDisputeStatus)}>
+                      {disputeStatusLabel(activeDisputeStatus)}
+                    </RutaPill>
+                  </dd>
+                </div>
+                <div>
+                  <p
+                    className={[
+                      'rounded-md border px-3 py-2 text-xs',
+                      activeDisputeStatus === 'DISPUTED'
+                        ? 'border-amber-400/25 bg-amber-500/[0.10] text-amber-700 dark:text-amber-300'
+                        : activeDisputeStatus === 'DISPUTE_UNDER_REVIEW'
+                          ? 'border-sky-400/25 bg-sky-500/[0.10] text-sky-700 dark:text-sky-300'
+                          : activeDisputeStatus === 'DISPUTE_RESOLVED_WITH_RETURN' || activeDisputeStatus === 'DISPUTE_RESOLVED_WITH_REFUND'
+                            ? 'border-emerald-400/25 bg-emerald-500/[0.12] text-emerald-700 dark:text-emerald-300'
+                            : 'border-slate-200/80 bg-slate-500/[0.08] text-slate-700 dark:text-slate-300',
+                    ].join(' ')}
+                  >
+                    {disputeStatusMessage(activeDisputeStatus)}
+                  </p>
+                </div>
+              </dl>
+            </RutaCard>
+          )}
+
+          {disputeSuccess && (
+            <p role="status" className="rounded-md border border-emerald-400/25 bg-emerald-500/[0.12] px-3 py-2 text-sm text-emerald-700 dark:text-emerald-300">
+              Tu disputa fue registrada
+            </p>
+          )}
+
+          {canOpenDispute && (
+            <RutaCard>
+              <RutaSectionHeader title="Abrir disputa" subtitle="para pedidos entregados" />
+              <div className="mt-3">
+                {!showDisputeForm ? (
+                  <RutaButton variant="secondary" className="w-full justify-center" onClick={() => setShowDisputeForm(true)}>
+                    Abrir disputa
+                  </RutaButton>
+                ) : (
+                  <div className="flex flex-col gap-3">
+                    {disputeError && (
+                      <p role="alert" className="rounded-md border border-rose-400/25 bg-rose-500/[0.12] px-3 py-2 text-xs text-rose-700 dark:text-rose-300">
+                        {disputeError}
+                      </p>
+                    )}
+                    <div>
+                      <label htmlFor="dispute-reason" className="text-xs font-semibold text-slate-700 dark:text-slate-300">Razón</label>
+                      <textarea
+                        id="dispute-reason"
+                        value={disputeReason}
+                        onChange={(e) => setDisputeReason(e.target.value)}
+                        rows={3}
+                        disabled={disputeActing}
+                        className="mt-2 w-full rounded-md border border-slate-200 bg-white/[0.8] px-3 py-2 text-sm text-slate-900 outline-none transition-colors focus:border-sky-400 dark:border-white/10 dark:bg-[#111214] dark:text-slate-100"
+                        placeholder="Cuéntanos el motivo de tu disputa."
+                      />
+                    </div>
+                    <div className="flex justify-end gap-2">
+                      <RutaButton variant="neutral" onClick={() => { setShowDisputeForm(false); setDisputeError(null) }} disabled={disputeActing}>Cerrar</RutaButton>
+                      <RutaButton variant="primary" onClick={runOpenDispute} disabled={disputeActing}>{disputeActing ? 'Enviando...' : 'Enviar'}</RutaButton>
                     </div>
                   </div>
                 )}
