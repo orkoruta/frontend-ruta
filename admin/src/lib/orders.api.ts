@@ -26,26 +26,34 @@ export type OrderStatus =
   | 'LOST_IN_TRANSIT'
   | 'AT_PICKUP_POINT'
   | 'CUSTOMER_ARRIVED_AT_PICKUP_POINT'
-  | 'DELIVERED'
-  | 'DELIVERY_DISPUTED'
-  | 'CONFIRMED_BY_CUSTOMER'
-  | 'CONFIRMED_BY_SYSTEM'
+  | 'IDENTITY_VALIDATED'
+  | 'PICKUP_AUTH_FAILED'
+  | 'PICKUP_POINT_ISSUE'
+  | 'PICKUP_EXPIRED'
+  | 'PICKUP_CANCELLED_BY_CUSTOMER'
+  | 'PICKED_UP'
+  | 'PAYMENT_COLLECTION_PENDING'
+  | 'PAYMENT_COLLECTED_ELECTRONIC'
+  | 'PAYMENT_COLLECTED_CASH'
+  | 'CASH_COLLECTION_PENDING'
+  | 'CASH_PAYMENT_REJECTED'
   | 'CANCELLED_BY_CUSTOMER'
   | 'CANCELLED_BY_SELLER'
   | 'CANCELLED_BY_SYSTEM'
   | 'CANCELLED_BY_ADMIN'
   | 'CANCELLED_NO_PAYMENT'
   | 'CUSTOMER_CANCEL_REQUEST'
-  | 'RETURN_REQUESTED'
-  | 'RETURN_APPROVED'
-  | 'RETURN_IN_TRANSIT'
-  | 'RETURN_RECEIVED'
-  | 'RETURN_REJECTED'
-  | 'RETURN_CANCELLED'
-  | 'REFUND_PENDING'
-  | 'REFUNDED'
-  | 'CLOSED'
+  | 'CANCEL_REQUEST_APPROVED'
+  | 'CANCEL_REQUEST_REJECTED'
+  | 'RETURN_TO_ORIGIN'
+  | 'RETURN_TO_ORIGIN_RECEIVED'
+  | 'LOST_IN_RETURN'
+  | 'DELIVERED'
+  | 'DELIVERY_DISPUTED'
+  | 'CONFIRMED_BY_CUSTOMER'
+  | 'CONFIRMED_BY_SYSTEM'
   | 'COMPLETED_SUCCESSFULLY'
+  | 'CLOSED'
 
 export type PaymentStatus =
   | 'PAYMENT_NOT_STARTED'
@@ -128,10 +136,21 @@ export interface PaymentDetail {
   evidence_url: string | null
 }
 
+export type RefundOrderStatus =
+  | 'REFUND_NOT_REQUIRED'
+  | 'REFUND_PENDING'
+  | 'REFUND_PROCESSING'
+  | 'REFUND_PROVIDER_REQUESTED'
+  | 'REFUNDED'
+  | 'PARTIALLY_REFUNDED'
+  | 'REFUND_FAILED'
+
 export interface OrderDetail {
   id: number
   order_status: OrderStatus
   payment_status: PaymentStatus
+  refund_status: RefundOrderStatus
+  refund_modality: string | null
   delivery_type: DeliveryType
   subtotal: number
   shipping_fee: number | null

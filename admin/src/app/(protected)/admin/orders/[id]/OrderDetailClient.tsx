@@ -17,7 +17,12 @@ import {
   type OrderDetail,
   type OrderStatus,
   type OrderStateHistoryEntry,
+  type RefundOrderStatus,
 } from '@/lib/orders.api'
+import {
+  initiateRefund,
+  type RefundModality,
+} from '@/lib/refunds.api'
 import { PickupActions } from './_components/PickupActions'
 
 function formatCOP(amount: number) {
@@ -72,14 +77,11 @@ function statusLabel(status: OrderStatus): string {
     CANCELLED_BY_ADMIN: 'Cancelado (admin)',
     CANCELLED_NO_PAYMENT: 'Cancelado sin pago',
     CUSTOMER_CANCEL_REQUEST: 'Solicitud de cancelación',
-    RETURN_REQUESTED: 'Devolución solicitada',
-    RETURN_APPROVED: 'Devolución aprobada',
-    RETURN_IN_TRANSIT: 'En devolución',
-    RETURN_RECEIVED: 'Devolución recibida',
-    RETURN_REJECTED: 'Devolución rechazada',
-    RETURN_CANCELLED: 'Devolución cancelada',
-    REFUND_PENDING: 'Reembolso pendiente',
-    REFUNDED: 'Reembolsado',
+    CANCEL_REQUEST_APPROVED: 'Cancelación aprobada',
+    CANCEL_REQUEST_REJECTED: 'Cancelación rechazada',
+    RETURN_TO_ORIGIN: 'Regresando a origen',
+    RETURN_TO_ORIGIN_RECEIVED: 'Devuelto a origen',
+    LOST_IN_RETURN: 'Perdido en retorno',
     CLOSED: 'Cerrado',
     COMPLETED_SUCCESSFULLY: 'Completado',
   }
@@ -110,7 +112,16 @@ function statusColor(status: OrderStatus): StatusColor {
     status === 'DELIVERY_ATTEMPTED' ||
     status === 'DELIVERY_RESCHEDULED' ||
     status === 'CUSTOMER_CANCEL_REQUEST' ||
-    status === 'REFUND_PENDING'
+    status === 'CANCEL_REQUEST_APPROVED' ||
+    status === 'CANCEL_REQUEST_REJECTED' ||
+    status === 'IDENTITY_VALIDATED' ||
+    status === 'PICKUP_AUTH_FAILED' ||
+    status === 'PICKUP_POINT_ISSUE' ||
+    status === 'PICKUP_EXPIRED' ||
+    status === 'PICKUP_CANCELLED_BY_CUSTOMER' ||
+    status === 'PAYMENT_COLLECTION_PENDING' ||
+    status === 'CASH_COLLECTION_PENDING' ||
+    status === 'RETURN_TO_ORIGIN'
   ) return 'amber'
 
   if (
@@ -124,9 +135,6 @@ function statusColor(status: OrderStatus): StatusColor {
     status === 'ARRIVED_AT_CUSTOMER' ||
     status === 'AT_PICKUP_POINT' ||
     status === 'CUSTOMER_ARRIVED_AT_PICKUP_POINT' ||
-    status === 'RETURN_REQUESTED' ||
-    status === 'RETURN_APPROVED' ||
-    status === 'RETURN_IN_TRANSIT' ||
     status === 'ORDER_SUBMITTED'
   ) return 'blue'
 
@@ -135,8 +143,10 @@ function statusColor(status: OrderStatus): StatusColor {
     status === 'CONFIRMED_BY_CUSTOMER' ||
     status === 'CONFIRMED_BY_SYSTEM' ||
     status === 'COMPLETED_SUCCESSFULLY' ||
-    status === 'RETURN_RECEIVED' ||
-    status === 'REFUNDED'
+    status === 'RETURN_TO_ORIGIN_RECEIVED' ||
+    status === 'PICKED_UP' ||
+    status === 'PAYMENT_COLLECTED_ELECTRONIC' ||
+    status === 'PAYMENT_COLLECTED_CASH'
   ) return 'green'
 
   return 'red'
@@ -222,6 +232,14 @@ export default function OrderDetailClient({ orderId }: OrderDetailClientProps) {
   const [acting, setActing] = useState(false)
   const [error, setError] = useState<string | null>(null)
   const [success, setSuccess] = useState<string | null>(null)
+
+  // Estado del formulario de iniciar reembolso
+  const [showRefundForm, setShowRefundForm] = useState(false)
+  const [refundAmount, setRefundAmount] = useState('')
+  const [refundModality, setRefundModality] = useState<RefundModality>('STORE_CREDIT')
+  const [refundReason, setRefundReason] = useState('')
+  const [refundLoading, setRefundLoading] = useState(false)
+  const [refundError, setRefundError] = useState<string | null>(null)
 
   const isAllowed =
     session?.user_type === 'ADMIN_RUTA' ||
@@ -313,6 +331,29 @@ export default function OrderDetailClient({ orderId }: OrderDetailClientProps) {
     )
   }
 
+  async function handleInitiateRefund(e: React.FormEvent<HTMLFormElement>) {
+    e.preventDefault()
+    const parsedAmount = parseFloat(refundAmount)
+    if (Number.isNaN(parsedAmount) || parsedAmount <= 0) return
+
+    setRefundLoading(true)
+    setRefundError(null)
+
+    try {
+      await initiateRefund(orderId, parsedAmount, refundModality, refundReason.trim() || undefined)
+      setShowRefundForm(false)
+      setRefundAmount('')
+      setRefundReason('')
+      setSuccess('Reembolso iniciado. Puedes gestionarlo desde la sección de Reembolsos.')
+      await refetch()
+    } catch (err) {
+      const apiErr = err as { message?: string }
+      setRefundError(apiErr.message ?? 'No pudimos iniciar el reembolso.')
+    } finally {
+      setRefundLoading(false)
+    }
+  }
+
   const status = order.order_status
   const showAcceptReject = status === 'VALIDATION_APPROVED'
   const showMarkPreparing = status === 'SELLER_CONFIRMED'
@@ -320,6 +361,10 @@ export default function OrderDetailClient({ orderId }: OrderDetailClientProps) {
   const showGoToMap = status === 'AWAITING_COURIER_ASSIGNMENT'
   const showCancel = CANCELLABLE_STATUSES.includes(status)
   const showApproveCancelRequest = status === 'CUSTOMER_CANCEL_REQUEST'
+
+  const refundStatus = order.refund_status as RefundOrderStatus
+  const showRefundSection = refundStatus !== 'REFUND_NOT_REQUIRED'
+  const showInitiateRefundButton = refundStatus === 'REFUND_PENDING' && !showRefundForm
 
   const sortedHistory = [...order.history].sort(
     (a, b) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime(),
@@ -679,18 +724,136 @@ export default function OrderDetailClient({ orderId }: OrderDetailClientProps) {
                 </RutaButton>
               )}
 
+              {showInitiateRefundButton && (
+                <RutaButton
+                  type="button"
+                  variant="warning"
+                  disabled={acting}
+                  onClick={() => setShowRefundForm(true)}
+                >
+                  Iniciar reembolso
+                </RutaButton>
+              )}
+
+              {showRefundForm && (
+                <div className="rounded-lg border border-amber-400/25 bg-amber-500/[0.06] p-4">
+                  <p className="mb-3 text-[11px] font-bold uppercase tracking-[0.18em] text-amber-700 dark:text-amber-300">
+                    Iniciar reembolso
+                  </p>
+                  <form onSubmit={(e) => { void handleInitiateRefund(e) }} className="flex flex-col gap-3">
+                    <div>
+                      <label className="mb-1 block text-xs font-medium text-slate-600 dark:text-slate-400">
+                        Modalidad
+                      </label>
+                      <select
+                        value={refundModality}
+                        onChange={(e) => setRefundModality(e.target.value as RefundModality)}
+                        disabled={refundLoading}
+                        className="w-full rounded-md border border-slate-200 bg-white/[0.85] px-3 py-2 text-sm text-slate-900 focus:outline-none focus:ring-2 focus:ring-sky-500/[0.4] disabled:opacity-50 dark:border-white/10 dark:bg-white/[0.055] dark:text-slate-100"
+                      >
+                        <option value="STORE_CREDIT">Crédito en tienda</option>
+                        <option value="BANK_REFUND">Devolución bancaria</option>
+                      </select>
+                    </div>
+                    <div>
+                      <label className="mb-1 block text-xs font-medium text-slate-600 dark:text-slate-400">
+                        Monto (COP)
+                      </label>
+                      <input
+                        type="number"
+                        min="1"
+                        step="1"
+                        value={refundAmount}
+                        onChange={(e) => setRefundAmount(e.target.value)}
+                        placeholder={`Total: ${formatCOP(order.total)}`}
+                        disabled={refundLoading}
+                        className="w-full rounded-md border border-slate-200 bg-white/[0.85] px-3 py-2 text-sm text-slate-900 placeholder:text-slate-400 focus:outline-none focus:ring-2 focus:ring-sky-500/[0.4] disabled:opacity-50 dark:border-white/10 dark:bg-white/[0.055] dark:text-slate-100 dark:placeholder:text-slate-500"
+                      />
+                    </div>
+                    <div>
+                      <label className="mb-1 block text-xs font-medium text-slate-600 dark:text-slate-400">
+                        Motivo (opcional)
+                      </label>
+                      <input
+                        type="text"
+                        value={refundReason}
+                        onChange={(e) => setRefundReason(e.target.value)}
+                        placeholder="Ej. Producto no entregado"
+                        disabled={refundLoading}
+                        className="w-full rounded-md border border-slate-200 bg-white/[0.85] px-3 py-2 text-sm text-slate-900 placeholder:text-slate-400 focus:outline-none focus:ring-2 focus:ring-sky-500/[0.4] disabled:opacity-50 dark:border-white/10 dark:bg-white/[0.055] dark:text-slate-100 dark:placeholder:text-slate-500"
+                      />
+                    </div>
+                    {refundError && (
+                      <p role="alert" className="rounded-md border border-rose-400/25 bg-rose-500/[0.12] px-3 py-2 text-xs text-rose-700 dark:text-rose-300">
+                        {refundError}
+                      </p>
+                    )}
+                    <div className="flex gap-2">
+                      <RutaButton
+                        type="submit"
+                        variant="warning"
+                        disabled={refundLoading || !refundAmount.trim()}
+                      >
+                        {refundLoading ? 'Iniciando…' : 'Confirmar reembolso'}
+                      </RutaButton>
+                      <RutaButton
+                        type="button"
+                        variant="neutral"
+                        disabled={refundLoading}
+                        onClick={() => { setShowRefundForm(false); setRefundError(null) }}
+                      >
+                        Cancelar
+                      </RutaButton>
+                    </div>
+                  </form>
+                </div>
+              )}
+
               {!showAcceptReject &&
                 !showMarkPreparing &&
                 !showMarkReady &&
                 !showGoToMap &&
                 !showApproveCancelRequest &&
-                !showCancel && (
+                !showCancel &&
+                !showInitiateRefundButton &&
+                !showRefundForm && (
                   <p className="text-sm text-slate-500 dark:text-slate-400">
                     No hay acciones disponibles para el estado actual.
                   </p>
                 )}
             </div>
           </RutaCard>
+
+          {/* Reembolso */}
+          {showRefundSection && (
+            <RutaCard>
+              <RutaSectionHeader title="Reembolso" subtitle="estado del reembolso" />
+              <dl className="mt-3 grid gap-2 text-sm">
+                <div className="flex items-center justify-between">
+                  <dt className="text-slate-500 dark:text-slate-400">Estado</dt>
+                  <dd>
+                    <RefundStatusBadge status={refundStatus} />
+                  </dd>
+                </div>
+                {order.refund_modality && (
+                  <div className="flex items-center justify-between">
+                    <dt className="text-slate-500 dark:text-slate-400">Modalidad</dt>
+                    <dd className="font-medium text-slate-900 dark:text-slate-100">
+                      {order.refund_modality === 'STORE_CREDIT' ? 'Crédito en tienda' : 'Devolución bancaria'}
+                    </dd>
+                  </div>
+                )}
+              </dl>
+              <div className="mt-3">
+                <Link
+                  href="/admin/refunds"
+                  className="text-xs font-medium text-sky-600 hover:underline dark:text-sky-400"
+                >
+                  Ver lista de reembolsos →
+                </Link>
+              </div>
+            </RutaCard>
+          )}
 
           {order.delivery_type === 'PICKUP' && order.order_status === 'READY_FOR_PICKUP' && (
             <PickupActions
@@ -702,5 +865,42 @@ export default function OrderDetailClient({ orderId }: OrderDetailClientProps) {
         </div>
       </div>
     </div>
+  )
+}
+
+const REFUND_STATUS_LABELS: Partial<Record<string, string>> = {
+  REFUND_NOT_REQUIRED: 'Sin reembolso',
+  REFUND_PENDING: 'Pendiente',
+  REFUND_PROCESSING: 'En proceso',
+  REFUND_PROVIDER_REQUESTED: 'Solicitado a proveedor',
+  REFUNDED: 'Reembolsado',
+  PARTIALLY_REFUNDED: 'Reembolso parcial',
+  REFUND_FAILED: 'Fallido',
+}
+
+function RefundStatusBadge({ status }: { status: RefundOrderStatus | string }) {
+  type Color = 'slate' | 'amber' | 'blue' | 'violet' | 'green' | 'red'
+  const colorMap: Record<string, Color> = {
+    REFUND_NOT_REQUIRED: 'slate',
+    REFUND_PENDING: 'amber',
+    REFUND_PROCESSING: 'blue',
+    REFUND_PROVIDER_REQUESTED: 'violet',
+    REFUNDED: 'green',
+    PARTIALLY_REFUNDED: 'green',
+    REFUND_FAILED: 'red',
+  }
+  const colorClasses: Record<Color, string> = {
+    slate:  'bg-white/[0.06] text-slate-600 border-slate-200 dark:border-white/10 dark:text-slate-300',
+    amber:  'bg-amber-500/[0.12] text-amber-700 border-amber-400/25 dark:text-amber-300',
+    blue:   'bg-sky-500/[0.12] text-sky-700 border-sky-400/25 dark:text-sky-300',
+    violet: 'bg-violet-500/[0.12] text-violet-700 border-violet-400/25 dark:text-violet-300',
+    green:  'bg-emerald-500/[0.12] text-emerald-700 border-emerald-400/25 dark:text-emerald-300',
+    red:    'bg-rose-500/[0.12] text-rose-700 border-rose-400/25 dark:text-rose-300',
+  }
+  const color: Color = colorMap[status] ?? 'slate'
+  return (
+    <span className={['inline-flex items-center rounded-md border px-2.5 py-1 text-xs font-semibold', colorClasses[color]].join(' ')}>
+      {REFUND_STATUS_LABELS[status] ?? status}
+    </span>
   )
 }
