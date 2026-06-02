@@ -10,6 +10,7 @@ import {
   type BuyerOrder,
   type OrderStatus,
 } from '@/lib/buyer_orders.api'
+import { repeatLastOrder } from '@/lib/recurrence.api'
 
 type OrderFilter = 'all' | 'active' | 'completed' | 'cancelled'
 type StatusColor = 'slate' | 'violet' | 'amber' | 'blue' | 'green' | 'red'
@@ -120,13 +121,15 @@ function statusColor(status: OrderStatus): StatusColor {
     status === 'MANUAL_REVIEW' ||
     status === 'VALIDATION_APPROVED' ||
     status === 'SELLER_CONFIRMED'
-  ) return 'violet'
+  )
+    return 'violet'
   if (
     status === 'DRAFT' ||
     status === 'PENDING_CONFIRM' ||
     status === 'EXPIRED' ||
     status === 'CLOSED'
-  ) return 'slate'
+  )
+    return 'slate'
   if (
     status === 'AWAITING_COURIER_ASSIGNMENT' ||
     status === 'ON_HOLD' ||
@@ -135,7 +138,8 @@ function statusColor(status: OrderStatus): StatusColor {
     status === 'DELIVERY_RESCHEDULED' ||
     status === 'CUSTOMER_CANCEL_REQUEST' ||
     status === 'CANCEL_REQUEST_REJECTED'
-  ) return 'amber'
+  )
+    return 'amber'
   return 'blue'
 }
 
@@ -167,7 +171,10 @@ function OrdersSkeleton() {
       <RutaCard>
         <div className="space-y-4">
           {[1, 2, 3].map((item) => (
-            <div key={item} className="rounded-lg border border-slate-200/70 p-4 dark:border-white/10">
+            <div
+              key={item}
+              className="rounded-lg border border-slate-200/70 p-4 dark:border-white/10"
+            >
               <div className="h-4 w-32 rounded bg-slate-200 dark:bg-slate-700" />
               <div className="mt-3 h-3 w-48 rounded bg-slate-200 dark:bg-slate-700" />
               <div className="mt-4 h-8 w-28 rounded-md bg-slate-200 dark:bg-slate-700" />
@@ -187,6 +194,7 @@ export default function OrdersView() {
   const [page, setPage] = useState(1)
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
+  const [repeatLoading, setRepeatLoading] = useState<number | null>(null)
 
   const loadOrders = useCallback(async () => {
     setLoading(true)
@@ -210,6 +218,24 @@ export default function OrdersView() {
     loadOrders()
   }, [loadOrders])
 
+  const handleRepeat = useCallback(
+    async (orderId: number) => {
+      if (!slug) return
+      setRepeatLoading(orderId)
+      setError(null)
+      try {
+        await repeatLastOrder()
+        router.push(`/c/${slug}/checkout`)
+      } catch (err) {
+        const e = err as { message?: string }
+        setError(e.message ?? 'No se pudo repetir el pedido.')
+      } finally {
+        setRepeatLoading(null)
+      }
+    },
+    [router, slug],
+  )
+
   useEffect(() => {
     setPage(1)
   }, [filter])
@@ -220,7 +246,7 @@ export default function OrdersView() {
 
   if (loading) return <OrdersSkeleton />
 
-  if (error) {
+  if (error && orders.length === 0) {
     return (
       <div className="mx-auto max-w-2xl px-4 py-16 text-center sm:px-6">
         <RutaCard className="px-10 py-10">
@@ -244,11 +270,18 @@ export default function OrdersView() {
             Mis pedidos
           </h1>
         </div>
-        <Link href={`/c/${slug}`}>
-          <RutaButton variant="neutral" className="justify-center">
-            Ver catálogo
-          </RutaButton>
-        </Link>
+        <div className="flex flex-wrap gap-2">
+          <Link href={`/c/${slug}/recurrence`}>
+            <RutaButton variant="secondary" className="justify-center">
+              Mis recurrencias
+            </RutaButton>
+          </Link>
+          <Link href={`/c/${slug}`}>
+            <RutaButton variant="neutral" className="justify-center">
+              Ver catálogo
+            </RutaButton>
+          </Link>
+        </div>
       </div>
 
       <RutaCard className="mb-4">
@@ -276,6 +309,12 @@ export default function OrdersView() {
           ))}
         </div>
       </RutaCard>
+
+      {error && (
+        <div className="mb-4 rounded-md border border-rose-200/80 bg-rose-500/[0.06] px-3 py-2 dark:border-rose-400/20">
+          <p className="text-xs font-medium text-rose-600 dark:text-rose-400">{error}</p>
+        </div>
+      )}
 
       {filteredOrders.length === 0 ? (
         <RutaCard className="px-10 py-12 text-center">
@@ -312,11 +351,21 @@ export default function OrdersView() {
                   </div>
                 </div>
 
-                <Link href={`/c/${slug}/orders/${order.id}`} className="shrink-0">
-                  <RutaButton variant="secondary" className="w-full justify-center sm:w-auto">
-                    Ver detalle
+                <div className="flex shrink-0 flex-wrap gap-2">
+                  <RutaButton
+                    variant="neutral"
+                    disabled={repeatLoading === order.id}
+                    onClick={() => handleRepeat(order.id)}
+                    className="justify-center disabled:opacity-50"
+                  >
+                    {repeatLoading === order.id ? 'Cargando...' : 'Repetir'}
                   </RutaButton>
-                </Link>
+                  <Link href={`/c/${slug}/orders/${order.id}`}>
+                    <RutaButton variant="secondary" className="w-full justify-center sm:w-auto">
+                      Ver detalle
+                    </RutaButton>
+                  </Link>
+                </div>
               </div>
             </RutaCard>
           ))}
