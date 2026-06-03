@@ -22,6 +22,8 @@ const CLIENT_NAV: NavItem[] = [
   { label: 'Pedidos', href: '/admin/orders', icon: '◈' },
   { label: 'Mapa', href: '/admin/orders/map', icon: '◎' },
   { label: 'Reembolsos', href: '/admin/refunds', icon: '↩' },
+  { label: 'Devoluciones', href: '/admin/returns', icon: '↺' },
+  { label: 'Disputas', href: '/admin/disputes', icon: '⚑' },
   { label: 'Recurrencia', href: '/admin/recurrence', icon: '↻' },
   { label: 'Corporativos', href: '/admin/orders/corporate/new', icon: '⊞' },
   { label: 'Productos', href: '/admin/products', icon: '▣' },

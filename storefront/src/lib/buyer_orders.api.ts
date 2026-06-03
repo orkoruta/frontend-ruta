@@ -70,6 +70,33 @@ export type PaymentStatus =
 
 export type DeliveryType = 'SHIP' | 'PICKUP'
 
+export type RefundStatus =
+  | 'REFUND_NOT_REQUIRED'
+  | 'REFUND_PENDING'
+  | 'REFUND_PROCESSING'
+  | 'REFUND_PROVIDER_REQUESTED'
+  | 'REFUNDED'
+  | 'PARTIALLY_REFUNDED'
+  | 'REFUND_FAILED'
+
+export type RefundModality = 'STORE_CREDIT' | 'BANK_REFUND'
+
+export interface BuyerRefundDetail {
+  id: number
+  amount: number
+  currency: string
+  status: string
+  reason: string | null
+  created_at: string
+  updated_at: string
+}
+
+export interface BuyerOrderRefundResponse {
+  refund_status: RefundStatus
+  refund_modality: RefundModality | null
+  refund: BuyerRefundDetail | null
+}
+
 export interface ApiError {
   code: string
   message: string
@@ -117,9 +144,11 @@ export interface BuyerOrder {
   courier_user_id: number | null
   order_status: OrderStatus
   payment_status: PaymentStatus
-  refund_status: string
-  return_status: string | null
-  dispute_status: string | null
+  refund_status: RefundStatus
+  refund_modality: RefundModality | null
+  return_status: import('./returns.api').ReturnStatus | null
+  return_mechanism: import('./returns.api').ReturnMechanism | null
+  dispute_status: import('./disputes.api').DisputeStatus | null
   delivery_type: DeliveryType
   delivery_carrier_type: string | null
   payment_method: string
@@ -231,4 +260,8 @@ export function confirmBuyerOrderReceipt(orderId: number): Promise<BuyerOrder> {
     method: 'POST',
     headers: { 'X-Idempotency-Key': idempotencyKey() },
   })
+}
+
+export function getBuyerOrderRefund(orderId: number): Promise<BuyerOrderRefundResponse> {
+  return request<BuyerOrderRefundResponse>(`/buyer/orders/${orderId}/refund`)
 }
