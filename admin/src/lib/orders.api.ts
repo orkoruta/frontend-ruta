@@ -77,6 +77,8 @@ export type PaymentStatus =
   | 'PAYMENT_NOT_COLLECTED'
 
 export type DeliveryType = 'SHIP' | 'PICKUP'
+export type OrderOrigin = 'UI' | 'API'
+export type BuyerType = 'INDIVIDUAL' | 'CORPORATE'
 
 export interface ApiError {
   code: string
@@ -94,6 +96,8 @@ export interface OrderSummary {
   total: number
   courier_name: string | null
   created_at: string
+  order_origin: OrderOrigin | null
+  buyer_type: BuyerType | null
 }
 
 export interface OrderListResponse {
@@ -114,6 +118,7 @@ export interface OrderListFilters {
   q?: string
   page?: number
   page_size?: number
+  order_origin?: OrderOrigin
 }
 
 export interface OrderItem {
@@ -160,6 +165,8 @@ export interface OrderDetail {
   refund_status: RefundOrderStatus
   refund_modality: string | null
   delivery_type: DeliveryType
+  order_origin: OrderOrigin | null
+  buyer_type: BuyerType | null
   subtotal: number
   shipping_fee: number | null
   total: number
@@ -202,6 +209,7 @@ function buildQuery(filters: OrderListFilters): string {
   if (filters.q?.trim()) params.set('q', filters.q.trim())
   if (filters.page) params.set('page', String(filters.page))
   if (filters.page_size) params.set('page_size', String(filters.page_size))
+  if (filters.order_origin) params.set('order_origin', filters.order_origin)
 
   const query = params.toString()
   return query ? `?${query}` : ''

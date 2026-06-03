@@ -354,8 +354,10 @@ export default function OrderDetailClient({ orderId }: OrderDetailClientProps) {
     }
   }
 
+  const isApiOrder = order.order_origin === 'API'
   const status = order.order_status
-  const showAcceptReject = status === 'VALIDATION_APPROVED'
+  // Flujo 1 actions are hidden for API orders (LOGISTICS_ONLY_FEATURE_UNAVAILABLE)
+  const showAcceptReject = !isApiOrder && status === 'VALIDATION_APPROVED'
   const showMarkPreparing = status === 'SELLER_CONFIRMED'
   const showMarkReady = status === 'PREPARING'
   const showGoToMap = status === 'AWAITING_COURIER_ASSIGNMENT'
@@ -364,7 +366,8 @@ export default function OrderDetailClient({ orderId }: OrderDetailClientProps) {
 
   const refundStatus = order.refund_status as RefundOrderStatus
   const showRefundSection = refundStatus !== 'REFUND_NOT_REQUIRED'
-  const showInitiateRefundButton = refundStatus === 'REFUND_PENDING' && !showRefundForm
+  // Refund initiation is a Flujo 1 feature — hide for API orders
+  const showInitiateRefundButton = !isApiOrder && refundStatus === 'REFUND_PENDING' && !showRefundForm
 
   const sortedHistory = [...order.history].sort(
     (a, b) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime(),
@@ -379,6 +382,11 @@ export default function OrderDetailClient({ orderId }: OrderDetailClientProps) {
           </p>
           <div className="mt-2 flex flex-wrap items-center gap-3">
             <StatusBadge status={order.order_status} />
+            {isApiOrder && (
+              <span className="inline-flex items-center rounded-md border border-sky-400/40 bg-sky-500/[0.18] px-2.5 py-1 text-xs font-semibold text-sky-700 dark:border-sky-400/25 dark:text-sky-300">
+                Pedido vía API
+              </span>
+            )}
             <span className="text-xs text-slate-500 dark:text-slate-400">
               {formatDate(order.created_at)}
             </span>

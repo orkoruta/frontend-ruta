@@ -31,13 +31,18 @@ const CLIENT_NAV: NavItem[] = [
   { label: 'Configuración', href: '/admin/settings', icon: '◧' },
 ]
 
+const CLIENT_API_EXTRA_NAV: NavItem[] = [
+  { label: 'API Keys', href: '/admin/api-keys', icon: '⚿' },
+]
+
 const COURIER_NAV: NavItem[] = [
   { label: 'Mis pedidos', href: '/courier', icon: '◈' },
 ]
 
-function getNavItems(userType: string): NavItem[] {
+function getNavItems(userType: string, clientType?: string): NavItem[] {
   if (userType === 'ADMIN_RUTA') return ADMIN_RUTA_NAV
   if (userType === 'COURIER') return COURIER_NAV
+  if (clientType === 'API') return [...CLIENT_NAV, ...CLIENT_API_EXTRA_NAV]
   return CLIENT_NAV
 }
 
@@ -49,7 +54,7 @@ interface RutaSidebarProps {
 export function RutaSidebar({ collapsed, onClose }: RutaSidebarProps) {
   const session = useContext(SessionContext)
   const pathname = usePathname()
-  const navItems = getNavItems(session?.user_type ?? 'ADMIN_CLIENT')
+  const navItems = getNavItems(session?.user_type ?? 'ADMIN_CLIENT', session?.client_type)
 
   return (
     <>

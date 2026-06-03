@@ -48,6 +48,7 @@ export default function LoginPage() {
         user_id: data.user_id,
         client_id: data.client_id,
         client_slug: clientSlug.trim() || undefined,
+        client_type: data.client_type,
         user_type: data.user_type,
         acting_via_control_view: data.acting_via_control_view ?? false,
       }

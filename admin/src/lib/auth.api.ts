@@ -3,6 +3,7 @@ const API_BASE = process.env.NEXT_PUBLIC_API_URL ?? 'http://localhost:3001'
 export interface LoginResponse {
   user_id: number
   client_id: number | null
+  client_type?: 'API' | 'FULL'
   user_type: 'ADMIN_RUTA' | 'ADMIN_CLIENT' | 'OPERATOR_CLIENT' | 'COURIER' | 'BUYER'
   expires_in_seconds: number
   acting_via_control_view?: boolean
