@@ -5,5 +5,5 @@ packages:
 allowBuilds:
   unrs-resolver: true
 minimumReleaseAgeExclude:
-  - '@orkoruta/shared@1.0.0'
-  - '@orkoruta/shared@1.5.2'
+  - '@orkoruta/shared'
+  - '@orkoruta/db'
