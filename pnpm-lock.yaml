@@ -15,8 +15,8 @@ importers:
   admin:
     dependencies:
       '@orkoruta/shared':
-        specifier: ^1.0.0
-        version: 1.0.0
+        specifier: ^1.5.2
+        version: 1.5.2
       '@orkoruta/ui':
         specifier: workspace:*
         version: link:../packages/ui
@@ -76,8 +76,8 @@ importers:
   storefront:
     dependencies:
       '@orkoruta/shared':
-        specifier: ^1.0.0
-        version: 1.0.0
+        specifier: ^1.5.2
+        version: 1.5.2
       '@orkoruta/ui':
         specifier: workspace:*
         version: link:../packages/ui
@@ -268,8 +268,8 @@ packages:
     resolution: {integrity: sha512-nn5ozdjYQpUCZlWGuxcJY/KpxkWQs4DcbMCmKojjyrYDEAGy4Ce19NN4v5MduafTwJlbKc99UA8YhSVqq9yPZA==}
     engines: {node: '>=12.4.0'}
 
-  '@orkoruta/shared@1.0.0':
-    resolution: {integrity: sha512-9yQUm37X8y9AzpgOEWYg2958Jy33HUVwHzWkTIiLll/4L0vAPN+8DoE0JTMUhCori6kTnife+3dIfRiNTg7kog==, tarball: https://npm.pkg.github.com/download/@orkoruta/shared/1.0.0/710a5e641a88cd67f15e41e30875890b13b305d4}
+  '@orkoruta/shared@1.5.2':
+    resolution: {integrity: sha512-mr4MKQ8KUlZwBCMk1TsypEttNlI0kedDNYp+cOhmFrTsOpbgP2G8D8Zqq06hOxDH8SkGEEYyjVf2pMoo2ZldUg==, tarball: https://npm.pkg.github.com/download/@orkoruta/shared/1.5.2/f052521ca7f6a8274b9aec047428a55e64275ee9}
 
   '@pkgjs/parseargs@0.11.0':
     resolution: {integrity: sha512-+1VkjdD0QBLPodGrJUeqarH8VAIvQODIbwh9XpP5Syisf7YoQgsJKPNFoqqLQlu+VQ/tVSshMR6loPMn8U+dPg==}
@@ -2028,7 +2028,7 @@ snapshots:
 
   '@nolyfill/is-core-module@1.0.39': {}
 
-  '@orkoruta/shared@1.0.0':
+  '@orkoruta/shared@1.5.2':
     dependencies:
       zod: 3.25.76
 
