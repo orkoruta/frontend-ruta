@@ -242,9 +242,21 @@ export default function ClientDetailClient({ clientId }: ClientDetailClientProps
           <p className="text-[11px] font-bold uppercase tracking-[0.24em] text-slate-500 dark:text-slate-400">
             cliente #{client.id}
           </p>
-          <h1 className="mt-1 text-2xl font-black tracking-tight text-slate-900 dark:text-slate-100">
-            {client.name}
-          </h1>
+          <div className="mt-1 flex flex-wrap items-center gap-3">
+            <h1 className="text-2xl font-black tracking-tight text-slate-900 dark:text-slate-100">
+              {client.name}
+            </h1>
+            <span
+              className={[
+                'inline-flex items-center rounded-md border px-2.5 py-1 text-xs font-semibold',
+                client.client_type === 'API'
+                  ? 'border-sky-400/40 bg-sky-500/[0.18] text-sky-700 dark:border-sky-400/25 dark:text-sky-300'
+                  : 'border-violet-400/40 bg-violet-500/[0.12] text-violet-700 dark:border-violet-400/25 dark:text-violet-300',
+              ].join(' ')}
+            >
+              Tipo: {client.client_type === 'API' ? 'API' : 'Full'}
+            </span>
+          </div>
         </div>
 
         <div className="flex flex-wrap gap-2">
@@ -412,37 +424,46 @@ export default function ClientDetailClient({ clientId }: ClientDetailClientProps
               </div>
             </fieldset>
 
-            <fieldset disabled={clientType === 'API'} className={clientType === 'API' ? 'opacity-55' : ''}>
-              <legend className="mb-2 text-xs font-medium text-slate-600 dark:text-slate-400">
-                Modalidad frontend
-              </legend>
-              <div className="grid gap-2">
-                {([
-                  ['NATIVE_RUTA', 'Nativo RUTA'],
-                  ['CUSTOM_LANDING_BY_RUTA', 'Landing personalizada'],
-                ] as Array<[FrontendMode, string]>).map(([mode, label]) => (
-                  <label
-                    key={mode}
-                    className={[
-                      'flex cursor-pointer items-center rounded-md border px-3 py-2 text-sm font-medium transition-colors',
-                      frontendMode === mode && clientType === 'FULL'
-                        ? 'border-violet-400/40 bg-violet-500/[0.12] text-violet-700 dark:border-violet-400/25 dark:text-violet-300'
-                        : 'border-slate-200 bg-white/[0.06] text-slate-600 dark:border-white/10 dark:text-slate-300',
-                    ].join(' ')}
-                  >
-                    <input
-                      type="radio"
-                      name="frontendMode"
-                      value={mode}
-                      checked={frontendMode === mode}
-                      onChange={() => setFrontendMode(mode)}
-                      className="sr-only"
-                    />
-                    {label}
-                  </label>
-                ))}
+            {clientType === 'FULL' && (
+              <fieldset>
+                <legend className="mb-2 text-xs font-medium text-slate-600 dark:text-slate-400">
+                  Modalidad frontend <span className="text-rose-500">*</span>
+                </legend>
+                <div className="grid gap-2">
+                  {([
+                    ['NATIVE_RUTA', 'Nativo RUTA'],
+                    ['CUSTOM_LANDING_BY_RUTA', 'Landing personalizada'],
+                  ] as Array<[FrontendMode, string]>).map(([mode, label]) => (
+                    <label
+                      key={mode}
+                      className={[
+                        'flex cursor-pointer items-center rounded-md border px-3 py-2 text-sm font-medium transition-colors',
+                        frontendMode === mode
+                          ? 'border-violet-400/40 bg-violet-500/[0.12] text-violet-700 dark:border-violet-400/25 dark:text-violet-300'
+                          : 'border-slate-200 bg-white/[0.06] text-slate-600 dark:border-white/10 dark:text-slate-300',
+                      ].join(' ')}
+                    >
+                      <input
+                        type="radio"
+                        name="frontendMode"
+                        value={mode}
+                        checked={frontendMode === mode}
+                        onChange={() => setFrontendMode(mode)}
+                        className="sr-only"
+                      />
+                      {label}
+                    </label>
+                  ))}
+                </div>
+              </fieldset>
+            )}
+            {clientType === 'API' && (
+              <div className="flex items-center rounded-md border border-sky-400/25 bg-sky-500/[0.08] px-3 py-3">
+                <p className="text-xs text-sky-700 dark:text-sky-300">
+                  Los clientes de tipo API no utilizan frontend propio.
+                </p>
               </div>
-            </fieldset>
+            )}
           </div>
 
           <div className="grid gap-3 border-t border-slate-200/90 pt-4 text-xs text-slate-500 dark:border-white/10 dark:text-slate-400 md:grid-cols-2">
@@ -457,6 +478,25 @@ export default function ClientDetailClient({ clientId }: ClientDetailClientProps
           </div>
         </form>
       </RutaCard>
+
+      {/* API Keys section — only for API clients */}
+      {client.client_type === 'API' && (
+        <RutaCard>
+          <RutaSectionHeader title="API Keys" subtitle="claves de acceso" />
+          <p className="mt-2 text-sm text-slate-600 dark:text-slate-400">
+            Este cliente es de tipo <strong className="text-slate-900 dark:text-slate-100">API</strong>.
+            Puede gestionar las claves de acceso desde el panel de administración del cliente.
+          </p>
+          <div className="mt-3">
+            <Link
+              href="/admin/api-keys"
+              className="inline-flex items-center gap-2 rounded-md border border-sky-400/40 bg-sky-500/[0.12] px-4 py-2 text-sm font-medium text-sky-700 transition-colors hover:bg-sky-500/[0.2] dark:border-sky-400/25 dark:text-sky-300"
+            >
+              Gestionar API Keys →
+            </Link>
+          </div>
+        </RutaCard>
+      )}
 
       <RutaCard>
         <RutaSectionHeader title="Eliminar Cliente" subtitle="operación irreversible" />

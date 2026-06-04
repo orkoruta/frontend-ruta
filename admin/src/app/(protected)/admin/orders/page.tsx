@@ -8,6 +8,7 @@ import {
   listOrders,
   type ApiError,
   type OrderListFilters,
+  type OrderOrigin,
   type OrderStatus,
   type OrderSummary,
   type PaymentStatus,
@@ -216,6 +217,7 @@ export default function AdminOrdersPage() {
   const [paymentStatus, setPaymentStatus] = useState<PaymentStatus | ''>('')
   const [dateFrom, setDateFrom] = useState('')
   const [dateTo, setDateTo] = useState('')
+  const [orderOrigin, setOrderOrigin] = useState<OrderOrigin | ''>('')
 
   const totalPages = useMemo(() => Math.max(1, Math.ceil(total / PAGE_SIZE)), [total])
 
@@ -241,6 +243,7 @@ export default function AdminOrdersPage() {
         payment_status: paymentStatus || undefined,
         date_from: dateFrom || undefined,
         date_to: dateTo || undefined,
+        order_origin: orderOrigin || undefined,
       }
 
       try {
@@ -260,7 +263,7 @@ export default function AdminOrdersPage() {
     void load()
 
     return () => { active = false }
-  }, [isAllowed, page, q, status, paymentStatus, dateFrom, dateTo])
+  }, [isAllowed, page, q, status, paymentStatus, dateFrom, dateTo, orderOrigin])
 
   function applySearch(e: FormEvent) {
     e.preventDefault()
@@ -275,6 +278,7 @@ export default function AdminOrdersPage() {
     setPaymentStatus('')
     setDateFrom('')
     setDateTo('')
+    setOrderOrigin('')
     setPage(1)
   }
 
@@ -291,17 +295,47 @@ export default function AdminOrdersPage() {
 
   return (
     <div className="mx-auto flex max-w-7xl flex-col gap-5">
-      <div>
-        <p className="text-[11px] font-bold uppercase tracking-[0.24em] text-slate-500 dark:text-slate-400">
-          operaciones
-        </p>
-        <h1 className="mt-1 text-2xl font-black tracking-tight text-slate-900 dark:text-slate-100">
-          Pedidos
-        </h1>
+      <div className="flex items-start justify-between gap-4">
+        <div>
+          <p className="text-[11px] font-bold uppercase tracking-[0.24em] text-slate-500 dark:text-slate-400">
+            operaciones
+          </p>
+          <h1 className="mt-1 text-2xl font-black tracking-tight text-slate-900 dark:text-slate-100">
+            Pedidos
+          </h1>
+        </div>
+        <Link
+          href="/admin/orders/corporate/new"
+          className="mt-1 inline-flex items-center rounded-md border border-violet-400/40 bg-violet-500/[0.12] px-4 py-2 text-sm font-medium text-violet-700 hover:bg-violet-500/[0.2] dark:border-violet-400/25 dark:text-violet-300"
+        >
+          + Nuevo pedido corporativo
+        </Link>
       </div>
 
       <RutaCard>
         <RutaSectionHeader title="Filtros" subtitle="búsqueda" />
+
+        {/* Filtro por origen */}
+        <div className="mb-3 flex gap-2">
+          {(['', 'UI', 'API'] as Array<OrderOrigin | ''>) .map((origin) => (
+            <button
+              key={origin}
+              type="button"
+              onClick={() => { setOrderOrigin(origin); setPage(1) }}
+              className={[
+                'rounded-full border px-3 py-1 text-xs font-medium transition-colors',
+                orderOrigin === origin
+                  ? origin === 'API'
+                    ? 'border-sky-400/40 bg-sky-500/[0.18] text-sky-700 dark:border-sky-400/25 dark:text-sky-300'
+                    : 'border-violet-400/40 bg-violet-500/[0.12] text-violet-700 dark:border-violet-400/25 dark:text-violet-300'
+                  : 'border-slate-200 bg-white/[0.06] text-slate-500 hover:text-slate-700 dark:border-white/10 dark:text-slate-400 dark:hover:text-slate-200',
+              ].join(' ')}
+            >
+              {origin === '' ? 'Todos' : origin}
+            </button>
+          ))}
+        </div>
+
         <form onSubmit={applySearch} className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-[1fr_1fr_1fr_1fr_auto]">
           <input
             value={draftQ}
@@ -402,7 +436,14 @@ export default function AdminOrdersPage() {
                     className="text-slate-700 hover:bg-slate-50/[0.5] dark:text-slate-300 dark:hover:bg-white/[0.025]"
                   >
                     <td className="px-4 py-3 font-mono text-xs text-slate-500 dark:text-slate-400">
-                      #{order.id}
+                      <span className="flex items-center gap-1.5">
+                        #{order.id}
+                        {order.order_origin === 'API' && (
+                          <span className="inline-flex items-center rounded border border-sky-400/40 bg-sky-500/[0.18] px-1 py-0.5 text-[10px] font-bold uppercase tracking-wide text-sky-700 dark:border-sky-400/25 dark:text-sky-300">
+                            API
+                          </span>
+                        )}
+                      </span>
                     </td>
                     <td className="px-4 py-3 font-medium text-slate-900 dark:text-slate-100">
                       {order.buyer_name}

@@ -225,37 +225,47 @@ export default function NewRutaClientPage() {
               </div>
             </fieldset>
 
-            <fieldset disabled={clientType === 'API'} className={clientType === 'API' ? 'opacity-55' : ''}>
-              <legend className="mb-2 text-xs font-medium text-slate-600 dark:text-slate-400">
-                Modalidad frontend
-              </legend>
-              <div className="grid gap-2">
-                {([
-                  ['NATIVE_RUTA', 'Nativo RUTA'],
-                  ['CUSTOM_LANDING_BY_RUTA', 'Landing personalizada'],
-                ] as Array<[FrontendMode, string]>).map(([mode, label]) => (
-                  <label
-                    key={mode}
-                    className={[
-                      'flex cursor-pointer items-center rounded-md border px-3 py-2 text-sm font-medium transition-colors',
-                      frontendMode === mode && clientType === 'FULL'
-                        ? 'border-violet-400/40 bg-violet-500/[0.12] text-violet-700 dark:border-violet-400/25 dark:text-violet-300'
-                        : 'border-slate-200 bg-white/[0.06] text-slate-600 dark:border-white/10 dark:text-slate-300',
-                    ].join(' ')}
-                  >
-                    <input
-                      type="radio"
-                      name="frontendMode"
-                      value={mode}
-                      checked={frontendMode === mode}
-                      onChange={() => setFrontendMode(mode)}
-                      className="sr-only"
-                    />
-                    {label}
-                  </label>
-                ))}
+            {clientType === 'FULL' && (
+              <fieldset>
+                <legend className="mb-2 text-xs font-medium text-slate-600 dark:text-slate-400">
+                  Modalidad frontend <span className="text-rose-500">*</span>
+                </legend>
+                <div className="grid gap-2">
+                  {([
+                    ['NATIVE_RUTA', 'Nativo RUTA'],
+                    ['CUSTOM_LANDING_BY_RUTA', 'Landing personalizada'],
+                  ] as Array<[FrontendMode, string]>).map(([mode, label]) => (
+                    <label
+                      key={mode}
+                      className={[
+                        'flex cursor-pointer items-center rounded-md border px-3 py-2 text-sm font-medium transition-colors',
+                        frontendMode === mode
+                          ? 'border-violet-400/40 bg-violet-500/[0.12] text-violet-700 dark:border-violet-400/25 dark:text-violet-300'
+                          : 'border-slate-200 bg-white/[0.06] text-slate-600 dark:border-white/10 dark:text-slate-300',
+                      ].join(' ')}
+                    >
+                      <input
+                        type="radio"
+                        name="frontendMode"
+                        value={mode}
+                        checked={frontendMode === mode}
+                        onChange={() => setFrontendMode(mode)}
+                        className="sr-only"
+                      />
+                      {label}
+                    </label>
+                  ))}
+                </div>
+              </fieldset>
+            )}
+            {clientType === 'API' && (
+              <div className="flex items-center rounded-md border border-sky-400/25 bg-sky-500/[0.08] px-3 py-3">
+                <p className="text-xs text-sky-700 dark:text-sky-300">
+                  Los clientes de tipo API no utilizan frontend propio. RUTA provee solo
+                  la capa logística vía API.
+                </p>
               </div>
-            </fieldset>
+            )}
           </div>
 
           {error && (

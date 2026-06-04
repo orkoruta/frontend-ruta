@@ -5,6 +5,7 @@ import { useParams, useRouter } from 'next/navigation'
 import Link from 'next/link'
 import { RutaButton, RutaCard, RutaPill, RutaSectionHeader } from '@orkoruta/ui'
 import { CartApiError, getDraftOrder, type DraftOrder } from '@/lib/cart.api'
+import { markOrderAsRecurring, type RecurrencePeriodicity } from '@/lib/recurrence.api'
 import AddressStep from './AddressStep'
 import DeliveryStep from './DeliveryStep'
 import PaymentStep from './PaymentStep'
@@ -47,6 +48,13 @@ interface InitiatePaymentResponse {
   wompi_checkout_url: string
   wompi_reference: string
 }
+
+const periodicityOptions: Array<{ value: RecurrencePeriodicity; label: string }> = [
+  { value: 'WEEKLY', label: 'Semanal' },
+  { value: 'BIWEEKLY', label: 'Quincenal' },
+  { value: 'MONTHLY', label: 'Mensual' },
+  { value: 'CUSTOM_INTERVAL', label: 'Personalizado' },
+]
 
 const pickupPoints: PickupPoint[] = [
   {
@@ -158,6 +166,9 @@ export default function CheckoutStepper() {
   )
   const [paymentMethod, setPaymentMethod] = useState<PaymentMethod>('ONLINE_AT_ORDER')
   const [paymentSubmethod, setPaymentSubmethod] = useState<PaymentSubmethod>('DATAFONO')
+  const [recurringEnabled, setRecurringEnabled] = useState(false)
+  const [periodicity, setPeriodicity] = useState<RecurrencePeriodicity>('WEEKLY')
+  const [customDays, setCustomDays] = useState<number>(7)
 
   const loadDraftOrder = useCallback(async () => {
     if (!slug) return
@@ -244,6 +255,17 @@ export default function CheckoutStepper() {
     try {
       await confirmOrder(order.id, payload)
 
+      if (recurringEnabled) {
+        try {
+          await markOrderAsRecurring(order.id, {
+            recurrence_periodicity: periodicity,
+            ...(periodicity === 'CUSTOM_INTERVAL' ? { custom_interval_days: customDays } : {}),
+          })
+        } catch {
+          // recurrencia no crítica: continuar aunque falle
+        }
+      }
+
       if (paymentMethod === 'ONLINE_AT_ORDER') {
         const payment = await initiatePayment(order.id)
         window.location.assign(payment.wompi_checkout_url)
@@ -324,6 +346,73 @@ export default function CheckoutStepper() {
             onPaymentMethodChange={setPaymentMethod}
             onPaymentSubmethodChange={setPaymentSubmethod}
           />
+
+          {/* Recurrencia */}
+          <RutaCard>
+            <RutaSectionHeader title="Pedido recurrente" subtitle="paso 4 — opcional" />
+            <div className="mt-4">
+              <label className="flex cursor-pointer items-center gap-3">
+                <input
+                  type="checkbox"
+                  className="h-4 w-4 rounded border-slate-300 text-sky-600 focus:ring-sky-500 dark:border-white/20"
+                  checked={recurringEnabled}
+                  onChange={(e) => setRecurringEnabled(e.target.checked)}
+                />
+                <span className="text-sm font-semibold text-slate-900 dark:text-slate-100">
+                  Hacer este pedido recurrente
+                </span>
+              </label>
+              <p className="mt-1 pl-7 text-xs text-slate-500 dark:text-slate-400">
+                RUTA generará un nuevo pedido automáticamente según la periodicidad que elijas.
+              </p>
+            </div>
+
+            {recurringEnabled && (
+              <div className="mt-5 space-y-4">
+                <div>
+                  <p className="mb-2 text-xs font-bold uppercase tracking-[0.18em] text-slate-500 dark:text-slate-400">
+                    Periodicidad
+                  </p>
+                  <div className="grid gap-2 sm:grid-cols-2">
+                    {periodicityOptions.map((option) => (
+                      <button
+                        key={option.value}
+                        type="button"
+                        onClick={() => setPeriodicity(option.value)}
+                        className={`rounded-lg border px-4 py-3 text-left text-sm font-semibold transition-colors ${
+                          periodicity === option.value
+                            ? 'border-sky-400/50 bg-sky-500/[0.12] text-sky-700 dark:border-sky-400/25 dark:text-sky-300'
+                            : 'border-slate-200/90 bg-white/[0.5] text-slate-600 hover:bg-white/[0.76] dark:border-white/10 dark:bg-white/[0.04] dark:text-slate-300 dark:hover:bg-white/[0.06]'
+                        }`}
+                      >
+                        {option.label}
+                      </button>
+                    ))}
+                  </div>
+                </div>
+
+                {periodicity === 'CUSTOM_INTERVAL' && (
+                  <div>
+                    <label
+                      htmlFor="custom-days"
+                      className="mb-1 block text-xs font-bold uppercase tracking-[0.18em] text-slate-500 dark:text-slate-400"
+                    >
+                      Cada cuántos días
+                    </label>
+                    <input
+                      id="custom-days"
+                      type="number"
+                      min={1}
+                      max={365}
+                      value={customDays}
+                      onChange={(e) => setCustomDays(Math.max(1, Number(e.target.value)))}
+                      className="w-32 rounded-lg border border-slate-200/90 bg-white/[0.5] px-3 py-2 text-sm font-semibold text-slate-900 focus:border-sky-400/60 focus:outline-none focus:ring-1 focus:ring-sky-400/[0.40] dark:border-white/10 dark:bg-white/[0.04] dark:text-slate-100"
+                    />
+                  </div>
+                )}
+              </div>
+            )}
+          </RutaCard>
         </div>
 
         <aside className="lg:sticky lg:top-20 lg:self-start">

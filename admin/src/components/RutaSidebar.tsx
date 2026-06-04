@@ -21,6 +21,11 @@ const CLIENT_NAV: NavItem[] = [
   { label: 'Dashboard', href: '/admin/dashboard', icon: '◉' },
   { label: 'Pedidos', href: '/admin/orders', icon: '◈' },
   { label: 'Mapa', href: '/admin/orders/map', icon: '◎' },
+  { label: 'Reembolsos', href: '/admin/refunds', icon: '↩' },
+  { label: 'Devoluciones', href: '/admin/returns', icon: '↺' },
+  { label: 'Disputas', href: '/admin/disputes', icon: '⚑' },
+  { label: 'Recurrencia', href: '/admin/recurrence', icon: '↻' },
+  { label: 'Corporativos', href: '/admin/orders/corporate/new', icon: '⊞' },
   { label: 'Productos', href: '/admin/products', icon: '▣' },
   { label: 'Compradores', href: '/admin/buyers', icon: '◐' },
   { label: 'Repartidores', href: '/admin/couriers', icon: '▷' },
@@ -28,13 +33,18 @@ const CLIENT_NAV: NavItem[] = [
   { label: 'Configuración', href: '/admin/settings', icon: '◧' },
 ]
 
+const CLIENT_API_EXTRA_NAV: NavItem[] = [
+  { label: 'API Keys', href: '/admin/api-keys', icon: '⚿' },
+]
+
 const COURIER_NAV: NavItem[] = [
   { label: 'Mis pedidos', href: '/courier', icon: '◈' },
 ]
 
-function getNavItems(userType: string): NavItem[] {
+function getNavItems(userType: string, clientType?: string): NavItem[] {
   if (userType === 'ADMIN_RUTA') return ADMIN_RUTA_NAV
   if (userType === 'COURIER') return COURIER_NAV
+  if (clientType === 'API') return [...CLIENT_NAV, ...CLIENT_API_EXTRA_NAV]
   return CLIENT_NAV
 }
 
@@ -46,7 +56,7 @@ interface RutaSidebarProps {
 export function RutaSidebar({ collapsed, onClose }: RutaSidebarProps) {
   const session = useContext(SessionContext)
   const pathname = usePathname()
-  const navItems = getNavItems(session?.user_type ?? 'ADMIN_CLIENT')
+  const navItems = getNavItems(session?.user_type ?? 'ADMIN_CLIENT', session?.client_type)
 
   return (
     <>
