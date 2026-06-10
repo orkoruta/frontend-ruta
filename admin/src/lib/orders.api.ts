@@ -101,7 +101,7 @@ export interface OrderSummary {
 }
 
 export interface OrderListResponse {
-  items: OrderSummary[]
+  data: OrderSummary[]
   pagination: {
     page: number
     page_size: number

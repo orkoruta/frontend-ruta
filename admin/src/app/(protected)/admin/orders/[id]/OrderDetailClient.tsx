@@ -369,7 +369,7 @@ export default function OrderDetailClient({ orderId }: OrderDetailClientProps) {
   // Refund initiation is a Flujo 1 feature — hide for API orders
   const showInitiateRefundButton = !isApiOrder && refundStatus === 'REFUND_PENDING' && !showRefundForm
 
-  const sortedHistory = [...order.history].sort(
+  const sortedHistory = [...(order.history ?? [])].sort(
     (a, b) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime(),
   )
 

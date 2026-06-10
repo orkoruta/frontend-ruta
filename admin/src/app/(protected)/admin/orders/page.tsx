@@ -249,8 +249,8 @@ export default function AdminOrdersPage() {
       try {
         const data = await listOrders(filters)
         if (!active) return
-        setOrders(data.items)
-        setTotal(data.pagination.total)
+        setOrders(data.data ?? [])
+        setTotal(data.pagination?.total ?? 0)
       } catch (err) {
         if (!active) return
         const apiErr = err as ApiError
