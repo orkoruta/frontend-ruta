@@ -1,7 +1,8 @@
 'use client'
 
-import { useRef, useState, type ChangeEvent, type FormEvent } from 'react'
+import { useState, type FormEvent } from 'react'
 import { RutaButton, RutaCard, RutaSectionHeader } from '@orkoruta/ui'
+import ReceiptCapture from './ReceiptCapture'
 import {
   recordCollection,
   type ApiError,
@@ -39,13 +40,6 @@ export default function CollectionForm({ orderId, totalDue, onSuccess }: Collect
   const [evidenceFile, setEvidenceFile] = useState<File | null>(null)
   const [acting, setActing] = useState(false)
   const [error, setError] = useState<string | null>(null)
-  const fileRef = useRef<HTMLInputElement>(null)
-
-  function handleFile(e: ChangeEvent<HTMLInputElement>) {
-    const file = e.target.files?.[0]
-    if (file) setEvidenceFile(file)
-  }
-
   async function handleSubmit(e: FormEvent) {
     e.preventDefault()
     if (!evidenceFile) {
@@ -152,32 +146,7 @@ export default function CollectionForm({ orderId, totalDue, onSuccess }: Collect
           <label className="mb-1 block text-sm font-semibold text-slate-700 dark:text-slate-300">
             Foto del recibo <span className="text-rose-500">*</span>
           </label>
-          <input
-            ref={fileRef}
-            type="file"
-            accept="image/*"
-            capture="environment"
-            onChange={handleFile}
-            className="hidden"
-            required
-          />
-          <button
-            type="button"
-            onClick={() => fileRef.current?.click()}
-            className="flex min-h-[48px] w-full items-center justify-center gap-2 rounded-md border border-dashed border-slate-300 bg-white/[0.06] px-4 text-sm font-medium text-slate-600 transition-colors hover:bg-white/[0.12] dark:border-white/10 dark:text-slate-300"
-          >
-            {evidenceFile ? (
-              <>
-                <span className="text-emerald-600 dark:text-emerald-400">✓</span>
-                {evidenceFile.name}
-              </>
-            ) : (
-              <>
-                <span>📷</span>
-                Tomar foto del recibo
-              </>
-            )}
-          </button>
+          <ReceiptCapture file={evidenceFile} onCapture={setEvidenceFile} />
         </div>
 
         <div>

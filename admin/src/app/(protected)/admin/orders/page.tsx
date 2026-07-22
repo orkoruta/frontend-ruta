@@ -13,6 +13,11 @@ import {
   type OrderSummary,
   type PaymentStatus,
 } from '@/lib/orders.api'
+import {
+  adminStatusLabel,
+  adminStatusColor,
+  STATUS_BADGE_CLASSES,
+} from '@/lib/admin_status_labels'
 
 const PAGE_SIZE = 20
 
@@ -31,154 +36,46 @@ function formatDate(value: string) {
   }).format(new Date(value))
 }
 
-function statusLabel(status: OrderStatus): string {
-  const labels: Partial<Record<OrderStatus, string>> = {
-    DRAFT: 'Borrador',
-    PENDING_CONFIRM: 'Pendiente confirmación',
-    ORDER_SUBMITTED: 'Enviado',
-    EXPIRED: 'Expirado',
-    ORDER_VALIDATING: 'Validando',
-    MANUAL_REVIEW: 'Revisión manual',
-    VALIDATION_APPROVED: 'Validación aprobada',
-    VALIDATION_REJECTED: 'Validación rechazada',
-    SELLER_CONFIRMED: 'Aceptado',
-    PREPARING: 'Preparando',
-    AWAITING_COURIER_ASSIGNMENT: 'Sin repartidor',
-    COURIER_ASSIGNED: 'Repartidor asignado',
-    READY_TO_SHIP: 'Listo para despacho',
-    READY_FOR_PICKUP: 'Listo para recogida',
-    SHIPMENT_HOLD: 'Despacho retenido',
-    SHIPPED: 'Despachado',
-    IN_TRANSIT: 'En tránsito',
-    ON_HOLD: 'Tránsito retenido',
-    OUT_FOR_DELIVERY: 'En reparto',
-    ARRIVED_AT_CUSTOMER: 'Llegó al comprador',
-    DELIVERY_ATTEMPTED: 'Intento fallido',
-    DELIVERY_RESCHEDULED: 'Reprogramado',
-    LOST_IN_TRANSIT: 'Perdido',
-    AT_PICKUP_POINT: 'En punto físico',
-    CUSTOMER_ARRIVED_AT_PICKUP_POINT: 'Comprador en punto',
-    DELIVERED: 'Entregado',
-    DELIVERY_DISPUTED: 'En disputa',
-    CONFIRMED_BY_CUSTOMER: 'Confirmado (comprador)',
-    CONFIRMED_BY_SYSTEM: 'Confirmado (sistema)',
-    CANCELLED_BY_CUSTOMER: 'Cancelado (comprador)',
-    CANCELLED_BY_SELLER: 'Cancelado (vendedor)',
-    CANCELLED_BY_SYSTEM: 'Cancelado (sistema)',
-    CANCELLED_BY_ADMIN: 'Cancelado (admin)',
-    CANCELLED_NO_PAYMENT: 'Cancelado sin pago',
-    CUSTOMER_CANCEL_REQUEST: 'Solicitud de cancelación',
-    RETURN_REQUESTED: 'Devolución solicitada',
-    RETURN_APPROVED: 'Devolución aprobada',
-    RETURN_IN_TRANSIT: 'En devolución',
-    RETURN_RECEIVED: 'Devolución recibida',
-    RETURN_REJECTED: 'Devolución rechazada',
-    RETURN_CANCELLED: 'Devolución cancelada',
-    REFUND_PENDING: 'Reembolso pendiente',
-    REFUNDED: 'Reembolsado',
-    CLOSED: 'Cerrado',
-    COMPLETED_SUCCESSFULLY: 'Completado',
-  }
-  return labels[status] ?? status
-}
-
-type StatusColor = 'slate' | 'violet' | 'amber' | 'blue' | 'green' | 'red'
-
-function statusColor(status: OrderStatus): StatusColor {
-  if (
-    status === 'DRAFT' ||
-    status === 'PENDING_CONFIRM' ||
-    status === 'EXPIRED' ||
-    status === 'CLOSED'
-  ) return 'slate'
-
-  if (
-    status === 'ORDER_VALIDATING' ||
-    status === 'MANUAL_REVIEW' ||
-    status === 'VALIDATION_APPROVED' ||
-    status === 'SELLER_CONFIRMED'
-  ) return 'violet'
-
-  if (
-    status === 'AWAITING_COURIER_ASSIGNMENT' ||
-    status === 'ON_HOLD' ||
-    status === 'SHIPMENT_HOLD' ||
-    status === 'DELIVERY_ATTEMPTED' ||
-    status === 'DELIVERY_RESCHEDULED' ||
-    status === 'CUSTOMER_CANCEL_REQUEST' ||
-    status === 'REFUND_PENDING'
-  ) return 'amber'
-
-  if (
-    status === 'PREPARING' ||
-    status === 'COURIER_ASSIGNED' ||
-    status === 'READY_TO_SHIP' ||
-    status === 'READY_FOR_PICKUP' ||
-    status === 'SHIPPED' ||
-    status === 'IN_TRANSIT' ||
-    status === 'OUT_FOR_DELIVERY' ||
-    status === 'ARRIVED_AT_CUSTOMER' ||
-    status === 'AT_PICKUP_POINT' ||
-    status === 'CUSTOMER_ARRIVED_AT_PICKUP_POINT' ||
-    status === 'RETURN_REQUESTED' ||
-    status === 'RETURN_APPROVED' ||
-    status === 'RETURN_IN_TRANSIT' ||
-    status === 'ORDER_SUBMITTED'
-  ) return 'blue'
-
-  if (
-    status === 'DELIVERED' ||
-    status === 'CONFIRMED_BY_CUSTOMER' ||
-    status === 'CONFIRMED_BY_SYSTEM' ||
-    status === 'COMPLETED_SUCCESSFULLY' ||
-    status === 'RETURN_RECEIVED' ||
-    status === 'REFUNDED'
-  ) return 'green'
-
-  return 'red'
-}
-
-const COLOR_CLASSES: Record<StatusColor, string> = {
-  slate:  'bg-white/[0.06] text-slate-600 border-white/10 dark:text-slate-300',
-  violet: 'bg-violet-500/[0.12] text-violet-700 border-violet-400/25 dark:text-violet-300',
-  amber:  'bg-amber-500/[0.12] text-amber-700 border-amber-400/25 dark:text-amber-300',
-  blue:   'bg-sky-500/[0.12] text-sky-700 border-sky-400/25 dark:text-sky-300',
-  green:  'bg-emerald-500/[0.12] text-emerald-700 border-emerald-400/25 dark:text-emerald-300',
-  red:    'bg-rose-500/[0.12] text-rose-700 border-rose-400/25 dark:text-rose-300',
-}
-
 function StatusBadge({ status }: { status: OrderStatus }) {
-  const color = statusColor(status)
   return (
     <span
       className={[
         'inline-flex items-center rounded-md border px-2 py-0.5 text-xs font-medium',
-        COLOR_CLASSES[color],
+        STATUS_BADGE_CLASSES[adminStatusColor(status)],
       ].join(' ')}
     >
-      {statusLabel(status)}
+      {adminStatusLabel(status)}
     </span>
   )
 }
 
+// Subconjunto de estados por los que tiene sentido filtrar; las etiquetas salen
+// del diccionario compartido para que no se desvíen de las de la tabla.
+const FILTERABLE_STATUSES: OrderStatus[] = [
+  'DRAFT',
+  'VALIDATION_APPROVED',
+  'SELLER_CONFIRMED',
+  'PREPARING',
+  'AWAITING_COURIER_ASSIGNMENT',
+  'READY_TO_SHIP',
+  'READY_FOR_PICKUP',
+  'IN_TRANSIT',
+  'OUT_FOR_DELIVERY',
+  'ARRIVED_AT_CUSTOMER',
+  'PAYMENT_COLLECTED_CASH',
+  'PAYMENT_COLLECTED_ELECTRONIC',
+  'DELIVERED',
+  'CONFIRMED_BY_CUSTOMER',
+  'CONFIRMED_BY_SYSTEM',
+  'CUSTOMER_CANCEL_REQUEST',
+  'CANCELLED_BY_ADMIN',
+  'CANCELLED_BY_CUSTOMER',
+  'COMPLETED_SUCCESSFULLY',
+]
+
 const ORDER_STATUS_OPTIONS: Array<[OrderStatus | '', string]> = [
   ['', 'Todos los estados'],
-  ['DRAFT', 'Borrador'],
-  ['VALIDATION_APPROVED', 'Validación aprobada'],
-  ['SELLER_CONFIRMED', 'Aceptado'],
-  ['PREPARING', 'Preparando'],
-  ['AWAITING_COURIER_ASSIGNMENT', 'Sin repartidor'],
-  ['READY_TO_SHIP', 'Listo para despacho'],
-  ['READY_FOR_PICKUP', 'Listo para recogida'],
-  ['IN_TRANSIT', 'En tránsito'],
-  ['OUT_FOR_DELIVERY', 'En reparto'],
-  ['DELIVERED', 'Entregado'],
-  ['CONFIRMED_BY_CUSTOMER', 'Confirmado (comprador)'],
-  ['CONFIRMED_BY_SYSTEM', 'Confirmado (sistema)'],
-  ['CUSTOMER_CANCEL_REQUEST', 'Solicitud cancelación'],
-  ['CANCELLED_BY_ADMIN', 'Cancelado (admin)'],
-  ['CANCELLED_BY_CUSTOMER', 'Cancelado (comprador)'],
-  ['COMPLETED_SUCCESSFULLY', 'Completado'],
+  ...FILTERABLE_STATUSES.map((status) => [status, adminStatusLabel(status)] as [OrderStatus, string]),
 ]
 
 const PAYMENT_STATUS_OPTIONS: Array<[PaymentStatus | '', string]> = [

@@ -2,12 +2,19 @@
 
 import Link from 'next/link'
 import { useCallback, useEffect, useState } from 'react'
+import {
+  courierStatusLabel,
+  courierStatusTone,
+  type StatusTone,
+} from '@/lib/courier_status_labels'
 import { RutaCard } from '@orkoruta/ui'
 import {
   getAssignedOrders,
   type ApiError,
   type CourierOrder,
   type CourierOrderStatus,
+  formatDeliveryAddress,
+  isCollectOnDelivery,
 } from '@/lib/courier_orders.api'
 
 type Tab = 'active' | 'completed'
@@ -20,45 +27,20 @@ function formatCOP(amount: number) {
   }).format(amount)
 }
 
-type StatusColor = 'blue' | 'amber' | 'green' | 'slate'
+type StatusColor = StatusTone
 
-function statusColor(status: CourierOrderStatus): StatusColor {
-  if (
-    status === 'DELIVERED' ||
-    status === 'CONFIRMED_BY_CUSTOMER' ||
-    status === 'CONFIRMED_BY_SYSTEM' ||
-    status === 'COMPLETED_SUCCESSFULLY'
-  ) return 'green'
-  if (status === 'DELIVERY_ATTEMPTED') return 'amber'
-  if (status === 'COURIER_ASSIGNED') return 'slate'
-  return 'blue'
-}
 
-function statusLabel(status: CourierOrderStatus): string {
-  const labels: Record<CourierOrderStatus, string> = {
-    COURIER_ASSIGNED: 'Asignado',
-    SHIPPED: 'Despachado',
-    IN_TRANSIT: 'En tránsito',
-    OUT_FOR_DELIVERY: 'En reparto',
-    ARRIVED_AT_CUSTOMER: 'Llegué al cliente',
-    DELIVERY_ATTEMPTED: 'Intento fallido',
-    DELIVERED: 'Entregado',
-    CONFIRMED_BY_CUSTOMER: 'Confirmado',
-    CONFIRMED_BY_SYSTEM: 'Confirmado',
-    COMPLETED_SUCCESSFULLY: 'Completado',
-  }
-  return labels[status] ?? status
-}
 
 const COLOR_CLASSES: Record<StatusColor, string> = {
   blue:   'bg-sky-500/[0.12] text-sky-700 border-sky-400/25 dark:text-sky-300',
   amber:  'bg-amber-500/[0.12] text-amber-700 border-amber-400/25 dark:text-amber-300',
   green:  'bg-emerald-500/[0.12] text-emerald-700 border-emerald-400/25 dark:text-emerald-300',
   slate:  'bg-white/[0.06] text-slate-600 border-white/10 dark:text-slate-300',
+  red:    'bg-rose-500/[0.12] text-rose-700 border-rose-400/25 dark:text-rose-300',
 }
 
 function StatusBadge({ status }: { status: CourierOrderStatus }) {
-  const color = statusColor(status)
+  const color = courierStatusTone(status)
   return (
     <span
       className={[
@@ -66,7 +48,7 @@ function StatusBadge({ status }: { status: CourierOrderStatus }) {
         COLOR_CLASSES[color],
       ].join(' ')}
     >
-      {statusLabel(status)}
+      {courierStatusLabel(status)}
     </span>
   )
 }
@@ -103,7 +85,7 @@ function OrderCard({ order }: { order: CourierOrder }) {
               pedido #{order.id}
             </p>
             <p className="mt-1 truncate text-base font-semibold text-slate-900 dark:text-slate-100">
-              {order.delivery_address}
+              {formatDeliveryAddress(order.delivery_address)}
             </p>
             <p className="mt-0.5 text-sm text-slate-600 dark:text-slate-400">
               {order.buyer_name}
@@ -117,7 +99,7 @@ function OrderCard({ order }: { order: CourierOrder }) {
             <p className="text-lg font-bold text-slate-900 dark:text-slate-100">
               {formatCOP(order.total)}
             </p>
-            {order.payment_method === 'ON_DELIVERY' && (
+            {isCollectOnDelivery(order.payment_method) && (
               <p className="text-xs text-amber-600 dark:text-amber-400">Cobro contra entrega</p>
             )}
           </div>

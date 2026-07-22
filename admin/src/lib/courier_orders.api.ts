@@ -14,12 +14,37 @@ export type CourierOrderStatus =
 
 export type PaymentMethod =
   | 'ONLINE_AT_ORDER'
-  | 'ON_DELIVERY'
+  | 'ELECTRONIC_ON_DELIVERY'
+  | 'CASH_ON_DELIVERY'
+
+/** Contra entrega: el cobro lo toma el repartidor, en efectivo o electrónico. */
+export function isCollectOnDelivery(method: PaymentMethod): boolean {
+  return method === 'CASH_ON_DELIVERY' || method === 'ELECTRONIC_ON_DELIVERY'
+}
+
+/** Destino tal como lo entrega el backend del repartidor. */
+export interface CourierDeliveryAddress {
+  line: string
+  city: string | null
+  state: string | null
+  country: string | null
+  postal_code: string | null
+  latitude: number | null
+  longitude: number | null
+  /** Detalle dentro del predio: "Casa 19", "Torre B, piso 4". */
+  instructions: string | null
+}
+
+/** Una línea legible con la dirección, sin las indicaciones internas. */
+export function formatDeliveryAddress(address: CourierDeliveryAddress | null): string {
+  if (!address) return 'Sin dirección registrada'
+  return [address.line, address.city, address.state].filter(Boolean).join(', ')
+}
 
 export interface CourierOrder {
   id: number
   order_status: CourierOrderStatus
-  delivery_address: string
+  delivery_address: CourierDeliveryAddress | null
   buyer_name: string
   buyer_phone: string | null
   total: number
@@ -38,7 +63,7 @@ export interface CourierOrderItem {
 export interface CourierOrderDetail {
   id: number
   order_status: CourierOrderStatus
-  delivery_address: string
+  delivery_address: CourierDeliveryAddress | null
   buyer: {
     name: string
     phone: string | null
@@ -49,8 +74,12 @@ export interface CourierOrderDetail {
   collection_recorded: boolean
   history: Array<{
     id: number
-    to_state: string
-    created_at: string
+    state_dimension: string
+    previous_value: string | null
+    new_value: string
+    actor_type: string | null
+    reason: string | null
+    occurred_at: string
   }>
   created_at: string
 }
@@ -62,6 +91,27 @@ export interface AssignedOrdersResponse {
 
 export type CollectionMethod = 'CASH' | 'ELECTRONIC'
 export type ElectronicSubmethod = 'DATAFONO' | 'QR' | 'BANK_TRANSFER'
+
+/**
+ * Tope del data URI de la evidencia; debe coincidir con el del backend
+ * (`MAX_EVIDENCE_DATA_URI_LENGTH` en `collection.service.ts`). Se valida también
+ * aquí para no hacerle subir un megabyte al repartidor solo para recibir un 400.
+ */
+const MAX_EVIDENCE_DATA_URI_LENGTH = 1_400_000
+
+/**
+ * La foto viaja embebida en el JSON mientras el proyecto no tenga object
+ * storage. Cuando exista un bucket, esto se reemplaza por subir el archivo y
+ * mandar solo la URL.
+ */
+function fileToDataUri(file: File): Promise<string> {
+  return new Promise((resolve, reject) => {
+    const reader = new FileReader()
+    reader.onload = () => resolve(String(reader.result))
+    reader.onerror = () => reject(new Error('No pudimos leer la foto.'))
+    reader.readAsDataURL(file)
+  })
+}
 
 export interface CollectionPayload {
   amount: number
@@ -161,30 +211,40 @@ export function attemptFailed(
   })
 }
 
-export function recordCollection(
+export async function recordCollection(
   id: number,
   payload: CollectionPayload,
   key = idempotencyKey(),
 ): Promise<CourierOrderDetail> {
-  const form = new FormData()
-  form.append('amount', String(payload.amount))
-  form.append('currency', payload.currency)
-  form.append('method', payload.method)
-  if (payload.electronic_submethod) {
-    form.append('electronic_submethod', payload.electronic_submethod)
-  }
-  if (payload.external_txn_id) {
-    form.append('external_txn_id', payload.external_txn_id)
-  }
-  if (payload.notes) {
-    form.append('notes', payload.notes)
-  }
-  form.append('evidence', payload.evidence)
+  const evidenceUrl = await fileToDataUri(payload.evidence)
 
-  return request<CourierOrderDetail>(`/courier/orders/${id}/record-collection`, {
+  if (evidenceUrl.length > MAX_EVIDENCE_DATA_URI_LENGTH) {
+    throw {
+      code: 'VALIDATION_ERROR',
+      message: 'La foto es demasiado pesada. Vuelve a tomarla.',
+    } satisfies ApiError
+  }
+
+  // A diferencia del resto de acciones del repartidor, este endpoint responde
+  // con el resultado del cobro (`payment_id`, `amount`…), no con el pedido. Se
+  // vuelve a pedir el detalle para devolver siempre lo mismo que las demás; si
+  // se devolviera la respuesta cruda, la pantalla se quedaría sin `buyer` ni
+  // `items` y reventaría al pintarlos.
+  await request<unknown>(`/courier/orders/${id}/record-collection`, {
     method: 'POST',
     headers: { 'X-Idempotency-Key': key },
-    body: form,
-    skipContentType: true,
+    body: JSON.stringify({
+      amount: payload.amount,
+      currency: payload.currency,
+      method: payload.method,
+      ...(payload.electronic_submethod
+        ? { electronic_submethod: payload.electronic_submethod }
+        : {}),
+      ...(payload.external_txn_id ? { external_txn_id: payload.external_txn_id } : {}),
+      ...(payload.notes ? { notes: payload.notes } : {}),
+      evidence_url: evidenceUrl,
+    }),
   })
+
+  return getCourierOrderById(id)
 }

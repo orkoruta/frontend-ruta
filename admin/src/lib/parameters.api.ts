@@ -58,6 +58,8 @@ export function updateParameter(key: string, value: string): Promise<Parameter> 
   return request<Parameter>(`/admin/parameters/${encodeURIComponent(key)}`, {
     method: 'PATCH',
     headers: { 'X-Idempotency-Key': idempotencyKey() },
-    body: JSON.stringify({ parameter_value: value }),
+    // El cuerpo va como `value`, aunque la respuesta devuelva `parameter_value`:
+    // no son el mismo campo y mandar el nombre de la respuesta da 400.
+    body: JSON.stringify({ value }),
   })
 }

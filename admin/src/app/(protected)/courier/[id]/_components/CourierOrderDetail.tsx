@@ -4,6 +4,11 @@ import Link from 'next/link'
 import { useEffect, useState } from 'react'
 import { RutaButton, RutaCard, RutaSectionHeader } from '@orkoruta/ui'
 import {
+  courierStatusLabel,
+  courierStatusTone,
+  type StatusTone,
+} from '@/lib/courier_status_labels'
+import {
   getCourierOrderById,
   startShipping,
   markOutForDelivery,
@@ -13,8 +18,11 @@ import {
   type ApiError,
   type CourierOrderDetail as CourierOrderDetailType,
   type CourierOrderStatus,
+  formatDeliveryAddress,
+  isCollectOnDelivery,
 } from '@/lib/courier_orders.api'
 import CollectionForm from './CollectionForm'
+import { CollectionEvidenceCard } from '@/components/CollectionEvidenceCard'
 
 interface Props {
   orderId: number
@@ -28,41 +36,16 @@ function formatCOP(amount: number) {
   }).format(amount)
 }
 
-type StatusColor = 'blue' | 'amber' | 'green' | 'slate'
+type StatusColor = StatusTone
 
-function statusColor(status: CourierOrderStatus): StatusColor {
-  if (
-    status === 'DELIVERED' ||
-    status === 'CONFIRMED_BY_CUSTOMER' ||
-    status === 'CONFIRMED_BY_SYSTEM' ||
-    status === 'COMPLETED_SUCCESSFULLY'
-  ) return 'green'
-  if (status === 'DELIVERY_ATTEMPTED') return 'amber'
-  if (status === 'COURIER_ASSIGNED') return 'slate'
-  return 'blue'
-}
 
-function statusLabel(status: CourierOrderStatus): string {
-  const labels: Record<CourierOrderStatus, string> = {
-    COURIER_ASSIGNED: 'Asignado',
-    SHIPPED: 'Despachado',
-    IN_TRANSIT: 'En tránsito',
-    OUT_FOR_DELIVERY: 'En reparto',
-    ARRIVED_AT_CUSTOMER: 'Llegué al cliente',
-    DELIVERY_ATTEMPTED: 'Intento fallido',
-    DELIVERED: 'Entregado',
-    CONFIRMED_BY_CUSTOMER: 'Confirmado',
-    CONFIRMED_BY_SYSTEM: 'Confirmado',
-    COMPLETED_SUCCESSFULLY: 'Completado',
-  }
-  return labels[status] ?? status
-}
 
 const COLOR_BADGE: Record<StatusColor, string> = {
   blue:   'bg-sky-500/[0.12] text-sky-700 border-sky-400/25 dark:text-sky-300',
   amber:  'bg-amber-500/[0.12] text-amber-700 border-amber-400/25 dark:text-amber-300',
   green:  'bg-emerald-500/[0.12] text-emerald-700 border-emerald-400/25 dark:text-emerald-300',
   slate:  'bg-white/[0.06] text-slate-600 border-white/10 dark:text-slate-300',
+  red:    'bg-rose-500/[0.12] text-rose-700 border-rose-400/25 dark:text-rose-300',
 }
 
 const TIMELINE_DOT: Record<StatusColor, string> = {
@@ -70,10 +53,11 @@ const TIMELINE_DOT: Record<StatusColor, string> = {
   amber:  'bg-amber-500',
   green:  'bg-emerald-500',
   slate:  'bg-slate-400 dark:bg-slate-500',
+  red:    'bg-rose-500',
 }
 
 function StatusBadge({ status }: { status: CourierOrderStatus }) {
-  const color = statusColor(status)
+  const color = courierStatusTone(status)
   return (
     <span
       className={[
@@ -81,7 +65,7 @@ function StatusBadge({ status }: { status: CourierOrderStatus }) {
         COLOR_BADGE[color],
       ].join(' ')}
     >
-      {statusLabel(status)}
+      {courierStatusLabel(status)}
     </span>
   )
 }
@@ -174,7 +158,7 @@ export default function CourierOrderDetail({ orderId }: Props) {
   }
 
   const status = order.order_status
-  const isCOD = order.payment_method === 'ON_DELIVERY'
+  const isCOD = isCollectOnDelivery(order.payment_method)
 
   const showStartShipping = status === 'COURIER_ASSIGNED'
   const showMarkOutForDelivery = status === 'SHIPPED' || status === 'IN_TRANSIT'
@@ -183,11 +167,28 @@ export default function CourierOrderDetail({ orderId }: Props) {
   const showMarkDelivered = status === 'ARRIVED_AT_CUSTOMER' && (!isCOD || order.collection_recorded)
   const showAttemptFailed = status === 'OUT_FOR_DELIVERY'
 
-  const mapsUrl = `https://maps.google.com?q=${encodeURIComponent(order.delivery_address)}`
+  // Con coordenadas el enlace lleva al punto exacto; el texto de la dirección
+  // es un último recurso, porque la nomenclatura colombiana se resuelve mal.
+  const address = order.delivery_address
+  const hasCoords = address?.latitude != null && address?.longitude != null
+  const addressQuery = encodeURIComponent(formatDeliveryAddress(address))
 
-  const sortedHistory = [...order.history].sort(
-    (a, b) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime(),
-  )
+  const mapsUrl = hasCoords
+    ? `https://maps.google.com?q=${address.latitude},${address.longitude}`
+    : `https://maps.google.com?q=${addressQuery}`
+
+  // `waze.com/ul` abre la app si está instalada y cae a la web si no; con
+  // `navigate=yes` arranca la ruta sin un toque extra.
+  const wazeUrl = hasCoords
+    ? `https://waze.com/ul?ll=${address.latitude},${address.longitude}&navigate=yes`
+    : `https://waze.com/ul?q=${addressQuery}&navigate=yes`
+
+  // El historial mezcla dimensiones (order_status, payment_status…); aquí solo
+  // interesa el avance del pedido. `?? []` porque un pedido recién creado puede
+  // no tener entradas todavía.
+  const sortedHistory = [...(order.history ?? [])]
+    .filter((entry) => entry.state_dimension === 'order_status')
+    .sort((a, b) => new Date(b.occurred_at).getTime() - new Date(a.occurred_at).getTime())
 
   return (
     <div className="mx-auto max-w-lg space-y-4 pb-8">
@@ -225,10 +226,12 @@ export default function CourierOrderDetail({ orderId }: Props) {
       <RutaCard>
         <RutaSectionHeader title="Comprador" subtitle="contacto" />
         <div className="mt-2 space-y-2">
+          {/* Encadenado opcional a propósito: el repartidor está en la calle y
+              un campo que falte no puede tumbarle la pantalla entera. */}
           <p className="text-base font-semibold text-slate-900 dark:text-slate-100">
-            {order.buyer.name}
+            {order.buyer?.name ?? 'Sin datos del comprador'}
           </p>
-          {order.buyer.phone && (
+          {order.buyer?.phone && (
             <a
               href={`tel:${order.buyer.phone}`}
               className="flex min-h-[48px] items-center gap-2 rounded-md border border-sky-400/40 bg-sky-500/[0.12] px-4 text-sm font-semibold text-sky-700 dark:border-sky-400/25 dark:text-sky-300"
@@ -243,23 +246,40 @@ export default function CourierOrderDetail({ orderId }: Props) {
       <RutaCard>
         <RutaSectionHeader title="Dirección de entrega" subtitle="destino" />
         <p className="mt-2 text-base text-slate-800 dark:text-slate-200">
-          {order.delivery_address}
+          {formatDeliveryAddress(address)}
         </p>
-        <a
-          href={mapsUrl}
-          target="_blank"
-          rel="noopener noreferrer"
-          className="mt-3 flex min-h-[48px] items-center gap-2 rounded-md border border-violet-400/40 bg-violet-500/[0.12] px-4 text-sm font-semibold text-violet-700 dark:border-violet-400/25 dark:text-violet-300"
-        >
-          🗺 Ver en mapa
-        </a>
+        {address?.instructions && (
+          <p className="mt-1 text-sm text-slate-600 dark:text-slate-400">
+            {address.instructions}
+          </p>
+        )}
+        {/* Dos navegadores: cada repartidor usa el que prefiere, y Waze suele
+            ir mejor con el tráfico de Bogotá. */}
+        <div className="mt-3 flex gap-2">
+          <a
+            href={mapsUrl}
+            target="_blank"
+            rel="noopener noreferrer"
+            className="flex min-h-[48px] flex-1 items-center justify-center gap-2 rounded-md border border-violet-400/40 bg-violet-500/[0.12] px-4 text-sm font-semibold text-violet-700 dark:border-violet-400/25 dark:text-violet-300"
+          >
+            🗺 Google Maps
+          </a>
+          <a
+            href={wazeUrl}
+            target="_blank"
+            rel="noopener noreferrer"
+            className="flex min-h-[48px] flex-1 items-center justify-center gap-2 rounded-md border border-sky-400/40 bg-sky-500/[0.12] px-4 text-sm font-semibold text-sky-700 dark:border-sky-400/25 dark:text-sky-300"
+          >
+            🚗 Waze
+          </a>
+        </div>
       </RutaCard>
 
       {/* Items */}
       <RutaCard>
         <RutaSectionHeader title="Items del pedido" subtitle="resumen" />
         <div className="mt-2 divide-y divide-slate-200/70 dark:divide-white/10">
-          {order.items.map((item) => (
+          {(order.items ?? []).map((item) => (
             <div key={item.id} className="flex items-start justify-between py-2.5">
               <div className="flex-1 pr-4">
                 <p className="text-sm font-medium text-slate-900 dark:text-slate-100">
@@ -294,7 +314,7 @@ export default function CourierOrderDetail({ orderId }: Props) {
           <RutaSectionHeader title="Historial" subtitle="estados" />
           <div className="mt-2">
             {sortedHistory.map((entry, idx) => {
-              const color = statusColor(entry.to_state as CourierOrderStatus)
+              const color = courierStatusTone(entry.new_value as CourierOrderStatus)
               return (
                 <div key={entry.id} className="flex gap-3">
                   <div className="flex flex-col items-center">
@@ -310,13 +330,13 @@ export default function CourierOrderDetail({ orderId }: Props) {
                   </div>
                   <div className="pb-4">
                     <p className="text-sm font-medium text-slate-900 dark:text-slate-100">
-                      {statusLabel(entry.to_state as CourierOrderStatus)}
+                      {courierStatusLabel(entry.new_value as CourierOrderStatus)}
                     </p>
                     <p className="mt-0.5 text-xs text-slate-400 dark:text-slate-500">
                       {new Intl.DateTimeFormat('es-CO', {
                         dateStyle: 'short',
                         timeStyle: 'short',
-                      }).format(new Date(entry.created_at))}
+                      }).format(new Date(entry.occurred_at))}
                     </p>
                   </div>
                 </div>
@@ -325,6 +345,9 @@ export default function CourierOrderDetail({ orderId }: Props) {
           </div>
         </RutaCard>
       )}
+
+      {/* Foto del recibo: la tarjeta se oculta sola si el pedido no tiene cobro. */}
+      <CollectionEvidenceCard orderId={orderId} scope="courier" />
 
       {/* Collection form (COD + ARRIVED_AT_CUSTOMER) */}
       {showCollection && (

@@ -10,9 +10,18 @@ export interface MapOrder {
   latitude: number
   longitude: number
   buyer_id: number
+  /** Null mientras el pedido espera asignación. */
+  courier_user_id: number | null
+  courier_name: string | null
+  courier_phone: string | null
   total: number
   currency: string
   created_at: string
+}
+
+/** Un pedido está asignado cuando ya tiene repartidor encima. */
+export function isAssigned(order: MapOrder): boolean {
+  return order.courier_user_id !== null
 }
 
 export interface AvailableCourier {

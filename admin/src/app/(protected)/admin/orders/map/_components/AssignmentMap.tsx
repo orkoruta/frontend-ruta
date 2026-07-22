@@ -9,7 +9,8 @@
 
 import { useEffect, useRef, useState } from 'react'
 import { DEFAULT_CENTER, ensureGoogleMaps } from '@/lib/google-maps'
-import type { MapOrder } from '@/lib/assignment.api'
+import { isAssigned, type MapOrder } from '@/lib/assignment.api'
+import { MAP_PIN_COLORS } from './map_legend'
 
 interface AssignmentMapProps {
   orders: MapOrder[]
@@ -21,8 +22,18 @@ interface AssignmentMapProps {
 const DEFAULT_ZOOM = 11
 const FOCUS_ZOOM = 15
 
-const ICON_PENDING = '#3730a3' // índigo oscuro — esperando repartidor
-const ICON_SELECTED = '#f59e0b' // ámbar — pedido seleccionado
+/** Color del pin según en qué punto de la operación está el pedido. */
+function pinColor(order: MapOrder, selected: boolean): string {
+  if (selected) return MAP_PIN_COLORS.selected
+  return isAssigned(order) ? MAP_PIN_COLORS.assigned : MAP_PIN_COLORS.pending
+}
+
+/** Tooltip nativo del pin: con el mapa lleno, dice de un vistazo de quién es. */
+function markerTitle(order: MapOrder): string {
+  const where = order.delivery_address_city ?? ''
+  const who = order.courier_name ? `Asignado a ${order.courier_name}` : 'Sin repartidor'
+  return `#${order.id} — ${where}${where ? ' · ' : ''}${who}`
+}
 
 /** Pin SVG del color del estado, para no depender de assets externos. */
 function buildIcon(color: string, selected: boolean): google.maps.Symbol {
@@ -166,7 +177,8 @@ export function AssignmentMap({
       const existing = markers.get(order.id)
 
       if (existing) {
-        existing.setIcon(buildIcon(isSelected ? ICON_SELECTED : ICON_PENDING, isSelected))
+        existing.setIcon(buildIcon(pinColor(order, isSelected), isSelected))
+        existing.setTitle(markerTitle(order))
         existing.setZIndex(isSelected ? 1 : 0)
         continue
       }
@@ -177,8 +189,8 @@ export function AssignmentMap({
           lng: order.longitude as number,
         },
         map,
-        title: `#${order.id} — ${order.delivery_address_city ?? ''}`,
-        icon: buildIcon(isSelected ? ICON_SELECTED : ICON_PENDING, isSelected),
+        title: markerTitle(order),
+        icon: buildIcon(pinColor(order, isSelected), isSelected),
       })
       marker.addListener('click', () => onSelectRef.current(order.id))
       markers.set(order.id, marker)

@@ -26,6 +26,13 @@ import {
   type RefundModality,
 } from '@/lib/refunds.api'
 import { PickupActions } from './_components/PickupActions'
+import { CollectionEvidenceCard } from '@/components/CollectionEvidenceCard'
+import {
+  adminStatusLabel,
+  adminStatusColor,
+  STATUS_BADGE_CLASSES,
+  type StatusColor,
+} from '@/lib/admin_status_labels'
 
 function formatCOP(amount: number) {
   return new Intl.NumberFormat('es-CO', {
@@ -42,127 +49,6 @@ function formatDate(value: string) {
   }).format(new Date(value))
 }
 
-function statusLabel(status: OrderStatus): string {
-  const labels: Partial<Record<OrderStatus, string>> = {
-    DRAFT: 'Borrador',
-    PENDING_CONFIRM: 'Pendiente confirmación',
-    ORDER_SUBMITTED: 'Enviado',
-    EXPIRED: 'Expirado',
-    ORDER_VALIDATING: 'Validando',
-    MANUAL_REVIEW: 'Revisión manual',
-    VALIDATION_APPROVED: 'Validación aprobada',
-    VALIDATION_REJECTED: 'Validación rechazada',
-    SELLER_CONFIRMED: 'Aceptado por vendedor',
-    PREPARING: 'Preparando',
-    AWAITING_COURIER_ASSIGNMENT: 'Sin repartidor',
-    COURIER_ASSIGNED: 'Repartidor asignado',
-    READY_TO_SHIP: 'Listo para despacho',
-    READY_FOR_PICKUP: 'Listo para recogida',
-    SHIPMENT_HOLD: 'Despacho retenido',
-    SHIPPED: 'Despachado',
-    IN_TRANSIT: 'En tránsito',
-    ON_HOLD: 'Tránsito retenido',
-    OUT_FOR_DELIVERY: 'En reparto final',
-    ARRIVED_AT_CUSTOMER: 'Llegó al comprador',
-    DELIVERY_ATTEMPTED: 'Entrega intentada',
-    DELIVERY_RESCHEDULED: 'Entrega reprogramada',
-    LOST_IN_TRANSIT: 'Perdido en tránsito',
-    AT_PICKUP_POINT: 'Disponible en punto físico',
-    CUSTOMER_ARRIVED_AT_PICKUP_POINT: 'Comprador en punto',
-    DELIVERED: 'Entregado',
-    DELIVERY_DISPUTED: 'En disputa',
-    CONFIRMED_BY_CUSTOMER: 'Confirmado por comprador',
-    CONFIRMED_BY_SYSTEM: 'Confirmado por sistema',
-    CANCELLED_BY_CUSTOMER: 'Cancelado (comprador)',
-    CANCELLED_BY_SELLER: 'Cancelado (vendedor)',
-    CANCELLED_BY_SYSTEM: 'Cancelado (sistema)',
-    CANCELLED_BY_ADMIN: 'Cancelado (admin)',
-    CANCELLED_NO_PAYMENT: 'Cancelado sin pago',
-    CUSTOMER_CANCEL_REQUEST: 'Solicitud de cancelación',
-    CANCEL_REQUEST_APPROVED: 'Cancelación aprobada',
-    CANCEL_REQUEST_REJECTED: 'Cancelación rechazada',
-    RETURN_TO_ORIGIN: 'Regresando a origen',
-    RETURN_TO_ORIGIN_RECEIVED: 'Devuelto a origen',
-    LOST_IN_RETURN: 'Perdido en retorno',
-    CLOSED: 'Cerrado',
-    COMPLETED_SUCCESSFULLY: 'Completado',
-  }
-  return labels[status] ?? status
-}
-
-type StatusColor = 'slate' | 'violet' | 'amber' | 'blue' | 'green' | 'red'
-
-function statusColor(status: OrderStatus): StatusColor {
-  if (
-    status === 'DRAFT' ||
-    status === 'PENDING_CONFIRM' ||
-    status === 'EXPIRED' ||
-    status === 'CLOSED'
-  ) return 'slate'
-
-  if (
-    status === 'ORDER_VALIDATING' ||
-    status === 'MANUAL_REVIEW' ||
-    status === 'VALIDATION_APPROVED' ||
-    status === 'SELLER_CONFIRMED'
-  ) return 'violet'
-
-  if (
-    status === 'AWAITING_COURIER_ASSIGNMENT' ||
-    status === 'ON_HOLD' ||
-    status === 'SHIPMENT_HOLD' ||
-    status === 'DELIVERY_ATTEMPTED' ||
-    status === 'DELIVERY_RESCHEDULED' ||
-    status === 'CUSTOMER_CANCEL_REQUEST' ||
-    status === 'CANCEL_REQUEST_APPROVED' ||
-    status === 'CANCEL_REQUEST_REJECTED' ||
-    status === 'IDENTITY_VALIDATED' ||
-    status === 'PICKUP_AUTH_FAILED' ||
-    status === 'PICKUP_POINT_ISSUE' ||
-    status === 'PICKUP_EXPIRED' ||
-    status === 'PICKUP_CANCELLED_BY_CUSTOMER' ||
-    status === 'PAYMENT_COLLECTION_PENDING' ||
-    status === 'CASH_COLLECTION_PENDING' ||
-    status === 'RETURN_TO_ORIGIN'
-  ) return 'amber'
-
-  if (
-    status === 'PREPARING' ||
-    status === 'COURIER_ASSIGNED' ||
-    status === 'READY_TO_SHIP' ||
-    status === 'READY_FOR_PICKUP' ||
-    status === 'SHIPPED' ||
-    status === 'IN_TRANSIT' ||
-    status === 'OUT_FOR_DELIVERY' ||
-    status === 'ARRIVED_AT_CUSTOMER' ||
-    status === 'AT_PICKUP_POINT' ||
-    status === 'CUSTOMER_ARRIVED_AT_PICKUP_POINT' ||
-    status === 'ORDER_SUBMITTED'
-  ) return 'blue'
-
-  if (
-    status === 'DELIVERED' ||
-    status === 'CONFIRMED_BY_CUSTOMER' ||
-    status === 'CONFIRMED_BY_SYSTEM' ||
-    status === 'COMPLETED_SUCCESSFULLY' ||
-    status === 'RETURN_TO_ORIGIN_RECEIVED' ||
-    status === 'PICKED_UP' ||
-    status === 'PAYMENT_COLLECTED_ELECTRONIC' ||
-    status === 'PAYMENT_COLLECTED_CASH'
-  ) return 'green'
-
-  return 'red'
-}
-
-const STATUS_BADGE: Record<StatusColor, string> = {
-  slate:  'bg-white/[0.06] text-slate-600 border-slate-200 dark:border-white/10 dark:text-slate-300',
-  violet: 'bg-violet-500/[0.12] text-violet-700 border-violet-400/25 dark:text-violet-300',
-  amber:  'bg-amber-500/[0.12] text-amber-700 border-amber-400/25 dark:text-amber-300',
-  blue:   'bg-sky-500/[0.12] text-sky-700 border-sky-400/25 dark:text-sky-300',
-  green:  'bg-emerald-500/[0.12] text-emerald-700 border-emerald-400/25 dark:text-emerald-300',
-  red:    'bg-rose-500/[0.12] text-rose-700 border-rose-400/25 dark:text-rose-300',
-}
-
 const TIMELINE_DOT: Record<StatusColor, string> = {
   slate:  'bg-slate-400 dark:bg-slate-500',
   violet: 'bg-violet-500',
@@ -173,21 +59,21 @@ const TIMELINE_DOT: Record<StatusColor, string> = {
 }
 
 function StatusBadge({ status }: { status: OrderStatus }) {
-  const color = statusColor(status)
+  const color = adminStatusColor(status)
   return (
     <span
       className={[
         'inline-flex items-center rounded-md border px-2.5 py-1 text-xs font-semibold',
-        STATUS_BADGE[color],
+        STATUS_BADGE_CLASSES[color],
       ].join(' ')}
     >
-      {statusLabel(status)}
+      {adminStatusLabel(status)}
     </span>
   )
 }
 
 function TimelineEntry({ entry, isLast }: { entry: OrderStateHistoryEntry; isLast: boolean }) {
-  const color = statusColor(entry.new_value as OrderStatus)
+  const color = adminStatusColor(entry.new_value as OrderStatus)
   return (
     <div className="flex gap-3">
       <div className="flex flex-col items-center">
@@ -196,7 +82,7 @@ function TimelineEntry({ entry, isLast }: { entry: OrderStateHistoryEntry; isLas
       </div>
       <div className="pb-4">
         <p className="text-sm font-medium text-slate-900 dark:text-slate-100">
-          {statusLabel(entry.new_value as OrderStatus)}
+          {adminStatusLabel(entry.new_value as OrderStatus)}
         </p>
         {entry.reason && (
           <p className="text-xs text-slate-500 dark:text-slate-400">{entry.reason}</p>
@@ -518,6 +404,9 @@ export default function OrderDetailClient({ orderId }: OrderDetailClientProps) {
               </dl>
             </RutaCard>
           )}
+
+          {/* Foto del recibo: se oculta sola si el pedido no tuvo cobro COD. */}
+          <CollectionEvidenceCard orderId={order.id} scope="admin" />
 
           {/* Timeline */}
           <RutaCard>
@@ -932,7 +821,12 @@ export default function OrderDetailClient({ orderId }: OrderDetailClientProps) {
           {order.delivery_type === 'PICKUP' && order.order_status === 'READY_FOR_PICKUP' && (
             <PickupActions
               orderId={order.id}
-              isCod={order.payment?.method === 'ON_DELIVERY'}
+              // Contra entrega abarca efectivo y electrónico; 'ON_DELIVERY' a
+              // secas no es un valor que el backend emita nunca.
+              isCod={
+                order.payment?.method === 'CASH_ON_DELIVERY' ||
+                order.payment?.method === 'ELECTRONIC_ON_DELIVERY'
+              }
               onActionComplete={() => { void refetch() }}
             />
           )}

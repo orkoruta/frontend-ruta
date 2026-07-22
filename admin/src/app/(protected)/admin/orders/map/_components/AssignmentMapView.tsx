@@ -28,11 +28,8 @@ export function AssignmentMapView() {
   const [couriers, setCouriers] = useState<AvailableCourier[]>([])
   const [loadingCouriers, setLoadingCouriers] = useState(false)
 
-  // Modal state
-  const [pendingAssignment, setPendingAssignment] = useState<{
-    order: MapOrder
-    courier: AvailableCourier
-  } | null>(null)
+  // Pedido cuyo modal de asignación está abierto.
+  const [assigningOrder, setAssigningOrder] = useState<MapOrder | null>(null)
 
   // Toast feedback
   const [toast, setToast] = useState<{ kind: 'success' | 'error'; message: string } | null>(null)
@@ -49,7 +46,7 @@ export function AssignmentMapView() {
     if (selectedOrderId === null) return
     // Con el modal abierto la selección debe mantenerse: el clic pertenece a la
     // confirmación en curso, no a un intento de salir de la selección.
-    if (pendingAssignment) return
+    if (assigningOrder) return
 
     function handlePointerDown(event: MouseEvent) {
       const target = event.target as Node
@@ -64,7 +61,7 @@ export function AssignmentMapView() {
 
     document.addEventListener('mousedown', handlePointerDown)
     return () => document.removeEventListener('mousedown', handlePointerDown)
-  }, [selectedOrderId, pendingAssignment])
+  }, [selectedOrderId, assigningOrder])
 
   // ── Permission check ──────────────────────────────────────────────────────
   const isAllowed =
@@ -93,9 +90,12 @@ export function AssignmentMapView() {
     return () => clearInterval(interval)
   }, [loadOrders])
 
-  // ── Load couriers when order is selected ─────────────────────────────────
+  // ── Repartidores: solo se piden al abrir el modal ────────────────────────
+  // Antes se cargaban al seleccionar un pedido, aunque el operador solo
+  // estuviera mirando el mapa; ahora la lista se pide cuando de verdad se va a
+  // usar, y así llega recién consultada al momento de decidir.
   useEffect(() => {
-    if (selectedOrderId === null) {
+    if (!assigningOrder) {
       setCouriers([])
       return
     }
@@ -103,7 +103,7 @@ export function AssignmentMapView() {
     let active = true
     setLoadingCouriers(true)
 
-    getAvailableCouriers(selectedOrderId)
+    getAvailableCouriers(assigningOrder.id)
       .then((data) => {
         if (!active) return
         setCouriers(data)
@@ -119,7 +119,7 @@ export function AssignmentMapView() {
     return () => {
       active = false
     }
-  }, [selectedOrderId])
+  }, [assigningOrder])
 
   // ── Toast helper ─────────────────────────────────────────────────────────
   function showToast(kind: 'success' | 'error', message: string) {
@@ -135,26 +135,29 @@ export function AssignmentMapView() {
     if (order) setFocusOrder(order)
   }
 
-  // ── Request assignment confirmation ──────────────────────────────────────
-  function handleRequestAssign(order: MapOrder, courier: AvailableCourier) {
-    setPendingAssignment({ order, courier })
+  // ── Abrir el modal de asignación de un pedido ────────────────────────────
+  function handleRequestAssign(order: MapOrder) {
+    // Se selecciona también en el mapa: al abrir el modal el operador ve en el
+    // pin de qué pedido se trata.
+    handleSelectOrder(order.id)
+    setAssigningOrder(order)
   }
 
   // ── Confirm assignment ────────────────────────────────────────────────────
-  async function handleConfirmAssign() {
-    if (!pendingAssignment) return
+  async function handleConfirmAssign(courier: AvailableCourier) {
+    if (!assigningOrder) return
 
-    await assignCourier(pendingAssignment.order.id, pendingAssignment.courier.id)
-    setPendingAssignment(null)
+    await assignCourier(assigningOrder.id, courier.id)
+    setAssigningOrder(null)
     setSelectedOrderId(null)
     setCouriers([])
-    showToast('success', `Repartidor ${pendingAssignment.courier.full_name} asignado correctamente.`)
+    showToast('success', `Repartidor ${courier.full_name} asignado correctamente.`)
     void loadOrders()
   }
 
   // ── Cancel modal ─────────────────────────────────────────────────────────
   function handleCancelModal() {
-    setPendingAssignment(null)
+    setAssigningOrder(null)
   }
 
   if (!isAllowed) {
@@ -234,8 +237,6 @@ export function AssignmentMapView() {
           <PendingOrdersPanel
             orders={orders}
             selectedOrderId={selectedOrderId}
-            couriers={couriers}
-            loadingCouriers={loadingCouriers}
             onSelectOrder={handleSelectOrder}
             onRequestAssign={handleRequestAssign}
           />
@@ -243,10 +244,11 @@ export function AssignmentMapView() {
       </div>
 
       {/* Assignment modal */}
-      {pendingAssignment && (
+      {assigningOrder && (
         <AssignmentModal
-          order={pendingAssignment.order}
-          courier={pendingAssignment.courier}
+          order={assigningOrder}
+          couriers={couriers}
+          loadingCouriers={loadingCouriers}
           onConfirm={handleConfirmAssign}
           onCancel={handleCancelModal}
         />

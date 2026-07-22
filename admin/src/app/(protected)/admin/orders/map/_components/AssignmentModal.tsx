@@ -1,13 +1,22 @@
 'use client'
 
+/**
+ * Modal de asignación: se elige el repartidor y se confirma en un solo paso.
+ *
+ * La lista de repartidores vive aquí y no en el panel lateral porque asignar es
+ * una acción puntual sobre un pedido concreto; tenerla siempre desplegada al
+ * lado obligaba a seleccionar un pedido antes de entender qué hacía esa lista.
+ */
+
 import { useState } from 'react'
 import { RutaButton } from '@orkoruta/ui'
 import type { AvailableCourier, MapOrder, ApiError } from '@/lib/assignment.api'
 
 interface AssignmentModalProps {
   order: MapOrder
-  courier: AvailableCourier
-  onConfirm: () => Promise<void>
+  couriers: AvailableCourier[]
+  loadingCouriers: boolean
+  onConfirm: (courier: AvailableCourier) => Promise<void>
   onCancel: () => void
 }
 
@@ -21,18 +30,23 @@ function formatCOP(amount: number) {
 
 export function AssignmentModal({
   order,
-  courier,
+  couriers,
+  loadingCouriers,
   onConfirm,
   onCancel,
 }: AssignmentModalProps) {
+  const [selectedCourierId, setSelectedCourierId] = useState<number | null>(null)
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState<string | null>(null)
 
+  const selectedCourier = couriers.find((c) => c.id === selectedCourierId) ?? null
+
   async function handleConfirm() {
+    if (!selectedCourier) return
     setLoading(true)
     setError(null)
     try {
-      await onConfirm()
+      await onConfirm(selectedCourier)
     } catch (err) {
       const apiErr = err as ApiError
       setError(apiErr.message ?? 'No pudimos completar la asignación.')
@@ -57,31 +71,25 @@ export function AssignmentModal({
       />
 
       {/* Panel */}
-      <div className="relative z-10 w-full max-w-md rounded-lg border border-slate-200/90 bg-white/[0.76] shadow-xl backdrop-blur-sm dark:border-white/10 dark:bg-[#1d2025]/[0.92]">
+      <div className="relative z-10 flex max-h-[85vh] w-full max-w-md flex-col rounded-lg border border-slate-200/90 bg-white/[0.76] shadow-xl backdrop-blur-sm dark:border-white/10 dark:bg-[#1d2025]/[0.92]">
         {/* Header */}
         <div className="border-b border-slate-200/90 px-6 py-4 dark:border-white/10">
           <p className="text-[11px] font-bold uppercase tracking-[0.24em] text-slate-500 dark:text-slate-400">
-            confirmar asignación
+            asignar repartidor
           </p>
           <h2
             id="modal-title"
             className="mt-1 text-lg font-bold tracking-tight text-slate-900 dark:text-slate-100"
           >
-            Asignar repartidor
+            Pedido #{order.id}
           </h2>
         </div>
 
         {/* Body */}
-        <div className="space-y-4 px-6 py-4">
+        <div className="min-h-0 flex-1 space-y-4 overflow-y-auto px-6 py-4">
           {/* Order info */}
           <div className="rounded-md border border-slate-200/90 bg-slate-50/[0.6] p-3 dark:border-white/10 dark:bg-white/[0.04]">
-            <p className="text-[11px] font-bold uppercase tracking-[0.18em] text-slate-500 dark:text-slate-400">
-              Pedido
-            </p>
-            <p className="mt-1 font-mono text-xs text-slate-500 dark:text-slate-400">
-              #{order.id}
-            </p>
-            <p className="mt-0.5 text-sm font-medium text-slate-900 dark:text-slate-100">
+            <p className="text-sm font-medium text-slate-900 dark:text-slate-100">
               {order.delivery_address_line}
             </p>
             <p className="text-xs text-slate-500 dark:text-slate-400">
@@ -89,21 +97,58 @@ export function AssignmentModal({
             </p>
           </div>
 
-          {/* Courier info */}
-          <div className="rounded-md border border-slate-200/90 bg-slate-50/[0.6] p-3 dark:border-white/10 dark:bg-white/[0.04]">
-            <p className="text-[11px] font-bold uppercase tracking-[0.18em] text-slate-500 dark:text-slate-400">
-              Repartidor
+          {/* Courier picker */}
+          <div>
+            <p className="mb-2 text-[11px] font-bold uppercase tracking-[0.18em] text-slate-500 dark:text-slate-400">
+              Repartidores disponibles
             </p>
-            <p className="mt-1 text-sm font-medium text-slate-900 dark:text-slate-100">
-              {courier.full_name}
-            </p>
-            {courier.phone && (
-              <p className="text-xs text-slate-500 dark:text-slate-400">{courier.phone}</p>
+
+            {loadingCouriers ? (
+              <p className="text-sm text-slate-500 dark:text-slate-400">
+                Cargando repartidores…
+              </p>
+            ) : couriers.length === 0 ? (
+              <p className="text-sm text-slate-500 dark:text-slate-400">
+                No hay repartidores disponibles en este momento. Todos están en su
+                máximo de pedidos simultáneos o inactivos.
+              </p>
+            ) : (
+              <ul className="flex flex-col gap-2">
+                {couriers.map((courier) => {
+                  const isPicked = courier.id === selectedCourierId
+                  return (
+                    <li key={courier.id}>
+                      <button
+                        type="button"
+                        disabled={loading}
+                        aria-pressed={isPicked}
+                        onClick={() => setSelectedCourierId(courier.id)}
+                        className={[
+                          'w-full rounded-md border px-3 py-2.5 text-left transition-colors',
+                          isPicked
+                            ? 'border-sky-400/60 bg-sky-500/[0.12]'
+                            : 'border-slate-200/90 hover:bg-slate-50/[0.6] dark:border-white/10 dark:hover:bg-white/[0.04]',
+                        ].join(' ')}
+                      >
+                        <p className="truncate text-sm font-medium text-slate-900 dark:text-slate-100">
+                          {courier.full_name}
+                        </p>
+                        {courier.phone && (
+                          <p className="text-xs text-slate-500 dark:text-slate-400">
+                            {courier.phone}
+                          </p>
+                        )}
+                        <p className="mt-0.5 text-xs text-slate-500 dark:text-slate-400">
+                          {courier.active_orders} de {courier.max_concurrent_orders} pedidos
+                          en curso
+                          {courier.remaining_capacity === 1 && ' · último cupo'}
+                        </p>
+                      </button>
+                    </li>
+                  )
+                })}
+              </ul>
             )}
-            <p className="mt-1 text-xs text-slate-500 dark:text-slate-400">
-              {courier.active_orders} de {courier.max_concurrent_orders} pedidos en curso
-              {courier.remaining_capacity === 1 && ' · último cupo'}
-            </p>
           </div>
 
           {error && (
@@ -118,21 +163,20 @@ export function AssignmentModal({
 
         {/* Footer */}
         <div className="flex justify-end gap-2 border-t border-slate-200/90 px-6 py-4 dark:border-white/10">
-          <RutaButton
-            type="button"
-            variant="neutral"
-            disabled={loading}
-            onClick={onCancel}
-          >
+          <RutaButton type="button" variant="neutral" disabled={loading} onClick={onCancel}>
             Cancelar
           </RutaButton>
           <RutaButton
             type="button"
             variant="primary"
-            disabled={loading}
+            disabled={loading || !selectedCourier}
             onClick={() => void handleConfirm()}
           >
-            {loading ? 'Asignando…' : 'Confirmar asignación'}
+            {loading
+              ? 'Asignando…'
+              : selectedCourier
+                ? `Asignar a ${selectedCourier.full_name}`
+                : 'Asignar'}
           </RutaButton>
         </div>
       </div>

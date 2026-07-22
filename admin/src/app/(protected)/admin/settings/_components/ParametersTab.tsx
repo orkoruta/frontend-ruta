@@ -17,10 +17,21 @@ interface RowState {
   errorMsg: string | null
 }
 
+/**
+ * El backend no envía `group`; el grupo es el prefijo de la clave
+ * (`limits.max_couriers_per_client` → `limits`). Sin esto todo caía en un solo
+ * bloque "General".
+ */
+function paramGroup(p: Parameter): string {
+  if (p.group) return p.group
+  const [prefix, ...rest] = p.parameter_key.split('.')
+  return rest.length > 0 && prefix ? prefix : 'general'
+}
+
 function groupParams(params: Parameter[]): Map<string, Parameter[]> {
   const map = new Map<string, Parameter[]>()
   for (const p of params) {
-    const group = p.group || 'general'
+    const group = paramGroup(p)
     const existing = map.get(group)
     if (existing) {
       existing.push(p)
