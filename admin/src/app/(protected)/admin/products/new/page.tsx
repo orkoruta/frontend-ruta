@@ -56,7 +56,7 @@ export default function NewProductPage() {
 
   useEffect(() => {
     listCategories()
-      .then((response) => setCategories(response.items))
+      .then((response) => setCategories(response.data))
       .catch((err) => {
         const apiErr = err as ApiError
         setError(apiErr.message ?? 'No pudimos cargar las categorías.')

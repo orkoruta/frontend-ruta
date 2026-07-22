@@ -2,7 +2,6 @@
 
 import { useContext } from 'react'
 import { useRouter } from 'next/navigation'
-import { RutaThemeToggle } from '@orkoruta/ui'
 import { SessionContext } from '@/lib/session-context'
 import { SESSION_KEY } from '@/lib/session'
 import { logout } from '@/lib/auth.api'
@@ -95,7 +94,6 @@ export function RutaHeader({ onToggleSidebar }: RutaHeaderProps) {
 
         {/* Right: theme toggle + user menu */}
         <div className="flex items-center gap-2">
-          <RutaThemeToggle />
 
           <div className="flex items-center gap-2 ml-2">
             <span className="hidden sm:block text-xs text-slate-500 dark:text-slate-400">

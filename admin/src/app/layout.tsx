@@ -8,15 +8,9 @@ export const metadata: Metadata = {
 
 export default function RootLayout({ children }: { children: React.ReactNode }) {
   return (
-    <html lang="es" suppressHydrationWarning>
-      <head>
-        {/* Prevent FOUC: apply saved theme class before first paint */}
-        <script
-          dangerouslySetInnerHTML={{
-            __html: `(function(){try{var t=localStorage.getItem('ruta-theme');if(t==='dark')document.documentElement.classList.add('dark')}catch(e){}})()`,
-          }}
-        />
-      </head>
+    // El tema lo resuelve el navegador con prefers-color-scheme (Tailwind en
+    // modo 'media'), así que no hace falta script anti-FOUC ni clase en <html>.
+    <html lang="es">
       <body className="bg-[#f3f4f6] dark:bg-[#111214] text-slate-950 dark:text-slate-100 font-sans antialiased">
         {children}
       </body>

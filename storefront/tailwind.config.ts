@@ -1,10 +1,11 @@
 import type { Config } from 'tailwindcss'
 
 const config: Config = {
-  darkMode: 'class',
+  // 'media': el tema sigue la preferencia del sistema operativo del usuario.
+  darkMode: 'media',
   content: [
     './src/**/*.{js,ts,jsx,tsx,mdx}',
-    '../../packages/ui/src/**/*.{js,ts,jsx,tsx}',
+    '../packages/ui/src/**/*.{js,ts,jsx,tsx}',
   ],
   theme: {
     extend: {

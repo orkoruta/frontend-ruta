@@ -52,8 +52,8 @@ export default function ProductsPage() {
         }),
         listCategories(),
       ])
-      setProducts(productResponse.items)
-      setCategories(categoryResponse.items)
+      setProducts(productResponse.data)
+      setCategories(categoryResponse.data)
     } catch (err) {
       const apiErr = err as ApiError
       setError(apiErr.message ?? 'No pudimos cargar los productos.')

@@ -3,7 +3,8 @@
 import { useEffect, useState, type FormEvent } from 'react'
 import { RutaButton, RutaCard, RutaSectionHeader } from '@orkoruta/ui'
 import { listProducts, type Product } from '@/lib/products.api'
-import { listBuyers, type Buyer } from '@/lib/users.api'
+import { listBuyers, listPickupPoints, type Buyer, type PickupPoint } from '@/lib/users.api'
+import DeliveryTargetFields, { type CorporateDeliveryAddress } from './DeliveryTargetFields'
 import {
   createCorporateOrder,
   createCorporateOrderRecurring,
@@ -75,6 +76,15 @@ export default function CorporateOrderForm({ onSuccess }: Props) {
   const [contactEmail, setContactEmail] = useState('')
   const [contactPhone, setContactPhone] = useState('')
   const [deliveryType, setDeliveryType] = useState<DeliveryType>('SHIP')
+  const [pickupPoints, setPickupPoints] = useState<PickupPoint[]>([])
+  const [pickupPointId, setPickupPointId] = useState<number | ''>('')
+  const [address, setAddress] = useState<CorporateDeliveryAddress>({
+    line: '',
+    city: '',
+    state: '',
+    latitude: null,
+    longitude: null,
+  })
   const [paymentMethod, setPaymentMethod] = useState<PaymentMethod>('CASH_ON_DELIVERY')
   const [paymentSubmethod, setPaymentSubmethod] = useState<PaymentSubmethod | ''>('')
   const [notes, setNotes] = useState('')
@@ -92,15 +102,19 @@ export default function CorporateOrderForm({ onSuccess }: Props) {
     let active = true
     async function load() {
       try {
-        const [buyersRes, productsRes] = await Promise.all([
-          listBuyers({ page_size: 200 }),
-          listProducts({ status: 'ACTIVE', page_size: 200 }),
+        const [buyersRes, productsRes, pickupRes] = await Promise.all([
+          listBuyers({ page_size: 100 }),
+          listProducts({ status: 'ACTIVE', page_size: 100 }),
+          listPickupPoints({ status: 'ACTIVE', page_size: 100 }),
         ])
         if (!active) return
         setBuyers(buyersRes.data ?? [])
-        setProducts((productsRes as { items: Product[] }).items ?? [])
-      } catch {
-        // no-op: form still usable with empty lists
+        setProducts((productsRes as { data: Product[] }).data ?? [])
+        setPickupPoints(pickupRes.data ?? [])
+      } catch (err) {
+        if (!active) return
+        const apiErr = err as ApiError
+        setError(apiErr.message ?? 'No pudimos cargar compradores y productos.')
       } finally {
         if (active) setLoadingCatalog(false)
       }
@@ -148,6 +162,20 @@ export default function CorporateOrderForm({ onSuccess }: Props) {
       setError('Todos los ítems deben tener un producto y cantidad válida.')
       return
     }
+    if (mode !== 'repeat-last' && deliveryType === 'SHIP') {
+      if (!address.line.trim() || !address.city.trim() || !address.state.trim()) {
+        setError('Completa la dirección de entrega.')
+        return
+      }
+      if (address.latitude === null || address.longitude === null) {
+        setError('Marca la ubicación en el mapa: sin coordenadas el pedido no llega al mapa de asignación.')
+        return
+      }
+    }
+    if (mode !== 'repeat-last' && deliveryType === 'PICKUP' && !pickupPointId) {
+      setError('Selecciona el punto de recogida.')
+      return
+    }
 
     setSubmitting(true)
     try {
@@ -167,6 +195,20 @@ export default function CorporateOrderForm({ onSuccess }: Props) {
         },
         items: items.map((it) => ({ product_id: it.product_id, quantity: it.quantity })),
         delivery_type: deliveryType,
+        ...(deliveryType === 'SHIP'
+          ? {
+              delivery_address: {
+                line: address.line.trim(),
+                city: address.city.trim(),
+                state: address.state.trim(),
+                country: 'CO',
+                postal_code: address.postal_code?.trim() || undefined,
+                latitude: address.latitude as number,
+                longitude: address.longitude as number,
+                instructions: address.instructions?.trim() || undefined,
+              },
+            }
+          : { pickup_point_id: Number(pickupPointId) }),
         payment_method: paymentMethod,
         payment_method_submethod: (paymentSubmethod || undefined) as PaymentSubmethod | undefined,
         notes: notes.trim() || undefined,
@@ -392,6 +434,17 @@ export default function CorporateOrderForm({ onSuccess }: Props) {
                   </option>
                 ))}
               </select>
+            </div>
+            <div className="sm:col-span-2">
+              <DeliveryTargetFields
+                deliveryType={deliveryType}
+                address={address}
+                pickupPoints={pickupPoints}
+                pickupPointId={pickupPointId}
+                disabled={submitting}
+                onAddressChange={setAddress}
+                onPickupPointChange={setPickupPointId}
+              />
             </div>
             <div>
               <label className="mb-1 block text-xs font-medium text-slate-600 dark:text-slate-400">

@@ -41,6 +41,31 @@ export function AssignmentMapView() {
   // ── Map pan callback ───────────────────────────────────────────────────────
   const [focusOrder, setFocusOrder] = useState<MapOrder | null>(null)
 
+  // ── Deselección al hacer clic fuera ───────────────────────────────────────
+  const mapAreaRef = useRef<HTMLDivElement | null>(null)
+  const panelRef = useRef<HTMLDivElement | null>(null)
+
+  useEffect(() => {
+    if (selectedOrderId === null) return
+    // Con el modal abierto la selección debe mantenerse: el clic pertenece a la
+    // confirmación en curso, no a un intento de salir de la selección.
+    if (pendingAssignment) return
+
+    function handlePointerDown(event: MouseEvent) {
+      const target = event.target as Node
+      // El panel también es zona de trabajo: desde ahí se eligen pedidos, así
+      // que un clic suyo no puede deshacer lo que acaba de seleccionar.
+      if (mapAreaRef.current?.contains(target)) return
+      if (panelRef.current?.contains(target)) return
+
+      setSelectedOrderId(null)
+      setFocusOrder(null)
+    }
+
+    document.addEventListener('mousedown', handlePointerDown)
+    return () => document.removeEventListener('mousedown', handlePointerDown)
+  }, [selectedOrderId, pendingAssignment])
+
   // ── Permission check ──────────────────────────────────────────────────────
   const isAllowed =
     session?.user_type === 'ADMIN_RUTA' ||
@@ -184,7 +209,12 @@ export function AssignmentMapView() {
       {/* Main content: map + panel */}
       <div className="flex min-h-0 flex-1 gap-4 overflow-hidden">
         {/* Map */}
-        <div className="min-h-[400px] flex-1 overflow-hidden rounded-lg border border-slate-200/90 dark:border-white/10">
+        {/* `isolate` confina los z-index internos del mapa a este contenedor;
+            si no, sus controles pueden pintarse sobre cualquier modal. */}
+        <div
+          ref={mapAreaRef}
+          className="isolate min-h-[400px] flex-1 overflow-hidden rounded-lg border border-slate-200/90 dark:border-white/10"
+        >
           {loadingOrders ? (
             <div className="flex h-full items-center justify-center bg-slate-100 dark:bg-[#1d2025]">
               <p className="text-sm text-slate-500 dark:text-slate-400">Cargando mapa…</p>
@@ -200,7 +230,7 @@ export function AssignmentMapView() {
         </div>
 
         {/* Side panel */}
-        <div className="w-80 shrink-0 overflow-y-auto lg:w-96">
+        <div ref={panelRef} className="w-80 shrink-0 overflow-y-auto lg:w-96">
           <PendingOrdersPanel
             orders={orders}
             selectedOrderId={selectedOrderId}

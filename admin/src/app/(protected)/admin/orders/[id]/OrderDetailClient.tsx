@@ -7,6 +7,7 @@ import { SessionContext } from '@/lib/session-context'
 import {
   getOrder,
   acceptOrder,
+  confirmCorporateOrder,
   rejectOrder,
   markPreparing,
   markReady,
@@ -15,6 +16,7 @@ import {
   rejectCancelRequest,
   type ApiError,
   type OrderDetail,
+  type DeliveryCarrierType,
   type OrderStatus,
   type OrderStateHistoryEntry,
   type RefundOrderStatus,
@@ -185,7 +187,7 @@ function StatusBadge({ status }: { status: OrderStatus }) {
 }
 
 function TimelineEntry({ entry, isLast }: { entry: OrderStateHistoryEntry; isLast: boolean }) {
-  const color = statusColor(entry.to_state as OrderStatus)
+  const color = statusColor(entry.new_value as OrderStatus)
   return (
     <div className="flex gap-3">
       <div className="flex flex-col items-center">
@@ -194,31 +196,34 @@ function TimelineEntry({ entry, isLast }: { entry: OrderStateHistoryEntry; isLas
       </div>
       <div className="pb-4">
         <p className="text-sm font-medium text-slate-900 dark:text-slate-100">
-          {statusLabel(entry.to_state as OrderStatus)}
+          {statusLabel(entry.new_value as OrderStatus)}
         </p>
         {entry.reason && (
           <p className="text-xs text-slate-500 dark:text-slate-400">{entry.reason}</p>
         )}
         <p className="mt-0.5 text-xs text-slate-400 dark:text-slate-500">
-          {formatDate(entry.created_at)}
-          {entry.actor_role && ` · ${entry.actor_role}`}
+          {formatDate(entry.occurred_at)}
+          {entry.actor_type && ` · ${entry.actor_type}`}
         </p>
       </div>
     </div>
   )
 }
 
+// Estados desde los que el state machine admite CANCELLED_BY_ADMIN, sea directo
+// o pasando por una retención (SHIPMENT_HOLD en SHIP, PICKUP_POINT_ISSUE en
+// PICKUP). Fuera de esta lista el backend responde 422, así que el botón no
+// debe ofrecerse.
 const CANCELLABLE_STATUSES: OrderStatus[] = [
-  'ORDER_SUBMITTED',
-  'ORDER_VALIDATING',
   'MANUAL_REVIEW',
-  'VALIDATION_APPROVED',
-  'SELLER_CONFIRMED',
   'PREPARING',
   'AWAITING_COURIER_ASSIGNMENT',
-  'COURIER_ASSIGNED',
   'READY_TO_SHIP',
   'READY_FOR_PICKUP',
+  'SHIPMENT_HOLD',
+  'ON_HOLD',
+  'PICKUP_POINT_ISSUE',
+  'CUSTOMER_CANCEL_REQUEST',
 ]
 
 interface OrderDetailClientProps {
@@ -234,6 +239,9 @@ export default function OrderDetailClient({ orderId }: OrderDetailClientProps) {
   const [success, setSuccess] = useState<string | null>(null)
 
   // Estado del formulario de iniciar reembolso
+  // Solo aplica a SHIP: decide si el pedido va a asignación de repartidor
+  // (flota propia) o directo a despacho (mensajería externa).
+  const [carrierType, setCarrierType] = useState<DeliveryCarrierType>('OWN_FLEET')
   const [showRefundForm, setShowRefundForm] = useState(false)
   const [refundAmount, setRefundAmount] = useState('')
   const [refundModality, setRefundModality] = useState<RefundModality>('STORE_CREDIT')
@@ -358,6 +366,10 @@ export default function OrderDetailClient({ orderId }: OrderDetailClientProps) {
   const status = order.order_status
   // Flujo 1 actions are hidden for API orders (LOGISTICS_ONLY_FEATURE_UNAVAILABLE)
   const showAcceptReject = !isApiOrder && status === 'VALIDATION_APPROVED'
+  // Flujo 6: un DRAFT corporativo lo confirma el Cliente; el comprador
+  // corporativo no usa la tienda y el pedido expiraría en 24 h.
+  const showConfirmCorporate =
+    !isApiOrder && status === 'DRAFT' && order.buyer_type === 'CORPORATE'
   const showMarkPreparing = status === 'SELLER_CONFIRMED'
   const showMarkReady = status === 'PREPARING'
   const showGoToMap = status === 'AWAITING_COURIER_ASSIGNMENT'
@@ -369,9 +381,11 @@ export default function OrderDetailClient({ orderId }: OrderDetailClientProps) {
   // Refund initiation is a Flujo 1 feature — hide for API orders
   const showInitiateRefundButton = !isApiOrder && refundStatus === 'REFUND_PENDING' && !showRefundForm
 
-  const sortedHistory = [...(order.history ?? [])].sort(
-    (a, b) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime(),
-  )
+  // El historial mezcla dimensiones (order_status, payment_status, refund_status…).
+  // Esta línea de tiempo es la del pedido; las demás tienen su propia pantalla.
+  const sortedHistory = [...(order.history ?? [])]
+    .filter((entry) => entry.state_dimension === 'order_status')
+    .sort((a, b) => new Date(b.occurred_at).getTime() - new Date(a.occurred_at).getTime())
 
   return (
     <div className="mx-auto flex max-w-6xl flex-col gap-5">
@@ -621,6 +635,22 @@ export default function OrderDetailClient({ orderId }: OrderDetailClientProps) {
           <RutaCard>
             <RutaSectionHeader title="Acciones" subtitle="gestión del pedido" />
             <div className="mt-3 flex flex-col gap-2">
+              {showConfirmCorporate && (
+                <RutaButton
+                  type="button"
+                  variant="success"
+                  disabled={acting}
+                  onClick={() =>
+                    void runAction(
+                      () => confirmCorporateOrder(orderId),
+                      'Pedido corporativo enviado.',
+                    )
+                  }
+                >
+                  Confirmar y enviar pedido
+                </RutaButton>
+              )}
+
               {showAcceptReject && (
                 <>
                   <RutaButton
@@ -660,23 +690,58 @@ export default function OrderDetailClient({ orderId }: OrderDetailClientProps) {
               )}
 
               {showMarkReady && (
-                <RutaButton
-                  type="button"
-                  variant="primary"
-                  disabled={acting}
-                  onClick={() =>
-                    void runAction(
-                      () => markReady(orderId),
-                      order.delivery_type === 'SHIP'
-                        ? 'Listo para despacho.'
-                        : 'Listo para recogida.',
-                    )
-                  }
-                >
-                  {order.delivery_type === 'SHIP'
-                    ? 'Marcar listo para despacho'
-                    : 'Marcar listo para recogida'}
-                </RutaButton>
+                <>
+                  {order.delivery_type === 'SHIP' && (
+                    <div className="flex flex-col gap-1.5">
+                      <label
+                        htmlFor="carrier-type"
+                        className="text-xs font-medium text-slate-700 dark:text-slate-300"
+                      >
+                        Transportador
+                      </label>
+                      <select
+                        id="carrier-type"
+                        value={carrierType}
+                        disabled={acting}
+                        onChange={(e) =>
+                          setCarrierType(e.target.value as DeliveryCarrierType)
+                        }
+                        className="rounded-md border border-slate-200 bg-white/[0.85] px-3 py-2 text-sm text-slate-900 focus:outline-none focus:ring-2 focus:ring-sky-400/40 dark:border-white/10 dark:bg-[#1d2025] dark:text-slate-100"
+                      >
+                        <option value="OWN_FLEET">Flota propia (asignar repartidor)</option>
+                        <option value="EXTERNAL_COURIER">Mensajería externa</option>
+                      </select>
+                      <p className="text-xs text-slate-500 dark:text-slate-400">
+                        {carrierType === 'OWN_FLEET'
+                          ? 'El pedido pasará al mapa de asignación.'
+                          : 'El pedido queda listo para despacho, sin asignar repartidor.'}
+                      </p>
+                    </div>
+                  )}
+                  <RutaButton
+                    type="button"
+                    variant="primary"
+                    disabled={acting}
+                    onClick={() =>
+                      void runAction(
+                        () =>
+                          markReady(
+                            orderId,
+                            order.delivery_type === 'SHIP' ? carrierType : undefined,
+                          ),
+                        order.delivery_type !== 'SHIP'
+                          ? 'Listo para recogida.'
+                          : carrierType === 'OWN_FLEET'
+                            ? 'Listo. Asigna un repartidor en el mapa.'
+                            : 'Listo para despacho.',
+                      )
+                    }
+                  >
+                    {order.delivery_type === 'SHIP'
+                      ? 'Marcar listo para despacho'
+                      : 'Marcar listo para recogida'}
+                  </RutaButton>
+                </>
               )}
 
               {showGoToMap && (
@@ -817,7 +882,8 @@ export default function OrderDetailClient({ orderId }: OrderDetailClientProps) {
                 </div>
               )}
 
-              {!showAcceptReject &&
+              {!showConfirmCorporate &&
+                !showAcceptReject &&
                 !showMarkPreparing &&
                 !showMarkReady &&
                 !showGoToMap &&

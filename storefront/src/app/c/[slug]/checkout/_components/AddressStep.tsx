@@ -2,38 +2,8 @@
 
 import { useEffect, useMemo, useRef } from 'react'
 import { RutaCard, RutaPill, RutaSectionHeader } from '@orkoruta/ui'
+import { DEFAULT_CENTER, ensureGoogleMaps } from '@/lib/google-maps'
 import type { DeliveryAddress, DeliveryType, PickupPoint } from './CheckoutStepper'
-
-declare global {
-  interface Window {
-    L?: {
-      map: (element: HTMLElement) => LeafletMap
-      tileLayer: (url: string, options: Record<string, unknown>) => LeafletLayer
-      marker: (
-        latLng: [number, number],
-        options?: Record<string, unknown>,
-      ) => LeafletMarker
-      icon: (options: Record<string, unknown>) => unknown
-    }
-  }
-}
-
-interface LeafletMap {
-  setView: (latLng: [number, number], zoom: number) => LeafletMap
-  on: (event: string, callback: (event: { latlng: { lat: number; lng: number } }) => void) => void
-  invalidateSize: () => void
-  remove: () => void
-}
-
-interface LeafletLayer {
-  addTo: (map: LeafletMap) => LeafletLayer
-}
-
-interface LeafletMarker {
-  addTo: (map: LeafletMap) => LeafletMarker
-  bindPopup: (content: string) => LeafletMarker
-  setLatLng: (latLng: [number, number]) => LeafletMarker
-}
 
 interface AddressStepProps {
   deliveryType: DeliveryType
@@ -44,37 +14,6 @@ interface AddressStepProps {
   onPickupPointChange: (value: number) => void
 }
 
-const DEFAULT_POSITION: [number, number] = [4.7109, -74.0721]
-const LEAFLET_JS = 'https://unpkg.com/leaflet@1.9.4/dist/leaflet.js'
-const LEAFLET_CSS = 'https://unpkg.com/leaflet@1.9.4/dist/leaflet.css'
-
-function ensureLeaflet(): Promise<void> {
-  if (typeof window === 'undefined') return Promise.resolve()
-  if (window.L) return Promise.resolve()
-
-  if (!document.querySelector(`link[href="${LEAFLET_CSS}"]`)) {
-    const link = document.createElement('link')
-    link.rel = 'stylesheet'
-    link.href = LEAFLET_CSS
-    document.head.appendChild(link)
-  }
-
-  const existingScript = document.querySelector<HTMLScriptElement>(`script[src="${LEAFLET_JS}"]`)
-  if (existingScript) {
-    return new Promise((resolve) => {
-      existingScript.addEventListener('load', () => resolve(), { once: true })
-    })
-  }
-
-  return new Promise((resolve, reject) => {
-    const script = document.createElement('script')
-    script.src = LEAFLET_JS
-    script.async = true
-    script.onload = () => resolve()
-    script.onerror = () => reject(new Error('Leaflet no pudo cargar'))
-    document.body.appendChild(script)
-  })
-}
 
 function Field({
   label,
@@ -114,8 +53,8 @@ export default function AddressStep({
   onPickupPointChange,
 }: AddressStepProps) {
   const mapElementRef = useRef<HTMLDivElement | null>(null)
-  const mapRef = useRef<LeafletMap | null>(null)
-  const markerRef = useRef<LeafletMarker | null>(null)
+  const mapRef = useRef<google.maps.Map | null>(null)
+  const markerRef = useRef<google.maps.Marker | null>(null)
   const addressRef = useRef(address)
   const deliveryTypeRef = useRef(deliveryType)
 
@@ -125,64 +64,86 @@ export default function AddressStep({
   }, [address, deliveryType])
 
   const selectedPickup = pickupPoints.find((point) => point.id === selectedPickupPointId)
-  const position = useMemo<[number, number]>(
+  const position = useMemo<google.maps.LatLngLiteral>(
     () =>
       deliveryType === 'SHIP'
-        ? [address.latitude ?? DEFAULT_POSITION[0], address.longitude ?? DEFAULT_POSITION[1]]
-        : [
-            selectedPickup?.latitude ?? DEFAULT_POSITION[0],
-            selectedPickup?.longitude ?? DEFAULT_POSITION[1],
-          ],
+        ? {
+            lat: address.latitude ?? DEFAULT_CENTER.lat,
+            lng: address.longitude ?? DEFAULT_CENTER.lng,
+          }
+        : {
+            lat: selectedPickup?.latitude ?? DEFAULT_CENTER.lat,
+            lng: selectedPickup?.longitude ?? DEFAULT_CENTER.lng,
+          },
     [address.latitude, address.longitude, deliveryType, selectedPickup],
   )
+
+  // El mapa se crea una sola vez; si dependiera de `position` se reconstruiría
+  // con cada coordenada y perdería el zoom del comprador.
+  const initialPositionRef = useRef(position)
 
   useEffect(() => {
     let cancelled = false
 
-    ensureLeaflet()
+    ensureGoogleMaps()
       .then(() => {
-        if (cancelled || !window.L || !mapElementRef.current || mapRef.current) return
+        if (cancelled || !window.google || !mapElementRef.current || mapRef.current) return
 
-        const map = window.L.map(mapElementRef.current).setView(position, 13)
-        window.L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
-          attribution: '&copy; OpenStreetMap',
-        }).addTo(map)
-
-        const marker = window.L.marker(position).addTo(map)
-        markerRef.current = marker
-        mapRef.current = map
-
-        map.on('click', (event) => {
-          if (deliveryTypeRef.current !== 'SHIP') return
-          marker.setLatLng([event.latlng.lat, event.latlng.lng])
-          onAddressChange({
-            ...addressRef.current,
-            latitude: Number(event.latlng.lat.toFixed(6)),
-            longitude: Number(event.latlng.lng.toFixed(6)),
-          })
+        const map = new window.google.maps.Map(mapElementRef.current, {
+          center: initialPositionRef.current,
+          zoom: 15,
+          mapTypeControl: false,
+          streetViewControl: false,
+          fullscreenControl: false,
         })
 
-        setTimeout(() => map.invalidateSize(), 100)
+        const marker = new window.google.maps.Marker({
+          position: initialPositionRef.current,
+          map,
+          draggable: true,
+        })
+
+        mapRef.current = map
+        markerRef.current = marker
+
+        function commit(latLng: google.maps.LatLng) {
+          if (deliveryTypeRef.current !== 'SHIP') return
+          onAddressChange({
+            ...addressRef.current,
+            latitude: Number(latLng.lat().toFixed(6)),
+            longitude: Number(latLng.lng().toFixed(6)),
+          })
+        }
+
+        map.addListener('click', (event: google.maps.MapMouseEvent) => {
+          if (!event.latLng || deliveryTypeRef.current !== 'SHIP') return
+          marker.setPosition(event.latLng)
+          commit(event.latLng)
+        })
+
+        marker.addListener('dragend', () => {
+          const pos = marker.getPosition()
+          if (pos) commit(pos)
+        })
       })
       .catch(() => {
-        // The form remains usable if the CDN map cannot be loaded.
+        // El formulario sigue siendo usable si el mapa no carga.
       })
 
     return () => {
       cancelled = true
     }
-  }, [onAddressChange, position])
+  }, [onAddressChange])
 
   useEffect(() => {
     if (!mapRef.current || !markerRef.current) return
-    mapRef.current.setView(position, 13)
-    markerRef.current.setLatLng(position)
-    setTimeout(() => mapRef.current?.invalidateSize(), 100)
+    mapRef.current.panTo(position)
+    markerRef.current.setPosition(position)
   }, [position])
 
   useEffect(() => {
     return () => {
-      mapRef.current?.remove()
+      markerRef.current?.setMap(null)
       mapRef.current = null
       markerRef.current = null
     }

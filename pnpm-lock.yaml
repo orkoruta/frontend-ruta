@@ -4,6 +4,10 @@ settings:
   autoInstallPeers: true
   excludeLinksFromLockfile: false
 
+overrides:
+  '@orkoruta/shared': link:../packages-ruta/shared
+  '@orkoruta/db': link:../packages-ruta/db
+
 importers:
 
   .:
@@ -15,8 +19,8 @@ importers:
   admin:
     dependencies:
       '@orkoruta/shared':
-        specifier: ^1.5.2
-        version: 1.5.2
+        specifier: link:../../packages-ruta/shared
+        version: link:../../packages-ruta/shared
       '@orkoruta/ui':
         specifier: workspace:*
         version: link:../packages/ui
@@ -30,6 +34,9 @@ importers:
         specifier: ^18.3.0
         version: 18.3.1(react@18.3.1)
     devDependencies:
+      '@types/google.maps':
+        specifier: ^3.65.2
+        version: 3.65.2
       '@types/node':
         specifier: ^22
         version: 22.19.19
@@ -76,8 +83,8 @@ importers:
   storefront:
     dependencies:
       '@orkoruta/shared':
-        specifier: ^1.5.2
-        version: 1.5.2
+        specifier: link:../../packages-ruta/shared
+        version: link:../../packages-ruta/shared
       '@orkoruta/ui':
         specifier: workspace:*
         version: link:../packages/ui
@@ -91,6 +98,9 @@ importers:
         specifier: ^18.3.0
         version: 18.3.1(react@18.3.1)
     devDependencies:
+      '@types/google.maps':
+        specifier: ^3.65.2
+        version: 3.65.2
       '@types/node':
         specifier: ^22
         version: 22.19.19
@@ -268,9 +278,6 @@ packages:
     resolution: {integrity: sha512-nn5ozdjYQpUCZlWGuxcJY/KpxkWQs4DcbMCmKojjyrYDEAGy4Ce19NN4v5MduafTwJlbKc99UA8YhSVqq9yPZA==}
     engines: {node: '>=12.4.0'}
 
-  '@orkoruta/shared@1.5.2':
-    resolution: {integrity: sha512-mr4MKQ8KUlZwBCMk1TsypEttNlI0kedDNYp+cOhmFrTsOpbgP2G8D8Zqq06hOxDH8SkGEEYyjVf2pMoo2ZldUg==, tarball: https://npm.pkg.github.com/download/@orkoruta/shared/1.5.2/f052521ca7f6a8274b9aec047428a55e64275ee9}
-
   '@pkgjs/parseargs@0.11.0':
     resolution: {integrity: sha512-+1VkjdD0QBLPodGrJUeqarH8VAIvQODIbwh9XpP5Syisf7YoQgsJKPNFoqqLQlu+VQ/tVSshMR6loPMn8U+dPg==}
     engines: {node: '>=14'}
@@ -294,6 +301,9 @@ packages:
 
   '@tybys/wasm-util@0.10.2':
     resolution: {integrity: sha512-RoBvJ2X0wuKlWFIjrwffGw1IqZHKQqzIchKaadZZfnNpsAYp2mM0h36JtPCjNDAHGgYez/15uMBpfGwchhiMgg==}
+
+  '@types/google.maps@3.65.2':
+    resolution: {integrity: sha512-e52bmOhGCQSNabFpL48iQlwJybq6rfns8NUVJ20MR7CdPlHQ2RmSCnPbJfrUYJfogrE4OiHQTZ4LXpop+eer1w==}
 
   '@types/json5@0.0.29':
     resolution: {integrity: sha512-dRLjCWHYg4oaA77cxO64oO+7JwCwnIzkZPdrrC71jQmQtlhM556pwKo5bUzqvZndkVbeFLIIi+9TC40JNF5hNQ==}
@@ -1893,9 +1903,6 @@ packages:
     resolution: {integrity: sha512-rVksvsnNCdJ/ohGc6xgPwyN8eheCxsiLM8mxuE/t/mOVqJewPuO1miLpTHQiRgTKCLexL4MeAFVagts7HmNZ2Q==}
     engines: {node: '>=10'}
 
-  zod@3.25.76:
-    resolution: {integrity: sha512-gzUt/qt81nXsFGKIFcC3YnfEAx5NkunCfnDlvuBSSFS02bcXu4Lmea0AFIUwbLWxWPx3d9p8S5QoaujKcNQxcQ==}
-
 snapshots:
 
   '@alloc/quick-lru@5.2.0': {}
@@ -2028,10 +2035,6 @@ snapshots:
 
   '@nolyfill/is-core-module@1.0.39': {}
 
-  '@orkoruta/shared@1.5.2':
-    dependencies:
-      zod: 3.25.76
-
   '@pkgjs/parseargs@0.11.0':
     optional: true
 
@@ -2054,6 +2057,8 @@ snapshots:
     dependencies:
       tslib: 2.8.1
     optional: true
+
+  '@types/google.maps@3.65.2': {}
 
   '@types/json5@0.0.29': {}
 
@@ -3928,5 +3933,3 @@ snapshots:
   wrappy@1.0.2: {}
 
   yocto-queue@0.1.0: {}
-
-  zod@3.25.76: {}

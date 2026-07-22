@@ -2,7 +2,7 @@
 
 import { useContext, useEffect, useState, type FormEvent } from 'react'
 import { useRouter } from 'next/navigation'
-import { RutaButton, RutaCard, RutaSectionHeader } from '@orkoruta/ui'
+import { RutaButton, RutaCard, RutaSectionHeader, RutaPasswordInput } from '@orkoruta/ui'
 import { SessionContext } from '@/lib/session-context'
 import { SESSION_KEY } from '@/lib/session'
 import { listClients, type RutaClient } from '@/lib/clients.api'
@@ -31,9 +31,9 @@ export default function ControlViewPage() {
       setLoadingClients(true)
       setClientsError(null)
       try {
-        const data = await listClients({ status: 'ACTIVE', page_size: 200 })
+        const response = await listClients({ status: 'ACTIVE', page_size: 100 })
         if (!active) return
-        setClients(data.items)
+        setClients(response.data)
       } catch {
         if (!active) return
         setClientsError('No pudimos cargar la lista de clientes.')
@@ -174,9 +174,8 @@ export default function ControlViewPage() {
             >
               Contraseña maestra
             </label>
-            <input
+            <RutaPasswordInput
               id="master-password"
-              type="password"
               required
               autoComplete="current-password"
               value={masterPassword}

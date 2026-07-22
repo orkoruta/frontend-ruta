@@ -2,6 +2,9 @@ packages:
   - 'admin'
   - 'storefront'
   - 'packages/ui'
+overrides:
+  '@orkoruta/shared': 'link:../packages-ruta/shared'
+  '@orkoruta/db': 'link:../packages-ruta/db'
 allowBuilds:
   unrs-resolver: true
 minimumReleaseAgeExclude:

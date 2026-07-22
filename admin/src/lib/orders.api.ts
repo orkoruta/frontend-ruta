@@ -132,12 +132,12 @@ export interface OrderItem {
 
 export interface OrderStateHistoryEntry {
   id: number
-  dimension: string
-  from_state: string
-  to_state: string
+  state_dimension: string
+  previous_value: string | null
+  new_value: string
   reason: string | null
-  actor_role: string | null
-  created_at: string
+  actor_type: string | null
+  occurred_at: string
 }
 
 export interface PaymentDetail {
@@ -249,6 +249,14 @@ export function getOrder(orderId: number): Promise<OrderDetail> {
   return request<OrderDetail>(`/admin/orders/${orderId}`)
 }
 
+/** Envía un pedido corporativo en DRAFT que el Cliente registró (Flujo 6). */
+export function confirmCorporateOrder(orderId: number): Promise<OrderDetail> {
+  return request<OrderDetail>(`/admin/orders/${orderId}/confirm`, {
+    method: 'POST',
+    headers: { 'X-Idempotency-Key': idempotencyKey() },
+  })
+}
+
 export function acceptOrder(orderId: number): Promise<OrderDetail> {
   return request<OrderDetail>(`/admin/orders/${orderId}/accept`, {
     method: 'POST',
@@ -271,10 +279,22 @@ export function markPreparing(orderId: number): Promise<OrderDetail> {
   })
 }
 
-export function markReady(orderId: number): Promise<OrderDetail> {
+export type DeliveryCarrierType = 'OWN_FLEET' | 'EXTERNAL_COURIER'
+
+/**
+ * Marca el pedido como listo. En SHIP, el transportador decide la rama:
+ * OWN_FLEET va a asignación de repartidor (mapa) y el resto a despacho directo.
+ */
+export function markReady(
+  orderId: number,
+  deliveryCarrierType?: DeliveryCarrierType,
+): Promise<OrderDetail> {
   return request<OrderDetail>(`/admin/orders/${orderId}/mark-ready`, {
     method: 'POST',
     headers: { 'X-Idempotency-Key': idempotencyKey() },
+    ...(deliveryCarrierType
+      ? { body: JSON.stringify({ delivery_carrier_type: deliveryCarrierType }) }
+      : {}),
   })
 }
 

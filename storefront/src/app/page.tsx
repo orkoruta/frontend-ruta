@@ -1,4 +1,4 @@
-import { RutaCard, RutaButton, RutaPill, RutaSectionHeader, RutaThemeToggle } from '@orkoruta/ui'
+import { RutaCard, RutaButton, RutaPill, RutaSectionHeader } from '@orkoruta/ui'
 
 export default function HomePage() {
   return (
@@ -8,7 +8,6 @@ export default function HomePage() {
           <h1 className="text-2xl font-black tracking-tight text-slate-900 dark:text-slate-100">
             RUTA Storefront — Design System
           </h1>
-          <RutaThemeToggle />
         </div>
 
         <RutaCard>

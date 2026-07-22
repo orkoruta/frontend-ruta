@@ -3,7 +3,7 @@
 import { useState } from 'react'
 import { useParams, useRouter } from 'next/navigation'
 import Link from 'next/link'
-import { RutaButton, RutaCard } from '@orkoruta/ui'
+import { RutaButton, RutaCard, RutaPasswordInput } from '@orkoruta/ui'
 import { registerBuyer } from '@/lib/auth.api'
 
 const DOCUMENT_TYPES = [
@@ -100,9 +100,8 @@ export function RegisterForm() {
               <label htmlFor="password" className={labelClass}>
                 Contraseña
               </label>
-              <input
+              <RutaPasswordInput
                 id="password"
-                type="password"
                 required
                 autoComplete="new-password"
                 placeholder="••••••••"

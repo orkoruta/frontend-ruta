@@ -21,6 +21,11 @@ export interface AvailableCourier {
   email: string
   phone: string | null
   status: string
+  /** Pedidos en curso que ya lleva encima. */
+  active_orders: number
+  /** Máximo simultáneo configurado por el Cliente. */
+  max_concurrent_orders: number
+  remaining_capacity: number
 }
 
 export interface ApiError {

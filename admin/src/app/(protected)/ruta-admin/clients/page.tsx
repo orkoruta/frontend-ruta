@@ -59,7 +59,7 @@ export default function RutaAdminClientsPage() {
       setError(null)
 
       try {
-        const data = await listClients({
+        const response = await listClients({
           q: q || undefined,
           client_type: clientType || undefined,
           status: status || undefined,
@@ -68,8 +68,8 @@ export default function RutaAdminClientsPage() {
         })
 
         if (!active) return
-        setClients(data.items)
-        setTotal(data.pagination.total)
+        setClients(response.data)
+        setTotal(response.pagination.total)
       } catch (err) {
         if (!active) return
         const apiErr = err as ApiError

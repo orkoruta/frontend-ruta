@@ -244,7 +244,7 @@ export function ProductEditView({ productId }: { productId: number }) {
           status: product.status,
           imageUrl: product.image_url ?? '',
         })
-        setCategories(categoryResponse.items)
+        setCategories(categoryResponse.data)
       } catch (err) {
         const apiErr = err as ApiError
         if (active) setError(apiErr.message ?? 'No pudimos cargar el producto.')

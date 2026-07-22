@@ -4,7 +4,6 @@ import { useState, useEffect } from 'react'
 import { useParams } from 'next/navigation'
 import Link from 'next/link'
 import Image from 'next/image'
-import { RutaThemeToggle } from '@orkoruta/ui'
 import { getClientBySlug, type ClientPublicInfo } from '@/lib/catalog.api'
 
 export default function ClientLayout({ children }: { children: React.ReactNode }) {
@@ -43,7 +42,6 @@ export default function ClientLayout({ children }: { children: React.ReactNode }
           </Link>
 
           <div className="flex items-center gap-3">
-            <RutaThemeToggle />
             <Link
               href={`/c/${slug}/login`}
               className="inline-flex items-center rounded-md border border-slate-200 bg-white/[0.85] px-3 py-1.5 text-xs font-medium text-slate-700 transition-colors hover:bg-white dark:border-white/10 dark:bg-white/[0.055] dark:text-slate-300 dark:hover:bg-white/[0.08]"

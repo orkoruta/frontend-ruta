@@ -32,7 +32,7 @@ export interface ClientListFilters {
 }
 
 export interface ClientListResponse {
-  items: RutaClient[]
+  data: RutaClient[]
   pagination: {
     page: number
     page_size: number

@@ -71,10 +71,10 @@ export default function AuditPage() {
 
       try {
         const fn = isRutaAdmin ? getRutaAdminAuditEvents : getAuditEvents
-        const data = await fn(filters)
+        const response = await fn(filters)
         if (!active) return
-        setEvents(data.items)
-        setTotal(data.pagination.total)
+        setEvents(response.data)
+        setTotal(response.pagination.total)
       } catch (err) {
         if (!active) return
         const apiErr = err as ApiError

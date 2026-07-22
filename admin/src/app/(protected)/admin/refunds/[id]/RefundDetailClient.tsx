@@ -86,7 +86,7 @@ export default function RefundDetailClient({ refundId }: Props) {
           const order = await getOrder(r.order_id)
           if (!active) return
           const refundHistory = order.history.filter(
-            (h) => h.dimension === 'refund_status',
+            (h) => h.state_dimension === 'refund_status',
           )
           setHistory(refundHistory)
         } catch {
@@ -157,7 +157,7 @@ export default function RefundDetailClient({ refundId }: Props) {
     refund.status === 'PROCESSING' || refund.status === 'PROVIDER_REQUESTED'
 
   const sortedHistory = [...history].sort(
-    (a, b) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime(),
+    (a, b) => new Date(b.occurred_at).getTime() - new Date(a.occurred_at).getTime(),
   )
 
   return (
@@ -287,7 +287,7 @@ export default function RefundDetailClient({ refundId }: Props) {
                     </div>
                     <div className="pb-4">
                       <p className="text-sm font-medium text-slate-900 dark:text-slate-100">
-                        {REFUND_STATUS_LABELS[entry.to_state] ?? entry.to_state}
+                        {REFUND_STATUS_LABELS[entry.new_value] ?? entry.new_value}
                       </p>
                       {entry.reason && (
                         <p className="text-xs text-slate-500 dark:text-slate-400">
@@ -295,8 +295,8 @@ export default function RefundDetailClient({ refundId }: Props) {
                         </p>
                       )}
                       <p className="mt-0.5 text-xs text-slate-400 dark:text-slate-500">
-                        {formatDate(entry.created_at)}
-                        {entry.actor_role && ` · ${entry.actor_role}`}
+                        {formatDate(entry.occurred_at)}
+                        {entry.actor_type && ` · ${entry.actor_type}`}
                       </p>
                     </div>
                   </div>

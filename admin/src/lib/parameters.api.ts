@@ -5,6 +5,9 @@ export interface Parameter {
   parameter_value: string
   group: string
   description?: string
+  /** GLOBAL = heredado del default de plataforma; CLIENT = personalizado por este Cliente. */
+  source?: 'GLOBAL' | 'CLIENT'
+  is_overrideable_by_client?: boolean
 }
 
 export interface ApiError {

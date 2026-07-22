@@ -3,11 +3,25 @@
   "compilerOptions": {
     "baseUrl": ".",
     "paths": {
-      "@/*": ["./src/*"],
-      "@orkoruta/ui": ["../packages/ui/src/index.ts"],
-      "@orkoruta/ui/*": ["../packages/ui/src/*"]
+      "@/*": [
+        "./src/*"
+      ],
+      "@orkoruta/ui": [
+        "../packages/ui/src/index.ts"
+      ],
+      "@orkoruta/ui/*": [
+        "../packages/ui/src/*"
+      ]
     }
   },
-  "include": ["next-env.d.ts", "**/*.ts", "**/*.tsx", ".next/types/**/*.ts"],
-  "exclude": ["node_modules"]
+  "include": [
+    "next-env.d.ts",
+    "**/*.ts",
+    "**/*.tsx",
+    ".next/types/**/*.ts",
+    ".next-verify/types/**/*.ts"
+  ],
+  "exclude": [
+    "node_modules"
+  ]
 }

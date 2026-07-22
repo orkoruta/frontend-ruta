@@ -7,9 +7,6 @@ import { RutaHeader } from '@/components/RutaHeader'
 import { SessionContext } from '@/lib/session-context'
 import { SESSION_KEY, type RutaSession } from '@/lib/session'
 
-export { SESSION_KEY, type RutaSession } from '@/lib/session'
-export { SessionContext } from '@/lib/session-context'
-
 export default function ProtectedLayout({ children }: { children: React.ReactNode }) {
   const router = useRouter()
   const [session, setSession] = useState<RutaSession | null>(null)

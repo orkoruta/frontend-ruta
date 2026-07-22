@@ -3,7 +3,7 @@
 import { Suspense, useState } from 'react'
 import { useParams, useRouter, useSearchParams } from 'next/navigation'
 import Link from 'next/link'
-import { RutaButton, RutaCard } from '@orkoruta/ui'
+import { RutaButton, RutaCard, RutaPasswordInput } from '@orkoruta/ui'
 import { loginBuyer } from '@/lib/auth.api'
 
 const inputClass =
@@ -68,9 +68,8 @@ function LoginFormContent() {
               <label htmlFor="password" className={labelClass}>
                 Contraseña
               </label>
-              <input
+              <RutaPasswordInput
                 id="password"
-                type="password"
                 required
                 autoComplete="current-password"
                 placeholder="••••••••"

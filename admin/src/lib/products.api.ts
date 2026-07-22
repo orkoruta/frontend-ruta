@@ -122,7 +122,7 @@ async function request<T>(path: string, init?: RequestInit): Promise<T> {
 }
 
 export async function listProducts(params: ProductListParams = {}) {
-  return request<{ items: Product[]; pagination: Pagination }>(
+  return request<{ data: Product[]; pagination: Pagination }>(
     `/admin/products${toQuery({
       q: params.q,
       category_id: params.category_id,
@@ -154,7 +154,7 @@ export async function updateProduct(productId: number, input: Partial<ProductInp
 }
 
 export async function listCategories() {
-  return request<{ items: Category[]; pagination: Pagination }>(
+  return request<{ data: Category[]; pagination: Pagination }>(
     '/admin/categories?page=1&page_size=100',
   )
 }

@@ -188,9 +188,24 @@ export function ParametersTab() {
 
               return (
                 <div key={p.parameter_key} className="flex flex-col gap-1">
-                  <label className="text-[11px] font-bold uppercase tracking-[0.18em] text-slate-500 dark:text-slate-400">
-                    {formatParamKey(p.parameter_key)}
-                  </label>
+                  <div className="flex items-center gap-2">
+                    <label className="text-[11px] font-bold uppercase tracking-[0.18em] text-slate-500 dark:text-slate-400">
+                      {formatParamKey(p.parameter_key)}
+                    </label>
+                    {p.is_overrideable_by_client === false ? (
+                      <span className="rounded border border-slate-200 bg-white/[0.06] px-1.5 py-0.5 text-[10px] font-semibold text-slate-500 dark:border-white/10 dark:text-slate-400">
+                        fijado por RUTA
+                      </span>
+                    ) : p.source === 'CLIENT' ? (
+                      <span className="rounded border border-sky-400/25 bg-sky-500/[0.12] px-1.5 py-0.5 text-[10px] font-semibold text-sky-700 dark:text-sky-300">
+                        personalizado
+                      </span>
+                    ) : (
+                      <span className="rounded border border-slate-200 bg-white/[0.06] px-1.5 py-0.5 text-[10px] font-semibold text-slate-500 dark:border-white/10 dark:text-slate-400">
+                        heredado
+                      </span>
+                    )}
+                  </div>
                   {p.description && (
                     <p className="text-xs text-slate-500 dark:text-slate-400">{p.description}</p>
                   )}
@@ -199,13 +214,13 @@ export function ParametersTab() {
                       value={row?.draft ?? p.parameter_value}
                       onChange={(e) => handleChange(p.parameter_key, e.target.value)}
                       className={INPUT_CLASS}
-                      disabled={isSaving}
+                      disabled={isSaving || p.is_overrideable_by_client === false}
                     />
                     <RutaButton
                       type="button"
                       size="sm"
                       variant={row?.saveState === 'success' ? 'success' : 'primary'}
-                      disabled={!isDirty || isSaving}
+                      disabled={!isDirty || isSaving || p.is_overrideable_by_client === false}
                       onClick={() => void handleSave(p.parameter_key)}
                     >
                       {isSaving ? 'Guardando…' : row?.saveState === 'success' ? 'Guardado' : 'Guardar'}

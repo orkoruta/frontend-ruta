@@ -3,19 +3,12 @@
 /**
  * AssignmentMap
  *
- * Implementa el mapa con Leaflet + OpenStreetMap.
- *
- * LEAFLET NO ESTÁ INSTALADO todavía. Para activar el mapa real ejecuta:
- *   pnpm --filter @ruta/admin add leaflet
- *   pnpm --filter @ruta/admin add -D @types/leaflet
- *
- * Mientras tanto el componente renderiza un contenedor vacío (div gris)
- * que no produce errores en build ni en typecheck.
- * Cuando leaflet esté instalado el import dinámico resolverá y el mapa
- * se inicializará automáticamente sin cambiar el código.
+ * Mapa de pedidos pendientes de asignación, sobre Google Maps.
+ * El SDK se carga una vez por página desde `lib/google-maps.ts`.
  */
 
-import { useEffect, useRef } from 'react'
+import { useEffect, useRef, useState } from 'react'
+import { DEFAULT_CENTER, ensureGoogleMaps } from '@/lib/google-maps'
 import type { MapOrder } from '@/lib/assignment.api'
 
 interface AssignmentMapProps {
@@ -25,75 +18,78 @@ interface AssignmentMapProps {
   onSelectOrder: (orderId: number) => void
 }
 
-// Colombia center
-const COLOMBIA_LAT = 4.5709
-const COLOMBIA_LNG = -74.2973
-const DEFAULT_ZOOM = 6
+const DEFAULT_ZOOM = 11
+const FOCUS_ZOOM = 15
 
-// Minimal type shim for the Leaflet API we use (avoids @types/leaflet dependency)
-interface LeafletIconOptions {
-  iconUrl: string
-  iconSize: [number, number]
-  iconAnchor: [number, number]
-  shadowUrl?: string
-  iconRetinaUrl?: string
-}
+const ICON_PENDING = '#3730a3' // índigo oscuro — esperando repartidor
+const ICON_SELECTED = '#f59e0b' // ámbar — pedido seleccionado
 
-interface LeafletMarker {
-  setIcon(icon: LeafletIcon): this
-  remove(): this
-  bindTooltip(content: string, options?: Record<string, unknown>): this
-  on(event: string, handler: () => void): this
-  addTo(map: LeafletMap): this
-}
-
-interface LeafletIcon {
-  _url?: string
-}
-
-interface LeafletMap {
-  flyTo(latlng: [number, number], zoom?: number, options?: Record<string, unknown>): this
-  remove(): void
-}
-
-interface LeafletTileLayer {
-  addTo(map: LeafletMap): this
-}
-
-interface LeafletIconDefault {
-  prototype: Record<string, unknown>
-  mergeOptions(options: Partial<LeafletIconOptions>): void
-}
-
-interface LeafletStatic {
-  map(container: HTMLElement, options?: Record<string, unknown>): LeafletMap
-  tileLayer(urlTemplate: string, options?: Record<string, unknown>): LeafletTileLayer
-  marker(latlng: [number, number], options?: Record<string, unknown>): LeafletMarker
-  icon(options: LeafletIconOptions): LeafletIcon
-  Icon: { Default: LeafletIconDefault }
-}
-
-// Marker SVG helpers
-function buildIconDataUrl(color: string, size: number): string {
-  const height = Math.round(size * 1.4)
-  const svg = `<svg xmlns="http://www.w3.org/2000/svg" width="${size}" height="${height}" viewBox="0 0 28 39"><path d="M14 0C6.27 0 0 6.27 0 14c0 9.61 14 25 14 25S28 23.61 28 14C28 6.27 21.73 0 14 0z" fill="${color}" stroke="white" stroke-width="2"/><circle cx="14" cy="14" r="5" fill="white"/></svg>`
-  return `data:image/svg+xml;charset=UTF-8,${encodeURIComponent(svg)}`
-}
-
-const ICON_PENDING = buildIconDataUrl('#f59e0b', 28)   // amber – AWAITING_COURIER_ASSIGNMENT
-const ICON_SELECTED = buildIconDataUrl('#0ea5e9', 34)  // sky blue – selected order
-
-// Attempt to load Leaflet; returns null if the package is not installed
-async function tryLoadLeaflet(): Promise<LeafletStatic | null> {
-  try {
-    const mod = await import(
-      /* webpackIgnore: true */
-      'leaflet' as string
-    ) as unknown as { default?: LeafletStatic }
-    return mod.default ?? (mod as unknown as LeafletStatic)
-  } catch {
-    return null
+/** Pin SVG del color del estado, para no depender de assets externos. */
+function buildIcon(color: string, selected: boolean): google.maps.Symbol {
+  return {
+    path: 'M12 0C5.4 0 0 5.4 0 12c0 8.2 12 24 12 24s12-15.8 12-24c0-6.6-5.4-12-12-12z',
+    fillColor: color,
+    fillOpacity: 1,
+    strokeColor: '#ffffff',
+    strokeWeight: 2,
+    scale: selected ? 1.2 : 1,
+    anchor: new window.google.maps.Point(12, 36),
   }
+}
+
+/**
+ * Varios pedidos a la misma dirección devuelven coordenadas idénticas y sus
+ * pines quedan perfectamente superpuestos: se ve uno y los demás son
+ * inalcanzables. Se reparten en círculo alrededor del punto real para que todos
+ * queden visibles y clicables.
+ */
+const COINCIDENT_SPREAD_DEGREES = 0.00018 // ~20 m
+
+function spreadCoincidentPositions(
+  orders: MapOrder[],
+): Map<number, google.maps.LatLngLiteral> {
+  const groups = new Map<string, MapOrder[]>()
+
+  for (const order of orders) {
+    if (!hasCoords(order)) continue
+    const key = `${order.latitude},${order.longitude}`
+    const group = groups.get(key)
+    if (group) group.push(order)
+    else groups.set(key, [order])
+  }
+
+  const positions = new Map<number, google.maps.LatLngLiteral>()
+
+  for (const group of groups.values()) {
+    const [first] = group
+    const lat = first.latitude as number
+    const lng = first.longitude as number
+
+    if (group.length === 1) {
+      positions.set(first.id, { lat, lng })
+      continue
+    }
+
+    group.forEach((order, index) => {
+      const angle = (2 * Math.PI * index) / group.length
+      positions.set(order.id, {
+        lat: lat + COINCIDENT_SPREAD_DEGREES * Math.sin(angle),
+        // La longitud se corrige por la latitud para que el círculo no salga ovalado.
+        lng: lng + (COINCIDENT_SPREAD_DEGREES * Math.cos(angle)) / Math.cos((lat * Math.PI) / 180),
+      })
+    })
+  }
+
+  return positions
+}
+
+function hasCoords(order: MapOrder): boolean {
+  return (
+    typeof order.latitude === 'number' &&
+    typeof order.longitude === 'number' &&
+    Number.isFinite(order.latitude) &&
+    Number.isFinite(order.longitude)
+  )
 }
 
 export function AssignmentMap({
@@ -103,118 +99,123 @@ export function AssignmentMap({
   onSelectOrder,
 }: AssignmentMapProps) {
   const containerRef = useRef<HTMLDivElement>(null)
-  const mapRef = useRef<LeafletMap | null>(null)
-  const markersRef = useRef<Map<number, LeafletMarker>>(new Map())
+  const mapRef = useRef<google.maps.Map | null>(null)
+  const markersRef = useRef<Map<number, google.maps.Marker>>(new Map())
+  // Posición realmente pintada de cada pin: puede estar desplazada si comparte
+  // dirección con otros pedidos.
+  const positionsRef = useRef<Map<number, google.maps.LatLngLiteral>>(new Map())
+  const onSelectRef = useRef(onSelectOrder)
+  const [error, setError] = useState<string | null>(null)
+  const [ready, setReady] = useState(false)
 
-  // ── Initialize Leaflet map once ───────────────────────────────────────────
   useEffect(() => {
-    if (!containerRef.current || mapRef.current) return
+    onSelectRef.current = onSelectOrder
+  }, [onSelectOrder])
 
+  // ── Inicialización ────────────────────────────────────────────────────────
+  useEffect(() => {
     let cancelled = false
     const markers = markersRef.current
 
-    void tryLoadLeaflet().then((L) => {
-      if (cancelled || !L || !containerRef.current || mapRef.current) return
+    ensureGoogleMaps()
+      .then(() => {
+        if (cancelled || !containerRef.current || mapRef.current) return
 
-      // Fix default icon paths broken by webpack
-      delete L.Icon.Default.prototype._getIconUrl
-      L.Icon.Default.mergeOptions({
-        iconRetinaUrl: '',
-        iconUrl: '',
-        shadowUrl: '',
+        mapRef.current = new window.google.maps.Map(containerRef.current, {
+          center: DEFAULT_CENTER,
+          zoom: DEFAULT_ZOOM,
+          mapTypeControl: false,
+          streetViewControl: false,
+          fullscreenControl: false,
+        })
+        setReady(true)
       })
-
-      const map = L.map(containerRef.current, {
-        center: [COLOMBIA_LAT, COLOMBIA_LNG],
-        zoom: DEFAULT_ZOOM,
-        zoomControl: true,
+      .catch((err: Error) => {
+        if (!cancelled) setError(err.message)
       })
-
-      L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
-        attribution: '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a>',
-        maxZoom: 19,
-      }).addTo(map)
-
-      mapRef.current = map
-    })
 
     return () => {
       cancelled = true
-      const map = mapRef.current
-      if (map) {
-        map.remove()
-        mapRef.current = null
-      }
+      markers.forEach((marker) => marker.setMap(null))
       markers.clear()
+      mapRef.current = null
     }
   }, [])
 
-  // ── Sync markers when orders or selection changes ─────────────────────────
+  // ── Marcadores ────────────────────────────────────────────────────────────
   useEffect(() => {
-    if (!mapRef.current) return
+    if (!ready || !mapRef.current) return
+    const map = mapRef.current
+    const markers = markersRef.current
 
-    void tryLoadLeaflet().then((L) => {
-      if (!L || !mapRef.current) return
+    const positions = spreadCoincidentPositions(orders)
+    positionsRef.current = positions
+    const liveIds = new Set(orders.filter(hasCoords).map((o) => o.id))
 
-      const existingIds = new Set(markersRef.current.keys())
-      const newIds = new Set(orders.map((o) => o.id))
+    for (const [id, marker] of markers) {
+      if (!liveIds.has(id)) {
+        marker.setMap(null)
+        markers.delete(id)
+      }
+    }
 
-      // Remove stale markers
-      for (const id of existingIds) {
-        if (!newIds.has(id)) {
-          markersRef.current.get(id)?.remove()
-          markersRef.current.delete(id)
-        }
+    for (const order of orders) {
+      if (!hasCoords(order)) continue
+
+      const isSelected = order.id === selectedOrderId
+      const existing = markers.get(order.id)
+
+      if (existing) {
+        existing.setIcon(buildIcon(isSelected ? ICON_SELECTED : ICON_PENDING, isSelected))
+        existing.setZIndex(isSelected ? 1 : 0)
+        continue
       }
 
-      // Add or update markers
-      for (const order of orders) {
-        if (
-          typeof order.latitude !== 'number' ||
-          typeof order.longitude !== 'number' ||
-          !Number.isFinite(order.latitude) ||
-          !Number.isFinite(order.longitude)
-        ) continue
+      const marker = new window.google.maps.Marker({
+        position: positions.get(order.id) ?? {
+          lat: order.latitude as number,
+          lng: order.longitude as number,
+        },
+        map,
+        title: `#${order.id} — ${order.delivery_address_city ?? ''}`,
+        icon: buildIcon(isSelected ? ICON_SELECTED : ICON_PENDING, isSelected),
+      })
+      marker.addListener('click', () => onSelectRef.current(order.id))
+      markers.set(order.id, marker)
+    }
 
-        const isSelected = order.id === selectedOrderId
-        const iconUrl = isSelected ? ICON_SELECTED : ICON_PENDING
-        const iconSizeVal: [number, number] = isSelected ? [34, 47] : [28, 39]
-        const iconAnchor: [number, number] = [iconSizeVal[0] / 2, iconSizeVal[1]]
+    // Sin pedido seleccionado, el mapa encuadra todos los pines a la vez.
+    if (markers.size > 0 && !selectedOrderId) {
+      const bounds = new window.google.maps.LatLngBounds()
+      markers.forEach((marker) => {
+        const pos = marker.getPosition()
+        if (pos) bounds.extend(pos)
+      })
+      map.fitBounds(bounds, 64)
+    }
+  }, [orders, selectedOrderId, ready])
 
-        const icon = L.icon({ iconUrl, iconSize: iconSizeVal, iconAnchor })
-
-        if (markersRef.current.has(order.id)) {
-          markersRef.current.get(order.id)!.setIcon(icon)
-        } else {
-          const capturedOrderId = order.id
-          const marker = L.marker([order.latitude, order.longitude], { icon })
-          marker.addTo(mapRef.current!)
-          marker.bindTooltip(
-            `#${order.id} — ${order.delivery_address_city}`,
-            { permanent: false, direction: 'top' },
-          )
-          marker.on('click', () => onSelectOrder(capturedOrderId))
-          markersRef.current.set(order.id, marker)
-        }
-      }
-    })
-  }, [orders, selectedOrderId, onSelectOrder])
-
-  // ── Pan to focused order ──────────────────────────────────────────────────
+  // ── Centrado al seleccionar ───────────────────────────────────────────────
   useEffect(() => {
-    if (!focusOrder || !mapRef.current) return
-    if (
-      typeof focusOrder.latitude !== 'number' ||
-      typeof focusOrder.longitude !== 'number' ||
-      !Number.isFinite(focusOrder.latitude) ||
-      !Number.isFinite(focusOrder.longitude)
-    ) return
+    if (!ready || !mapRef.current || !focusOrder || !hasCoords(focusOrder)) return
+    // Centra el pin tal como se ve, no la coordenada cruda.
+    const target = positionsRef.current.get(focusOrder.id) ?? {
+      lat: focusOrder.latitude as number,
+      lng: focusOrder.longitude as number,
+    }
+    mapRef.current.panTo(target)
+    mapRef.current.setZoom(FOCUS_ZOOM)
+  }, [focusOrder, ready])
 
-    mapRef.current.flyTo([focusOrder.latitude, focusOrder.longitude], 14, {
-      animate: true,
-      duration: 0.8,
-    })
-  }, [focusOrder])
+  if (error) {
+    return (
+      <div className="flex h-full w-full items-center justify-center bg-slate-100 p-4 dark:bg-[#1d2025]">
+        <p className="text-center text-sm text-rose-600 dark:text-rose-400">
+          No se pudo cargar el mapa: {error}
+        </p>
+      </div>
+    )
+  }
 
   return (
     <div

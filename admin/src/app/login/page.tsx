@@ -2,7 +2,7 @@
 
 import { useState, useEffect, type FormEvent } from 'react'
 import { useRouter } from 'next/navigation'
-import { RutaCard, RutaButton, RutaSectionHeader } from '@orkoruta/ui'
+import { RutaCard, RutaButton, RutaSectionHeader, RutaPasswordInput } from '@orkoruta/ui'
 import { loginClient, loginRutaAdmin, type ApiError } from '@/lib/auth.api'
 import { SESSION_KEY, type RutaSession } from '@/lib/session'
 
@@ -104,9 +104,8 @@ export default function LoginPage() {
               >
                 Contraseña
               </label>
-              <input
+              <RutaPasswordInput
                 id="password"
-                type="password"
                 required
                 autoComplete="current-password"
                 value={password}

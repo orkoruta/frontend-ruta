@@ -8,9 +8,8 @@ export interface ApiError {
 
 export interface Pagination {
   page: number
-  limit: number
+  page_size: number
   total: number
-  total_pages?: number
 }
 
 export interface ListResponse<T> {

@@ -16,11 +16,28 @@ export interface CorporateOrderItem {
   quantity: number
 }
 
+/** Destino en SHIP. Las coordenadas son obligatorias: el mapa de asignación
+ *  filtra por lat/lng no nulas. */
+export interface CorporateDeliveryAddressInput {
+  line: string
+  city: string
+  state: string
+  country: string
+  postal_code?: string
+  latitude: number
+  longitude: number
+  instructions?: string
+}
+
 export interface CreateCorporateOrderInput {
   buyer_id: number
   corporate_contact: CorporateContact
   items: CorporateOrderItem[]
   delivery_type: DeliveryType
+  /** Requerido cuando delivery_type es SHIP. */
+  delivery_address?: CorporateDeliveryAddressInput
+  /** Requerido cuando delivery_type es PICKUP. */
+  pickup_point_id?: number
   payment_method: PaymentMethod
   payment_method_submethod?: PaymentSubmethod
   notes?: string

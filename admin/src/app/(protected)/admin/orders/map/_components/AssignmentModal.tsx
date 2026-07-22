@@ -46,7 +46,9 @@ export function AssignmentModal({
       role="dialog"
       aria-modal="true"
       aria-labelledby="modal-title"
-      className="fixed inset-0 z-50 flex items-center justify-center p-4"
+      /* z alto: los controles del mapa quedan por debajo del modal aunque el
+         contenedor del mapa no cree contexto de apilamiento propio. */
+      className="fixed inset-0 z-[1100] flex items-center justify-center p-4"
     >
       {/* Overlay */}
       <div
@@ -98,6 +100,10 @@ export function AssignmentModal({
             {courier.phone && (
               <p className="text-xs text-slate-500 dark:text-slate-400">{courier.phone}</p>
             )}
+            <p className="mt-1 text-xs text-slate-500 dark:text-slate-400">
+              {courier.active_orders} de {courier.max_concurrent_orders} pedidos en curso
+              {courier.remaining_capacity === 1 && ' · último cupo'}
+            </p>
           </div>
 
           {error && (

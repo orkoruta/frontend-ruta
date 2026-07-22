@@ -22,7 +22,7 @@ export interface AuditFilters {
 }
 
 export interface AuditListResponse {
-  items: AuditEvent[]
+  data: AuditEvent[]
   pagination: {
     page: number
     page_size: number
