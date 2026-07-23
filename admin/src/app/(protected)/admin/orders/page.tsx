@@ -51,8 +51,8 @@ function StatusBadge({ status }: { status: OrderStatus }) {
 
 // Subconjunto de estados por los que tiene sentido filtrar; las etiquetas salen
 // del diccionario compartido para que no se desvíen de las de la tabla.
+// DRAFT no está: es el carrito del comprador y el backend nunca lo lista aquí.
 const FILTERABLE_STATUSES: OrderStatus[] = [
-  'DRAFT',
   'VALIDATION_APPROVED',
   'SELLER_CONFIRMED',
   'PREPARING',

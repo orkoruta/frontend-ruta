@@ -1,3 +1,5 @@
+import { notifyUnauthorized } from './session-events'
+
 const API_BASE = process.env.NEXT_PUBLIC_API_URL ?? 'http://localhost:3001'
 
 export interface CartItem {
@@ -38,6 +40,7 @@ export class CartApiError extends Error {
 
 async function handleResponse<T>(res: Response): Promise<T> {
   if (!res.ok) {
+    if (res.status === 401) notifyUnauthorized()
     let body: ApiErrorBody | undefined
     try {
       body = (await res.json()) as ApiErrorBody
@@ -62,6 +65,7 @@ export async function getDraftOrder(): Promise<DraftOrder | null> {
     cache: 'no-store',
   })
   if (res.status === 401) {
+    notifyUnauthorized()
     throw new CartApiError(401, 'AUTHENTICATION_REQUIRED', 'Autenticación requerida')
   }
   if (!res.ok) {

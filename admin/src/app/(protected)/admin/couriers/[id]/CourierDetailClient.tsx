@@ -4,10 +4,22 @@ import Link from 'next/link'
 import { useEffect, useState, type FormEvent } from 'react'
 import { RutaButton, RutaCard, RutaPill, RutaSectionHeader } from '@orkoruta/ui'
 import { getCourier, updateCourier, type ApiError, type Courier } from '@/lib/users.api'
+import {
+  composePhone,
+  splitPhone,
+  DEFAULT_PHONE_COUNTRY,
+  PHONE_COUNTRY_CODES,
+} from '@/lib/phone_country_codes'
 
 export default function CourierDetailClient({ id }: { id: string }) {
   const [courier, setCourier] = useState<Courier | null>(null)
-  const [form, setForm] = useState({ full_name: '', phone: '', vehicle_type: '', status: 'ACTIVE' })
+  const [form, setForm] = useState({
+    full_name: '',
+    phone_country: DEFAULT_PHONE_COUNTRY,
+    phone: '',
+    transport_mode: '',
+    status: 'ACTIVE',
+  })
   const [loading, setLoading] = useState(true)
   const [saving, setSaving] = useState(false)
   const [error, setError] = useState<string | null>(null)
@@ -21,7 +33,14 @@ export default function CourierDetailClient({ id }: { id: string }) {
         const data = await getCourier(id)
         if (!active) return
         setCourier(data)
-        setForm({ full_name: data.full_name, phone: data.phone ?? '', vehicle_type: data.vehicle_type ?? '', status: data.status ?? 'ACTIVE' })
+        const phone = splitPhone(data.phone)
+        setForm({
+          full_name: data.full_name,
+          phone_country: phone.countryCode,
+          phone: phone.localNumber,
+          transport_mode: data.profile?.transport_mode ?? '',
+          status: data.status ?? 'ACTIVE',
+        })
       } catch (err) {
         const apiErr = err as ApiError
         if (active) setError(apiErr.message ?? 'No pudimos cargar el repartidor.')
@@ -43,8 +62,9 @@ export default function CourierDetailClient({ id }: { id: string }) {
     try {
       const data = await updateCourier(id, {
         full_name: form.full_name.trim(),
-        phone: form.phone.trim() || null,
-        vehicle_type: form.vehicle_type.trim() || null,
+        phone: composePhone(form.phone_country, form.phone) || null,
+        // El backend valida `transport_mode`; `vehicle_type` no existe en su esquema.
+        transport_mode: form.transport_mode.trim() || undefined,
         status: form.status,
       })
       setCourier(data)
@@ -79,8 +99,33 @@ export default function CourierDetailClient({ id }: { id: string }) {
             </div>
             <form onSubmit={handleSubmit} className="grid gap-4 md:grid-cols-2">
               <label className="block"><span className="mb-1 block text-xs font-medium text-slate-600 dark:text-slate-400">Nombre completo</span><input required value={form.full_name} onChange={(event) => setForm((value) => ({ ...value, full_name: event.target.value }))} className="w-full rounded-md border border-slate-200 bg-white/[0.85] px-3 py-2 text-sm text-slate-900 dark:border-white/10 dark:bg-white/[0.055] dark:text-slate-100" /></label>
-              <label className="block"><span className="mb-1 block text-xs font-medium text-slate-600 dark:text-slate-400">Teléfono</span><input value={form.phone} onChange={(event) => setForm((value) => ({ ...value, phone: event.target.value }))} className="w-full rounded-md border border-slate-200 bg-white/[0.85] px-3 py-2 text-sm text-slate-900 dark:border-white/10 dark:bg-white/[0.055] dark:text-slate-100" /></label>
-              <label className="block"><span className="mb-1 block text-xs font-medium text-slate-600 dark:text-slate-400">Medio de transporte</span><input value={form.vehicle_type} onChange={(event) => setForm((value) => ({ ...value, vehicle_type: event.target.value }))} className="w-full rounded-md border border-slate-200 bg-white/[0.85] px-3 py-2 text-sm text-slate-900 dark:border-white/10 dark:bg-white/[0.055] dark:text-slate-100" /></label>
+              <div className="grid grid-cols-[7.5rem_1fr] gap-3">
+                <label className="block">
+                  <span className="mb-1 block text-xs font-medium text-slate-600 dark:text-slate-400">País</span>
+                  <select
+                    value={form.phone_country}
+                    onChange={(event) => setForm((value) => ({ ...value, phone_country: event.target.value }))}
+                    className="w-full rounded-md border border-slate-200 bg-white/[0.85] px-3 py-2 text-sm text-slate-900 focus:outline-none focus:ring-2 focus:ring-sky-400/40 dark:border-white/10 dark:bg-[#1d2025] dark:text-slate-100"
+                  >
+                    {PHONE_COUNTRY_CODES.map((country) => (
+                      <option key={country.code} value={country.code} title={country.country}>
+                        {country.flag} {country.code}
+                      </option>
+                    ))}
+                  </select>
+                </label>
+                <label className="block">
+                  <span className="mb-1 block text-xs font-medium text-slate-600 dark:text-slate-400">Teléfono</span>
+                  <input
+                    type="tel"
+                    inputMode="tel"
+                    value={form.phone}
+                    onChange={(event) => setForm((value) => ({ ...value, phone: event.target.value }))}
+                    className="w-full rounded-md border border-slate-200 bg-white/[0.85] px-3 py-2 text-sm text-slate-900 focus:outline-none focus:ring-2 focus:ring-sky-400/40 dark:border-white/10 dark:bg-white/[0.055] dark:text-slate-100"
+                  />
+                </label>
+              </div>
+              <label className="block"><span className="mb-1 block text-xs font-medium text-slate-600 dark:text-slate-400">Medio de transporte</span><input value={form.transport_mode} onChange={(event) => setForm((value) => ({ ...value, transport_mode: event.target.value }))} className="w-full rounded-md border border-slate-200 bg-white/[0.85] px-3 py-2 text-sm text-slate-900 dark:border-white/10 dark:bg-white/[0.055] dark:text-slate-100" /></label>
               <label className="block"><span className="mb-1 block text-xs font-medium text-slate-600 dark:text-slate-400">Estado</span><select value={form.status} onChange={(event) => setForm((value) => ({ ...value, status: event.target.value }))} className="w-full rounded-md border border-slate-200 bg-white/[0.85] px-3 py-2 text-sm text-slate-900 dark:border-white/10 dark:bg-[#252930] dark:text-slate-100"><option value="ACTIVE">Activo</option><option value="SUSPENDED">Suspendido</option><option value="INACTIVE">Inactivo</option></select></label>
               <div className="md:col-span-2"><RutaButton type="submit" variant="primary" disabled={saving}>{saving ? 'Guardando...' : 'Guardar cambios'}</RutaButton></div>
             </form>

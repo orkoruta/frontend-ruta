@@ -5,6 +5,15 @@ import { useParams, useRouter } from 'next/navigation'
 import Link from 'next/link'
 import { RutaButton, RutaCard, RutaPill, RutaSectionHeader } from '@orkoruta/ui'
 import { CartApiError, getDraftOrder, type DraftOrder } from '@/lib/cart.api'
+import { getClientBySlug, getPickupPoints, type PickupPoint } from '@/lib/catalog.api'
+import { updateBuyerProfile } from '@/lib/auth.api'
+import { useStore } from '@/lib/store-context'
+import {
+  composePhone,
+  splitPhone,
+  DEFAULT_PHONE_COUNTRY,
+  PHONE_COUNTRY_CODES,
+} from '@/lib/phone_country_codes'
 import { markOrderAsRecurring, type RecurrencePeriodicity } from '@/lib/recurrence.api'
 import AddressStep from './AddressStep'
 import DeliveryStep from './DeliveryStep'
@@ -27,14 +36,9 @@ export interface DeliveryAddress {
   instructions: string
 }
 
-export interface PickupPoint {
-  id: number
-  name: string
-  address: string
-  city: string
-  latitude: number
-  longitude: number
-}
+// El tipo real de los puntos físicos vive en catalog.api (lo devuelve el
+// backend). Se re-exporta para que AddressStep lo siga importando desde aquí.
+export type { PickupPoint } from '@/lib/catalog.api'
 
 interface ApiErrorBody {
   code?: string
@@ -54,25 +58,6 @@ const periodicityOptions: Array<{ value: RecurrencePeriodicity; label: string }>
   { value: 'BIWEEKLY', label: 'Quincenal' },
   { value: 'MONTHLY', label: 'Mensual' },
   { value: 'CUSTOM_INTERVAL', label: 'Personalizado' },
-]
-
-const pickupPoints: PickupPoint[] = [
-  {
-    id: 1,
-    name: 'Punto Norte',
-    address: 'Cra 15 # 93 - 47',
-    city: 'Bogotá',
-    latitude: 4.6767,
-    longitude: -74.0486,
-  },
-  {
-    id: 2,
-    name: 'Punto Centro',
-    address: 'Calle 19 # 7 - 43',
-    city: 'Bogotá',
-    latitude: 4.6097,
-    longitude: -74.0714,
-  },
 ]
 
 const initialAddress: DeliveryAddress = {
@@ -161,11 +146,26 @@ export default function CheckoutStepper() {
   const [error, setError] = useState<string | null>(null)
   const [deliveryType, setDeliveryType] = useState<DeliveryType>('SHIP')
   const [address, setAddress] = useState<DeliveryAddress>(initialAddress)
-  const [selectedPickupPointId, setSelectedPickupPointId] = useState<number | null>(
-    pickupPoints[0]?.id ?? null,
-  )
+  // Puntos físicos del Cliente. El "Tipo de entrega" (domicilio vs recogida)
+  // solo se ofrece si el Cliente tiene al menos uno; si no, siempre es domicilio.
+  const [pickupPoints, setPickupPoints] = useState<PickupPoint[]>([])
+  const [selectedPickupPointId, setSelectedPickupPointId] = useState<number | null>(null)
   const [paymentMethod, setPaymentMethod] = useState<PaymentMethod>('ONLINE_AT_ORDER')
   const [paymentSubmethod, setPaymentSubmethod] = useState<PaymentSubmethod>('DATAFONO')
+  // El pago online solo se ofrece si el Cliente tiene Wompi configurado.
+  const [onlinePaymentEnabled, setOnlinePaymentEnabled] = useState(false)
+  // El Cliente ofrece recogida en punto físico (PICKUP).
+  const offersPickup = pickupPoints.length > 0
+  const { profile } = useStore()
+  const isGuest = Boolean(profile?.is_guest)
+  // Contacto del invitado (no tiene cuenta con estos datos). Se prellena si ya
+  // los puso al iniciar la sesión de invitado.
+  const [guestName, setGuestName] = useState('')
+  // Teléfono del invitado partido en indicativo + número local (se recompone al
+  // guardar), igual que en el formulario de repartidores.
+  const [guestPhoneCountry, setGuestPhoneCountry] = useState(DEFAULT_PHONE_COUNTRY)
+  const [guestPhoneLocal, setGuestPhoneLocal] = useState('')
+  const guestPhone = composePhone(guestPhoneCountry, guestPhoneLocal)
   const [recurringEnabled, setRecurringEnabled] = useState(false)
   const [periodicity, setPeriodicity] = useState<RecurrencePeriodicity>('WEEKLY')
   const [customDays, setCustomDays] = useState<number>(7)
@@ -192,6 +192,65 @@ export default function CheckoutStepper() {
     loadDraftOrder()
   }, [loadDraftOrder])
 
+  // Prefill del contacto del invitado con lo que ya tenga su perfil ('Invitado'
+  // es el placeholder por defecto, así que no se usa).
+  useEffect(() => {
+    if (!profile?.is_guest) return
+    setGuestName((prev) => prev || (profile.full_name && profile.full_name !== 'Invitado' ? profile.full_name : ''))
+    if (profile.phone) {
+      const { countryCode, localNumber } = splitPhone(profile.phone)
+      setGuestPhoneCountry((prev) => (prev === DEFAULT_PHONE_COUNTRY ? countryCode : prev))
+      setGuestPhoneLocal((prev) => prev || localNumber)
+    }
+  }, [profile])
+
+  // Disponibilidad de pago online del Cliente. Si no está configurado, se oculta
+  // Wompi y —si venía preseleccionado— se cambia el método a contra entrega.
+  useEffect(() => {
+    if (!slug) return
+    let active = true
+    getClientBySlug(slug)
+      .then((client) => {
+        if (!active) return
+        const enabled = Boolean(client.online_payment_enabled)
+        setOnlinePaymentEnabled(enabled)
+        if (!enabled) {
+          setPaymentMethod((current) =>
+            current === 'ONLINE_AT_ORDER' ? 'CASH_ON_DELIVERY' : current,
+          )
+        }
+      })
+      .catch(() => {
+        // Ante la duda, no ofrecer online: es mejor esconderlo que enviar a una
+        // pasarela sin configurar.
+        if (active) setOnlinePaymentEnabled(false)
+      })
+    return () => {
+      active = false
+    }
+  }, [slug])
+
+  // Carga los puntos físicos del Cliente. Si no tiene, el pedido siempre es a
+  // domicilio y el paso "Tipo de entrega" no se muestra.
+  useEffect(() => {
+    if (!slug) return
+    let active = true
+    getPickupPoints(slug)
+      .then((points) => {
+        if (!active) return
+        setPickupPoints(points)
+        setSelectedPickupPointId((current) => current ?? points[0]?.id ?? null)
+        // Sin puntos no puede haber PICKUP: se fuerza domicilio.
+        if (points.length === 0) setDeliveryType('SHIP')
+      })
+      .catch(() => {
+        if (active) setPickupPoints([])
+      })
+    return () => {
+      active = false
+    }
+  }, [slug])
+
   useEffect(() => {
     if (paymentMethod === 'ELECTRONIC_ON_DELIVERY' && !paymentSubmethod) {
       setPaymentSubmethod('DATAFONO')
@@ -206,6 +265,9 @@ export default function CheckoutStepper() {
     if (order.items.some((item) => item.stock_quantity === 0)) {
       return 'Hay productos sin stock en el carrito.'
     }
+    if (isGuest && (!guestName.trim() || !guestPhone.trim())) {
+      return 'Completa tu nombre y teléfono.'
+    }
     if (deliveryType === 'SHIP') {
       if (!address.line.trim() || !address.city.trim() || !address.state.trim()) {
         return 'Completa la dirección de entrega.'
@@ -218,7 +280,7 @@ export default function CheckoutStepper() {
       return 'Selecciona el submétodo de pago electrónico.'
     }
     return null
-  }, [address, deliveryType, order, paymentMethod, paymentSubmethod, selectedPickupPointId])
+  }, [address, deliveryType, order, paymentMethod, paymentSubmethod, selectedPickupPointId, isGuest, guestName, guestPhone])
 
   const handleSubmit = async () => {
     if (!order || validationMessage || submitting || !slug) return
@@ -253,6 +315,12 @@ export default function CheckoutStepper() {
           }
 
     try {
+      // El invitado no tiene cuenta con su nombre/teléfono: se guardan en su
+      // comprador antes de confirmar, para que el pedido lleve su contacto real.
+      if (isGuest) {
+        await updateBuyerProfile({ full_name: guestName.trim(), phone: guestPhone.trim() })
+      }
+
       await confirmOrder(order.id, payload)
 
       if (recurringEnabled) {
@@ -331,7 +399,64 @@ export default function CheckoutStepper() {
 
       <div className="grid gap-4 lg:grid-cols-[minmax(0,1fr)_320px]">
         <div className="space-y-4">
-          <DeliveryStep value={deliveryType} onChange={setDeliveryType} />
+          {/* Datos de contacto del invitado (sin cuenta). Un comprador con cuenta
+              ya los tiene, así que solo se piden aquí. */}
+          {isGuest && (
+            <RutaCard>
+              <RutaSectionHeader title="Tus datos" subtitle="contacto" />
+              <div className="mt-3 grid gap-3 sm:grid-cols-2">
+                <label className="block">
+                  <span className="mb-1 block text-xs font-semibold text-slate-600 dark:text-slate-300">
+                    Nombre completo
+                  </span>
+                  <input
+                    value={guestName}
+                    onChange={(e) => setGuestName(e.target.value)}
+                    placeholder="Tu nombre"
+                    className="w-full rounded-md border border-slate-200 bg-white/[0.85] px-3 py-2 text-sm text-slate-900 outline-none focus:border-sky-400 dark:border-white/10 dark:bg-white/[0.055] dark:text-slate-100"
+                  />
+                </label>
+                <label className="block">
+                  <span className="mb-1 block text-xs font-semibold text-slate-600 dark:text-slate-300">
+                    Teléfono
+                  </span>
+                  <div className="grid grid-cols-[7rem_1fr] gap-2">
+                    <select
+                      aria-label="Indicativo de país"
+                      value={guestPhoneCountry}
+                      onChange={(e) => setGuestPhoneCountry(e.target.value)}
+                      className="w-full rounded-md border border-slate-200 bg-white/[0.85] px-2 py-2 text-sm text-slate-900 outline-none focus:border-sky-400 dark:border-white/10 dark:bg-[#181a1e] dark:text-slate-100"
+                    >
+                      {PHONE_COUNTRY_CODES.map((c) => (
+                        <option key={c.code} value={c.code} title={c.country}>
+                          {c.flag} {c.code}
+                        </option>
+                      ))}
+                    </select>
+                    <input
+                      type="tel"
+                      inputMode="tel"
+                      value={guestPhoneLocal}
+                      onChange={(e) => setGuestPhoneLocal(e.target.value)}
+                      placeholder="3001234567"
+                      className="w-full rounded-md border border-slate-200 bg-white/[0.85] px-3 py-2 text-sm text-slate-900 outline-none focus:border-sky-400 dark:border-white/10 dark:bg-white/[0.055] dark:text-slate-100"
+                    />
+                  </div>
+                </label>
+              </div>
+              <p className="mt-2 text-xs text-slate-500 dark:text-slate-400">
+                Estás pidiendo como invitado. Para guardar tus pedidos y repetirlos,{' '}
+                <Link href={`/c/${slug}/register`} className="font-medium text-sky-600 dark:text-sky-400">
+                  crea una cuenta
+                </Link>
+                .
+              </p>
+            </RutaCard>
+          )}
+
+          {/* El "Tipo de entrega" solo aparece si el Cliente ofrece recogida en
+              punto físico. Sin puntos, todo pedido es a domicilio. */}
+          {offersPickup && <DeliveryStep value={deliveryType} onChange={setDeliveryType} />}
           <AddressStep
             deliveryType={deliveryType}
             address={address}
@@ -343,11 +468,13 @@ export default function CheckoutStepper() {
           <PaymentStep
             paymentMethod={paymentMethod}
             paymentSubmethod={paymentSubmethod}
+            onlinePaymentEnabled={onlinePaymentEnabled}
             onPaymentMethodChange={setPaymentMethod}
             onPaymentSubmethodChange={setPaymentSubmethod}
           />
 
-          {/* Recurrencia */}
+          {/* Recurrencia: requiere cuenta (el invitado no puede gestionarla). */}
+          {!isGuest && (
           <RutaCard>
             <RutaSectionHeader title="Pedido recurrente" subtitle="paso 4 — opcional" />
             <div className="mt-4">
@@ -413,6 +540,7 @@ export default function CheckoutStepper() {
               </div>
             )}
           </RutaCard>
+          )}
         </div>
 
         <aside className="lg:sticky lg:top-20 lg:self-start">

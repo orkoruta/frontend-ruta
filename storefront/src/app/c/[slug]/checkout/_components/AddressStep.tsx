@@ -1,8 +1,10 @@
 'use client'
 
-import { useEffect, useMemo, useRef } from 'react'
+import { useEffect, useMemo, useRef, useState } from 'react'
 import { RutaCard, RutaPill, RutaSectionHeader } from '@orkoruta/ui'
 import { DEFAULT_CENTER, ensureGoogleMaps } from '@/lib/google-maps'
+import { mapStyles, prefersDark, watchColorScheme } from '@/lib/map_theme'
+import { geocodeAddress } from '@/lib/geocoding'
 import type { DeliveryAddress, DeliveryType, PickupPoint } from './CheckoutStepper'
 
 interface AddressStepProps {
@@ -57,11 +59,22 @@ export default function AddressStep({
   const markerRef = useRef<google.maps.Marker | null>(null)
   const addressRef = useRef(address)
   const deliveryTypeRef = useRef(deliveryType)
+  // Se guarda en ref para que el efecto de geocoding no dependa de la identidad
+  // del callback y se re-dispare en cada render.
+  const onAddressChangeRef = useRef(onAddressChange)
+  // Última búsqueda hecha: un clic o arrastre en el mapa no cambia el texto, así
+  // que no debe re-geocodificar y pisar el punto que el comprador acaba de elegir.
+  const lastQueryRef = useRef<string | null>(null)
+
+  const [geocodeState, setGeocodeState] = useState<
+    'idle' | 'searching' | 'exact' | 'approximate' | 'notFound' | 'error'
+  >('idle')
 
   useEffect(() => {
     addressRef.current = address
     deliveryTypeRef.current = deliveryType
-  }, [address, deliveryType])
+    onAddressChangeRef.current = onAddressChange
+  }, [address, deliveryType, onAddressChange])
 
   const selectedPickup = pickupPoints.find((point) => point.id === selectedPickupPointId)
   const position = useMemo<google.maps.LatLngLiteral>(
@@ -84,6 +97,7 @@ export default function AddressStep({
 
   useEffect(() => {
     let cancelled = false
+    let unwatchTheme: (() => void) | null = null
 
     ensureGoogleMaps()
       .then(() => {
@@ -95,6 +109,13 @@ export default function AddressStep({
           mapTypeControl: false,
           streetViewControl: false,
           fullscreenControl: false,
+          // Tema del mapa según el del sistema. Los POIs se conservan: ayudan al
+          // comprador a reconocer dónde está marcando su casa.
+          styles: mapStyles({ dark: prefersDark() }),
+        })
+
+        unwatchTheme = watchColorScheme((dark) => {
+          map.setOptions({ styles: mapStyles({ dark }) })
         })
 
         const marker = new window.google.maps.Marker({
@@ -132,6 +153,7 @@ export default function AddressStep({
 
     return () => {
       cancelled = true
+      unwatchTheme?.()
     }
   }, [onAddressChange])
 
@@ -140,6 +162,65 @@ export default function AddressStep({
     mapRef.current.panTo(position)
     markerRef.current.setPosition(position)
   }, [position])
+
+  // Geocodifica la dirección escrita y mueve el mapa al punto. Antes solo se
+  // podía ajustar con clic; ahora al escribir la dirección se ubica sola.
+  const geocodeKey = useMemo(
+    () =>
+      [address.line.trim(), address.city.trim(), address.state.trim(), address.postal_code?.trim() ?? '']
+        .join('|'),
+    [address.line, address.city, address.state, address.postal_code],
+  )
+
+  useEffect(() => {
+    if (deliveryType !== 'SHIP') {
+      setGeocodeState('idle')
+      return
+    }
+
+    const [line, city, state, postal] = geocodeKey.split('|')
+    // Con calle y ciudad ya se puede buscar; el resto afina.
+    if (!line || !city) {
+      setGeocodeState('idle')
+      return
+    }
+    // Mismo texto que la última búsqueda (p.ej. tras un clic en el mapa): no
+    // repetir la consulta ni pisar el punto elegido a mano.
+    if (geocodeKey === lastQueryRef.current) return
+
+    const controller = new AbortController()
+    // Debounce: cada consulta a Google se cobra, así que no se dispara por tecla.
+    const timer = window.setTimeout(async () => {
+      setGeocodeState('searching')
+      try {
+        const result = await geocodeAddress(
+          { street: line, city, state, postalCode: postal || undefined },
+          controller.signal,
+        )
+        lastQueryRef.current = geocodeKey
+
+        if (!result) {
+          setGeocodeState('notFound')
+          return
+        }
+
+        setGeocodeState(result.isPrecise ? 'exact' : 'approximate')
+        onAddressChangeRef.current({
+          ...addressRef.current,
+          latitude: result.latitude,
+          longitude: result.longitude,
+        })
+      } catch (err) {
+        if ((err as Error).name === 'AbortError') return
+        setGeocodeState('error')
+      }
+    }, 900)
+
+    return () => {
+      window.clearTimeout(timer)
+      controller.abort()
+    }
+  }, [deliveryType, geocodeKey])
 
   useEffect(() => {
     return () => {
@@ -220,11 +301,12 @@ export default function AddressStep({
                     <p className="text-sm font-bold text-slate-900 dark:text-slate-100">
                       {point.name}
                     </p>
+                    {/* `address` ya incluye la ciudad ("línea, ciudad"). */}
                     <p className="mt-1 text-xs leading-5 text-slate-500 dark:text-slate-400">
                       {point.address}
                     </p>
                   </div>
-                  <RutaPill variant={selected ? 'blue' : 'slate'}>{point.city}</RutaPill>
+                  {selected && <RutaPill variant="blue">Elegido</RutaPill>}
                 </div>
               </button>
             )
@@ -235,11 +317,42 @@ export default function AddressStep({
       <div className="mt-4 overflow-hidden rounded-lg border border-slate-200/90 dark:border-white/10">
         <div ref={mapElementRef} className="h-72 w-full bg-slate-100 dark:bg-[#181a1e]" />
       </div>
-      <p className="mt-2 text-xs text-slate-500 dark:text-slate-400">
-        {deliveryType === 'SHIP'
-          ? 'Haz clic en el mapa para ajustar la ubicación de entrega.'
-          : 'El mapa muestra el punto físico seleccionado.'}
-      </p>
+      {deliveryType === 'SHIP' ? (
+        <div className="mt-2 text-xs">
+          {geocodeState === 'searching' && (
+            <p className="text-slate-500 dark:text-slate-400">Buscando la dirección…</p>
+          )}
+          {geocodeState === 'exact' && (
+            <p className="text-emerald-600 dark:text-emerald-400">
+              ✓ Ubicamos tu dirección. Si el pin no cae exacto, arrástralo o toca el mapa.
+            </p>
+          )}
+          {geocodeState === 'approximate' && (
+            <p className="text-amber-600 dark:text-amber-400">
+              Ubicación aproximada: no encontramos el número exacto. Ajusta el pin en el mapa.
+            </p>
+          )}
+          {geocodeState === 'notFound' && (
+            <p className="text-amber-600 dark:text-amber-400">
+              No encontramos esa dirección. Revísala o marca el punto en el mapa.
+            </p>
+          )}
+          {geocodeState === 'error' && (
+            <p className="text-rose-600 dark:text-rose-400">
+              No pudimos buscar la dirección. Marca el punto en el mapa.
+            </p>
+          )}
+          {geocodeState === 'idle' && (
+            <p className="text-slate-500 dark:text-slate-400">
+              Escribe tu dirección y la ubicaremos en el mapa. También puedes tocar el mapa para ajustarla.
+            </p>
+          )}
+        </div>
+      ) : (
+        <p className="mt-2 text-xs text-slate-500 dark:text-slate-400">
+          El mapa muestra el punto físico seleccionado.
+        </p>
+      )}
     </RutaCard>
   )
 }

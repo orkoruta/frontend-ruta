@@ -9,6 +9,7 @@
 
 import { useEffect, useRef, useState } from 'react'
 import { DEFAULT_CENTER, ensureGoogleMaps } from '@/lib/google-maps'
+import { mapStyles, prefersDark, watchColorScheme } from '@/lib/map_theme'
 import { isAssigned, type MapOrder } from '@/lib/assignment.api'
 import { MAP_PIN_COLORS } from './map_legend'
 
@@ -126,19 +127,32 @@ export function AssignmentMap({
   // ── Inicialización ────────────────────────────────────────────────────────
   useEffect(() => {
     let cancelled = false
+    let unwatchTheme: (() => void) | null = null
     const markers = markersRef.current
 
     ensureGoogleMaps()
       .then(() => {
         if (cancelled || !containerRef.current || mapRef.current) return
 
-        mapRef.current = new window.google.maps.Map(containerRef.current, {
+        const map = new window.google.maps.Map(containerRef.current, {
           center: DEFAULT_CENTER,
           zoom: DEFAULT_ZOOM,
           mapTypeControl: false,
           streetViewControl: false,
           fullscreenControl: false,
+          // Sin los POIs de Google (comercios, parques, transporte): el mapa es
+          // solo el lienzo para los pines de pedidos. `hidePois` conserva calles
+          // y nombres de barrio, que sí sirven para ubicar una entrega.
+          clickableIcons: false,
+          styles: mapStyles({ dark: prefersDark(), hidePois: true }),
         })
+        mapRef.current = map
+
+        // Repinta el mapa si el SO cambia de claro a oscuro con él ya abierto.
+        unwatchTheme = watchColorScheme((dark) => {
+          map.setOptions({ styles: mapStyles({ dark, hidePois: true }) })
+        })
+
         setReady(true)
       })
       .catch((err: Error) => {
@@ -147,6 +161,7 @@ export function AssignmentMap({
 
     return () => {
       cancelled = true
+      unwatchTheme?.()
       markers.forEach((marker) => marker.setMap(null))
       markers.clear()
       mapRef.current = null

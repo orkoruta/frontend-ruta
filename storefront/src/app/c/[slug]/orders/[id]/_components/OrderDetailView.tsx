@@ -618,6 +618,9 @@ export default function OrderDetailView() {
   const canCancel = DIRECT_CANCEL_STATUSES.includes(order.order_status)
   const canRequestCancel = REQUEST_CANCEL_STATUSES.includes(order.order_status)
   const canConfirmReceipt = order.order_status === 'DELIVERED'
+  // Un DRAFT es un carrito sin confirmar: el comprador debe poder retomarlo y
+  // llevarlo al checkout, no solo cancelarlo.
+  const canCheckout = order.order_status === 'DRAFT'
 
   return (
     <div className="mx-auto max-w-5xl px-4 py-8 sm:px-6">
@@ -1006,10 +1009,20 @@ export default function OrderDetailView() {
             </RutaCard>
           )}
 
-          {(canCancel || canRequestCancel || canConfirmReceipt) && (
+          {(canCheckout || canCancel || canRequestCancel || canConfirmReceipt) && (
             <RutaCard>
               <RutaSectionHeader title="Acciones" subtitle="disponibles para este estado" />
               <div className="mt-3 flex flex-col gap-2">
+                {canCheckout && (
+                  <RutaButton
+                    variant="primary"
+                    className="justify-center"
+                    onClick={() => router.push(`/c/${slug}/checkout`)}
+                    disabled={acting}
+                  >
+                    Proceder al checkout
+                  </RutaButton>
+                )}
                 {canCancel && (
                   <RutaButton
                     variant="danger"

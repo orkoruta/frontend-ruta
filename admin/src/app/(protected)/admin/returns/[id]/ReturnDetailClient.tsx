@@ -124,7 +124,7 @@ export default function ReturnDetailClient({ returnId }: Props) {
     setShowPickupForm(true)
     setLoadingCouriers(true)
     try {
-      const res = await listCouriers({ limit: 50 })
+      const res = await listCouriers({ page_size: 50 })
       setCouriers(res.data)
     } catch {
       setCouriers([])

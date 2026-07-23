@@ -2,7 +2,7 @@
 
 import Link from 'next/link'
 import { useCallback, useEffect, useState, type FormEvent } from 'react'
-import { RutaButton, RutaCard, RutaPill, RutaSectionHeader } from '@orkoruta/ui'
+import { RutaButton, RutaCard, RutaPasswordInput, RutaPill, RutaSectionHeader } from '@orkoruta/ui'
 import {
   createCourier,
   getCourier,
@@ -11,21 +11,33 @@ import {
   type ApiError,
   type Courier,
 } from '@/lib/users.api'
+import { PERSON_DOCUMENT_TYPES } from '@/lib/document_types'
+import {
+  composePhone,
+  DEFAULT_PHONE_COUNTRY,
+  PHONE_COUNTRY_CODES,
+} from '@/lib/phone_country_codes'
 
 const EMPTY_COURIER = {
   full_name: '',
   email: '',
+  password: '',
+  phone_country: DEFAULT_PHONE_COUNTRY,
   phone: '',
   document_type: 'CC',
   document_number: '',
-  vehicle_type: 'MOTO',
+  transport_mode: 'MOTO',
 }
 
-const COURIER_FIELDS: Array<[keyof typeof EMPTY_COURIER, string, boolean]> = [
-  ['full_name', 'Nombre completo', true],
-  ['email', 'Correo', false],
-  ['phone', 'Teléfono', false],
-  ['document_number', 'Documento', true],
+/**
+ * El repartidor es un usuario que inicia sesión en su app, así que el correo,
+ * el teléfono y la contraseña son obligatorios: sin ellos el backend rechaza la
+ * creación. La contraseña la fija el administrador y se la entrega al
+ * repartidor.
+ */
+const COURIER_FIELDS: Array<[keyof typeof EMPTY_COURIER, string, string]> = [
+  ['full_name', 'Nombre completo', 'text'],
+  ['email', 'Correo', 'email'],
 ]
 
 function statusVariant(status?: string | null): 'green' | 'red' | 'amber' | 'slate' {
@@ -48,7 +60,9 @@ export default function CouriersPage() {
     setLoading(true)
     setError(null)
     try {
-      const response = await listCouriers({ search, page: 1, limit: 20 })
+      // El backend espera `q` y `page_size`; con `search`/`limit` los ignoraba
+      // en silencio y el buscador no filtraba nada.
+      const response = await listCouriers({ q: search.trim() || undefined, page: 1, page_size: 20 })
       setCouriers(response.data)
     } catch (err) {
       const apiErr = err as ApiError
@@ -73,11 +87,14 @@ export default function CouriersPage() {
     try {
       await createCourier({
         full_name: form.full_name.trim(),
-        email: form.email.trim() || null,
-        phone: form.phone.trim() || null,
+        email: form.email.trim(),
+        password: form.password,
+        phone: composePhone(form.phone_country, form.phone),
         document_type: form.document_type,
         document_number: form.document_number.trim(),
-        vehicle_type: form.vehicle_type,
+        // `transport_mode`, no `vehicle_type`: es el nombre que valida el
+        // backend y con el que se guarda en `courier_profiles`.
+        transport_mode: form.transport_mode,
       })
       setForm(EMPTY_COURIER)
       setSuccess('Repartidor creado.')
@@ -148,7 +165,7 @@ export default function CouriersPage() {
                         <p className="font-medium text-slate-900 dark:text-slate-100">{courier.full_name}</p>
                         <p className="text-xs text-slate-500 dark:text-slate-400">{courier.phone ?? courier.email ?? `#${courier.id}`}</p>
                       </td>
-                      <td className="px-4 py-3 text-slate-600 dark:text-slate-300">{courier.vehicle_type ?? 'Sin registrar'}</td>
+                      <td className="px-4 py-3 text-slate-600 dark:text-slate-300">{courier.profile?.transport_mode ?? 'Sin registrar'}</td>
                       <td className="px-4 py-3">
                         <RutaPill variant={statusVariant(courier.status)}>{courier.status ?? 'SIN_ESTADO'}</RutaPill>
                       </td>
@@ -168,35 +185,102 @@ export default function CouriersPage() {
         <RutaCard>
           <RutaSectionHeader title="Crear repartidor" subtitle="nuevo registro" />
           <form onSubmit={handleCreate} className="space-y-3">
-            {COURIER_FIELDS.map(([key, label, required]) => (
+            {COURIER_FIELDS.map(([key, label, type]) => (
               <label key={key} className="block">
                 <span className="mb-1 block text-xs font-medium text-slate-600 dark:text-slate-400">{label}</span>
                 <input
-                  required={Boolean(required)}
+                  required
+                  type={type}
                   value={form[key]}
                   onChange={(event) => setForm((value) => ({ ...value, [key]: event.target.value }))}
                   className="w-full rounded-md border border-slate-200 bg-white/[0.85] px-3 py-2 text-sm text-slate-900 focus:outline-none focus:ring-2 focus:ring-sky-400/40 dark:border-white/10 dark:bg-white/[0.055] dark:text-slate-100"
                 />
               </label>
             ))}
-            <div className="grid grid-cols-2 gap-3">
+            {/* Indicativo + número: se guardan concatenados en un solo campo. */}
+            <div className="grid grid-cols-[7.5rem_1fr] gap-3">
               <label className="block">
-                <span className="mb-1 block text-xs font-medium text-slate-600 dark:text-slate-400">Tipo doc.</span>
-                <input
-                  value={form.document_type}
-                  onChange={(event) => setForm((value) => ({ ...value, document_type: event.target.value }))}
-                  className="w-full rounded-md border border-slate-200 bg-white/[0.85] px-3 py-2 text-sm text-slate-900 dark:border-white/10 dark:bg-white/[0.055] dark:text-slate-100"
-                />
+                <span className="mb-1 block text-xs font-medium text-slate-600 dark:text-slate-400">País</span>
+                <select
+                  value={form.phone_country}
+                  onChange={(event) => setForm((value) => ({ ...value, phone_country: event.target.value }))}
+                  className="w-full rounded-md border border-slate-200 bg-white/[0.85] px-3 py-2 text-sm text-slate-900 focus:outline-none focus:ring-2 focus:ring-sky-400/40 dark:border-white/10 dark:bg-[#1d2025] dark:text-slate-100"
+                >
+                  {PHONE_COUNTRY_CODES.map((country) => (
+                    <option key={country.code} value={country.code} title={country.country}>
+                      {country.flag} {country.code}
+                    </option>
+                  ))}
+                </select>
               </label>
               <label className="block">
-                <span className="mb-1 block text-xs font-medium text-slate-600 dark:text-slate-400">Vehículo</span>
+                <span className="mb-1 block text-xs font-medium text-slate-600 dark:text-slate-400">Teléfono</span>
                 <input
-                  value={form.vehicle_type}
-                  onChange={(event) => setForm((value) => ({ ...value, vehicle_type: event.target.value }))}
-                  className="w-full rounded-md border border-slate-200 bg-white/[0.85] px-3 py-2 text-sm text-slate-900 dark:border-white/10 dark:bg-white/[0.055] dark:text-slate-100"
+                  required
+                  type="tel"
+                  inputMode="tel"
+                  placeholder="3001234567"
+                  value={form.phone}
+                  onChange={(event) => setForm((value) => ({ ...value, phone: event.target.value }))}
+                  className="w-full rounded-md border border-slate-200 bg-white/[0.85] px-3 py-2 text-sm text-slate-900 placeholder-slate-400 focus:outline-none focus:ring-2 focus:ring-sky-400/40 dark:border-white/10 dark:bg-white/[0.055] dark:text-slate-100"
                 />
               </label>
             </div>
+
+            <label className="block">
+              <span className="mb-1 block text-xs font-medium text-slate-600 dark:text-slate-400">
+                Contraseña temporal
+              </span>
+              <RutaPasswordInput
+                required
+                minLength={8}
+                autoComplete="new-password"
+                value={form.password}
+                onChange={(event) => setForm((value) => ({ ...value, password: event.target.value }))}
+                placeholder="Mínimo 8 caracteres"
+                className="w-full rounded-md border border-slate-200 bg-white/[0.85] px-3 py-2 text-sm text-slate-900 placeholder-slate-400 focus:outline-none focus:ring-2 focus:ring-sky-400/40 dark:border-white/10 dark:bg-white/[0.055] dark:text-slate-100"
+              />
+              <span className="mt-1 block text-xs text-slate-500 dark:text-slate-400">
+                Entrégasela al repartidor para que entre a su app.
+              </span>
+            </label>
+
+            {/* Tipo y número van juntos: son un solo dato partido en dos campos. */}
+            <div className="grid grid-cols-[7.5rem_1fr] gap-3">
+              <label className="block">
+                <span className="mb-1 block text-xs font-medium text-slate-600 dark:text-slate-400">Tipo doc.</span>
+                <select
+                  value={form.document_type}
+                  onChange={(event) => setForm((value) => ({ ...value, document_type: event.target.value }))}
+                  className="w-full rounded-md border border-slate-200 bg-white/[0.85] px-3 py-2 text-sm text-slate-900 focus:outline-none focus:ring-2 focus:ring-sky-400/40 dark:border-white/10 dark:bg-[#1d2025] dark:text-slate-100"
+                >
+                  {PERSON_DOCUMENT_TYPES.map((type) => (
+                    <option key={type.value} value={type.value} title={type.label}>
+                      {type.value}
+                    </option>
+                  ))}
+                </select>
+              </label>
+              <label className="block">
+                <span className="mb-1 block text-xs font-medium text-slate-600 dark:text-slate-400">Documento</span>
+                <input
+                  required
+                  inputMode="numeric"
+                  value={form.document_number}
+                  onChange={(event) => setForm((value) => ({ ...value, document_number: event.target.value }))}
+                  className="w-full rounded-md border border-slate-200 bg-white/[0.85] px-3 py-2 text-sm text-slate-900 focus:outline-none focus:ring-2 focus:ring-sky-400/40 dark:border-white/10 dark:bg-white/[0.055] dark:text-slate-100"
+                />
+              </label>
+            </div>
+
+            <label className="block">
+              <span className="mb-1 block text-xs font-medium text-slate-600 dark:text-slate-400">Vehículo</span>
+              <input
+                value={form.transport_mode}
+                onChange={(event) => setForm((value) => ({ ...value, transport_mode: event.target.value }))}
+                className="w-full rounded-md border border-slate-200 bg-white/[0.85] px-3 py-2 text-sm text-slate-900 focus:outline-none focus:ring-2 focus:ring-sky-400/40 dark:border-white/10 dark:bg-white/[0.055] dark:text-slate-100"
+              />
+            </label>
             <RutaButton type="submit" variant="primary" disabled={creating} className="w-full justify-center">
               {creating ? 'Creando...' : 'Crear repartidor'}
             </RutaButton>
@@ -212,7 +296,7 @@ function CourierDetailClient({ id }: { id: string }) {
   const [form, setForm] = useState({
     full_name: '',
     phone: '',
-    vehicle_type: '',
+    transport_mode: '',
     status: 'ACTIVE',
   })
   const [loading, setLoading] = useState(true)
@@ -232,7 +316,7 @@ function CourierDetailClient({ id }: { id: string }) {
         setForm({
           full_name: data.full_name,
           phone: data.phone ?? '',
-          vehicle_type: data.vehicle_type ?? '',
+          transport_mode: data.profile?.transport_mode ?? '',
           status: data.status ?? 'ACTIVE',
         })
       } catch (err) {
@@ -257,7 +341,7 @@ function CourierDetailClient({ id }: { id: string }) {
       const data = await updateCourier(id, {
         full_name: form.full_name.trim(),
         phone: form.phone.trim() || null,
-        vehicle_type: form.vehicle_type.trim() || null,
+        transport_mode: form.transport_mode.trim() || undefined,
         status: form.status,
       })
       setCourier(data)
@@ -310,7 +394,7 @@ function CourierDetailClient({ id }: { id: string }) {
               </label>
               <label className="block">
                 <span className="mb-1 block text-xs font-medium text-slate-600 dark:text-slate-400">Medio de transporte</span>
-                <input value={form.vehicle_type} onChange={(event) => setForm((value) => ({ ...value, vehicle_type: event.target.value }))} className="w-full rounded-md border border-slate-200 bg-white/[0.85] px-3 py-2 text-sm text-slate-900 focus:outline-none focus:ring-2 focus:ring-sky-400/40 dark:border-white/10 dark:bg-white/[0.055] dark:text-slate-100" />
+                <input value={form.transport_mode} onChange={(event) => setForm((value) => ({ ...value, transport_mode: event.target.value }))} className="w-full rounded-md border border-slate-200 bg-white/[0.85] px-3 py-2 text-sm text-slate-900 focus:outline-none focus:ring-2 focus:ring-sky-400/40 dark:border-white/10 dark:bg-white/[0.055] dark:text-slate-100" />
               </label>
               <label className="block">
                 <span className="mb-1 block text-xs font-medium text-slate-600 dark:text-slate-400">Estado</span>

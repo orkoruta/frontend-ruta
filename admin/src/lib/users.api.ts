@@ -45,7 +45,8 @@ export interface Courier {
   phone?: string | null
   document_type?: string | null
   document_number?: string | null
-  vehicle_type?: string | null
+  /** El backend anida el vehículo en `profile`, no lo devuelve plano. */
+  profile?: { transport_mode?: string | null; vehicle_plate?: string | null } | null
   status?: string | null
   created_at?: string | null
   metrics?: CourierMetrics

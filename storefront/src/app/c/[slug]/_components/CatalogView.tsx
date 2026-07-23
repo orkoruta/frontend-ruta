@@ -1,7 +1,7 @@
 'use client'
 
 import { useState, useEffect, useCallback } from 'react'
-import { useParams } from 'next/navigation'
+import { useParams, useRouter } from 'next/navigation'
 import Link from 'next/link'
 import Image from 'next/image'
 import {
@@ -17,6 +17,8 @@ import {
   type Category,
   type ProductListParams,
 } from '@/lib/catalog.api'
+import { useStore } from '@/lib/store-context'
+import { CartApiError } from '@/lib/cart.api'
 
 function formatCOP(amount: number): string {
   return new Intl.NumberFormat('es-CO', {
@@ -37,7 +39,17 @@ function ProductCardSkeleton() {
   )
 }
 
-function ProductCard({ product, slug }: { product: Product; slug: string }) {
+function ProductCard({
+  product,
+  slug,
+  adding,
+  onAdd,
+}: {
+  product: Product
+  slug: string
+  adding: boolean
+  onAdd: (product: Product) => void
+}) {
   const isPromo = product.product_type === 'PROMO'
   const outOfStock = product.stock_quantity === 0
 
@@ -88,12 +100,15 @@ function ProductCard({ product, slug }: { product: Product; slug: string }) {
             <RutaButton
               variant="primary"
               size="sm"
-              disabled={outOfStock}
+              disabled={outOfStock || adding}
               onClick={(e) => {
+                // La tarjeta entera es un Link al detalle; el botón no debe
+                // navegar, solo agregar.
                 e.preventDefault()
+                onAdd(product)
               }}
             >
-              + Carrito
+              {adding ? 'Agregando…' : '+ Carrito'}
             </RutaButton>
           </div>
         </div>
@@ -104,6 +119,12 @@ function ProductCard({ product, slug }: { product: Product; slug: string }) {
 
 export default function CatalogView() {
   const { slug } = useParams<{ slug: string }>()
+  const router = useRouter()
+  const { profile, addToCart } = useStore()
+
+  // Aviso efímero tras agregar al carrito (o su error).
+  const [toast, setToast] = useState<{ kind: 'ok' | 'error'; text: string } | null>(null)
+  const [addingId, setAddingId] = useState<number | null>(null)
 
   const [products, setProducts] = useState<Product[]>([])
   const [categories, setCategories] = useState<Category[]>([])
@@ -173,10 +194,53 @@ export default function CatalogView() {
     applyFilters({ category_id: catId })
   }
 
+  const handleAddToCart = useCallback(
+    async (product: Product) => {
+      // No hace falta cuenta: si no hay sesión, el store abre una de invitado.
+      setAddingId(product.id)
+      try {
+        await addToCart(product.id, 1)
+        setToast({ kind: 'ok', text: `${product.name} agregado al carrito` })
+      } catch (err) {
+        const msg =
+          err instanceof CartApiError && err.status === 401
+            ? 'Tu sesión expiró. Vuelve a iniciar sesión.'
+            : 'No pudimos agregar el producto. Intenta de nuevo.'
+        setToast({ kind: 'error', text: msg })
+      } finally {
+        setAddingId(null)
+      }
+    },
+    [addToCart],
+  )
+
+  // El toast se oculta solo a los 2.5 s.
+  useEffect(() => {
+    if (!toast) return
+    const t = window.setTimeout(() => setToast(null), 2500)
+    return () => window.clearTimeout(t)
+  }, [toast])
+
   const totalPages = Math.ceil(total / LIMIT)
 
   return (
     <div className="mx-auto max-w-7xl px-4 py-6 sm:px-6">
+      {/* Toast: confirma el agregado (o el error) sin sacar del catálogo. */}
+      {toast && (
+        <div
+          role="status"
+          className={[
+            'fixed bottom-4 left-1/2 z-50 -translate-x-1/2 rounded-md border px-4 py-2.5 text-sm font-medium shadow-lg',
+            toast.kind === 'ok'
+              ? 'border-emerald-400/30 bg-emerald-600 text-white'
+              : 'border-rose-400/30 bg-rose-600 text-white',
+          ].join(' ')}
+        >
+          {toast.kind === 'ok' ? '✓ ' : '⚠ '}
+          {toast.text}
+        </div>
+      )}
+
       <div className="flex gap-6">
         {/* Sidebar de filtros (desktop) */}
         <aside className="hidden w-56 shrink-0 lg:block">
@@ -215,6 +279,20 @@ export default function CatalogView() {
 
         {/* Área principal */}
         <div className="min-w-0 flex-1">
+          {/* Bienvenida */}
+          <div className="mb-4">
+            <h1 className="text-xl font-black tracking-tight text-slate-900 dark:text-slate-100">
+              {profile
+                ? `¡Hola, ${(profile.full_name ?? '').trim().split(/\s+/)[0] || 'de nuevo'}! 👋`
+                : 'Bienvenido 👋'}
+            </h1>
+            <p className="mt-0.5 text-sm text-slate-500 dark:text-slate-400">
+              {profile
+                ? 'Elige lo que quieras y agrégalo al carrito.'
+                : 'Explora el catálogo. Inicia sesión para hacer tu pedido.'}
+            </p>
+          </div>
+
           {/* Buscador */}
           <form onSubmit={handleSearch} className="mb-5 flex gap-2">
             <input
@@ -291,7 +369,13 @@ export default function CatalogView() {
             <>
               <div className="grid grid-cols-2 gap-4 sm:grid-cols-3 lg:grid-cols-4">
                 {products.map((product) => (
-                  <ProductCard key={product.id} product={product} slug={slug} />
+                  <ProductCard
+                    key={product.id}
+                    product={product}
+                    slug={slug}
+                    adding={addingId === product.id}
+                    onAdd={handleAddToCart}
+                  />
                 ))}
               </div>
 

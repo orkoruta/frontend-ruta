@@ -6,6 +6,8 @@ import type { PaymentMethod, PaymentSubmethod } from './CheckoutStepper'
 interface PaymentStepProps {
   paymentMethod: PaymentMethod
   paymentSubmethod: PaymentSubmethod
+  /** Si el Cliente no tiene Wompi configurado, no se muestra la opción online. */
+  onlinePaymentEnabled: boolean
   onPaymentMethodChange: (value: PaymentMethod) => void
   onPaymentSubmethodChange: (value: PaymentSubmethod) => void
 }
@@ -45,16 +47,21 @@ const submethods: Array<{ value: PaymentSubmethod; label: string }> = [
 export default function PaymentStep({
   paymentMethod,
   paymentSubmethod,
+  onlinePaymentEnabled,
   onPaymentMethodChange,
   onPaymentSubmethodChange,
 }: PaymentStepProps) {
   const showSubmethods = paymentMethod === 'ELECTRONIC_ON_DELIVERY'
+  // Oculta "Pago online (Wompi)" cuando el Cliente no tiene la pasarela activa.
+  const visibleOptions = paymentOptions.filter(
+    (option) => option.value !== 'ONLINE_AT_ORDER' || onlinePaymentEnabled,
+  )
 
   return (
     <RutaCard>
       <RutaSectionHeader title="Método de pago" subtitle="paso 3" />
       <div className="space-y-3">
-        {paymentOptions.map((option) => {
+        {visibleOptions.map((option) => {
           const selected = paymentMethod === option.value
           return (
             <button

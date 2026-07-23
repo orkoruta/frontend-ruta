@@ -5,6 +5,7 @@ import { useParams, useRouter, useSearchParams } from 'next/navigation'
 import Link from 'next/link'
 import { RutaButton, RutaCard, RutaPasswordInput } from '@orkoruta/ui'
 import { loginBuyer } from '@/lib/auth.api'
+import { useStore } from '@/lib/store-context'
 
 const inputClass =
   'w-full rounded-md border px-3 py-2 text-sm ' +
@@ -21,6 +22,7 @@ function LoginFormContent() {
   const searchParams = useSearchParams()
   const returnUrl = searchParams.get('return') ?? `/c/${slug}`
   const router = useRouter()
+  const { refresh } = useStore()
 
   const [email, setEmail] = useState('')
   const [password, setPassword] = useState('')
@@ -33,6 +35,9 @@ function LoginFormContent() {
     setLoading(true)
     try {
       await loginBuyer({ client_slug: slug, email, password })
+      // El header y el carrito viven en un contexto que ya está montado; sin
+      // esto seguiría diciendo "Iniciar sesión" hasta recargar.
+      await refresh()
       router.push(returnUrl)
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Error al iniciar sesión')

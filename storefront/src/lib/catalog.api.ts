@@ -7,6 +7,8 @@ export interface ClientPublicInfo {
   description: string | null
   logo_url: string | null
   frontend_mode: string
+  /** El Cliente tiene su pasarela Wompi configurada y activa. */
+  online_payment_enabled?: boolean
 }
 
 export interface Category {

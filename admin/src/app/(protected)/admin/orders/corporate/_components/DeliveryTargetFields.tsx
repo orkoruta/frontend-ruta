@@ -12,6 +12,7 @@
 import { useEffect, useMemo, useRef, useState } from 'react'
 import { geocodeAddress } from '@/lib/geocoding'
 import { DEFAULT_CENTER, ensureGoogleMaps } from '@/lib/google-maps'
+import { mapStyles, prefersDark, watchColorScheme } from '@/lib/map_theme'
 import type { PickupPoint } from '@/lib/users.api'
 
 export interface CorporateDeliveryAddress {
@@ -170,6 +171,7 @@ export default function DeliveryTargetFields({
   useEffect(() => {
     if (deliveryType !== 'SHIP') return
     let cancelled = false
+    let unwatchTheme: (() => void) | null = null
 
     ensureGoogleMaps()
       .then(() => {
@@ -181,6 +183,13 @@ export default function DeliveryTargetFields({
           mapTypeControl: false,
           streetViewControl: false,
           fullscreenControl: false,
+          // Aquí sí se conservan los POIs: ayudan a reconocer dónde queda la casa
+          // que se está marcando. Solo se ajusta el tema al del sistema.
+          styles: mapStyles({ dark: prefersDark() }),
+        })
+
+        unwatchTheme = watchColorScheme((dark) => {
+          map.setOptions({ styles: mapStyles({ dark }) })
         })
 
         const marker = new window.google.maps.Marker({
@@ -221,6 +230,7 @@ export default function DeliveryTargetFields({
 
     return () => {
       cancelled = true
+      unwatchTheme?.()
       mapRef.current = null
       markerRef.current = null
     }

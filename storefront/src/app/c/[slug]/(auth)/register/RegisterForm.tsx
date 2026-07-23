@@ -5,6 +5,7 @@ import { useParams, useRouter } from 'next/navigation'
 import Link from 'next/link'
 import { RutaButton, RutaCard, RutaPasswordInput } from '@orkoruta/ui'
 import { registerBuyer } from '@/lib/auth.api'
+import { useStore } from '@/lib/store-context'
 
 const DOCUMENT_TYPES = [
   { value: 'CC', label: 'Cédula de Ciudadanía (CC)' },
@@ -26,6 +27,7 @@ export function RegisterForm() {
   const params = useParams()
   const slug = params.slug as string
   const router = useRouter()
+  const { refresh } = useStore()
 
   const [fullName, setFullName] = useState('')
   const [email, setEmail] = useState('')
@@ -50,6 +52,9 @@ export function RegisterForm() {
         document_type: documentType,
         document_number: documentNumber,
       })
+      // El registro deja sesión iniciada (cookies); refrescar el contexto para
+      // que el header salude por nombre al volver al catálogo.
+      await refresh()
       router.push(`/c/${slug}`)
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Error al crear la cuenta')
