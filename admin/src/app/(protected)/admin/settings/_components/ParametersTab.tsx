@@ -53,7 +53,7 @@ function formatParamKey(key: string): string {
 }
 
 const INPUT_CLASS =
-  'flex-1 rounded-md border border-slate-200 bg-white/[0.85] px-3 py-2 text-sm text-slate-900 placeholder-slate-400 focus:outline-none focus:ring-2 focus:ring-sky-400/[0.4] dark:border-white/10 dark:bg-white/[0.055] dark:text-slate-100'
+  'flex-1 rounded-md border border-slate-200 bg-white/[0.85] px-3 py-2 text-sm text-slate-900 placeholder-slate-400 focus:outline-none focus:ring-2 focus:ring-brand-400/[0.4] dark:border-white/10 dark:bg-white/[0.055] dark:text-slate-100'
 
 export function ParametersTab() {
   const [params, setParams] = useState<Parameter[]>([])
@@ -208,7 +208,7 @@ export function ParametersTab() {
                         fijado por RUTA
                       </span>
                     ) : p.source === 'CLIENT' ? (
-                      <span className="rounded border border-sky-400/25 bg-sky-500/[0.12] px-1.5 py-0.5 text-[10px] font-semibold text-sky-700 dark:text-sky-300">
+                      <span className="rounded border border-brand-400/25 bg-brand-500/[0.12] px-1.5 py-0.5 text-[10px] font-semibold text-brand-700 dark:text-brand-300">
                         personalizado
                       </span>
                     ) : (

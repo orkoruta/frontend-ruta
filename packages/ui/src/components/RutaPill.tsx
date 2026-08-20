@@ -1,7 +1,14 @@
-type PillVariant = 'blue' | 'green' | 'amber' | 'red' | 'violet' | 'slate'
+type PillVariant = 'brand' | 'blue' | 'green' | 'amber' | 'red' | 'violet' | 'slate'
 
+/**
+ * `blue`, `green`, `amber` y `red` son **semánticos** (en curso / éxito / aviso
+ * / error) y no se tiñen de marca: cambiarlos rompería el código de color que
+ * el usuario ya aprendió leyendo estados de pedido. `brand` es para destacar
+ * algo de la propia plataforma, no un estado.
+ */
 const pillVariants: Record<PillVariant, string> = {
-  blue:   'bg-sky-500/[0.12] text-sky-700 border-sky-400/40 dark:text-sky-300 dark:border-sky-400/25',
+  brand:  'bg-brand-500/[0.12] text-brand-700 border-brand-400/40 dark:text-brand-300 dark:border-brand-400/25',
+  blue:   'bg-blue-500/[0.12] text-blue-700 border-blue-400/40 dark:text-blue-300 dark:border-blue-400/25',
   green:  'bg-emerald-500/[0.12] text-emerald-700 border-emerald-400/40 dark:text-emerald-300 dark:border-emerald-400/25',
   amber:  'bg-amber-500/[0.12] text-amber-700 border-amber-400/40 dark:text-amber-300 dark:border-amber-400/25',
   red:    'bg-rose-500/[0.12] text-rose-700 border-rose-400/40 dark:text-rose-300 dark:border-rose-400/25',
@@ -17,7 +24,7 @@ interface RutaPillProps {
 
 export function RutaPill({ variant = 'slate', children, className = '' }: RutaPillProps) {
   return (
-    <span className={`inline-flex items-center rounded-md border px-2.5 py-0.5 text-xs font-medium ${pillVariants[variant]} ${className}`}>
+    <span className={`inline-flex items-center rounded-full border px-2.5 py-0.5 text-xs font-medium ${pillVariants[variant]} ${className}`}>
       {children}
     </span>
   )

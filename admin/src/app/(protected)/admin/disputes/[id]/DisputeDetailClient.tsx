@@ -97,7 +97,7 @@ function ResolveDialog({ dispute, onSuccess, onCancel }: ResolveDialogProps) {
           <select
             value={action}
             onChange={(e) => setAction(e.target.value as DisputeAction)}
-            className="w-full rounded-md border border-slate-200 bg-white/[0.85] px-3 py-2 text-sm text-slate-900 focus:outline-none focus:ring-2 focus:ring-sky-500/[0.4] dark:border-white/10 dark:bg-white/[0.055] dark:text-slate-100"
+            className="w-full rounded-md border border-slate-200 bg-white/[0.85] px-3 py-2 text-sm text-slate-900 focus:outline-none focus:ring-2 focus:ring-brand-500/[0.4] dark:border-white/10 dark:bg-white/[0.055] dark:text-slate-100"
           >
             <option value="NO_ACTION">{ACTION_LABELS.NO_ACTION}</option>
             <option value="WITH_RETURN">{ACTION_LABELS.WITH_RETURN}</option>
@@ -118,7 +118,7 @@ function ResolveDialog({ dispute, onSuccess, onCancel }: ResolveDialogProps) {
               value={amount}
               onChange={(e) => setAmount(e.target.value)}
               placeholder="0"
-              className="w-full rounded-md border border-slate-200 bg-white/[0.85] px-3 py-2 text-sm text-slate-900 focus:outline-none focus:ring-2 focus:ring-sky-500/[0.4] dark:border-white/10 dark:bg-white/[0.055] dark:text-slate-100"
+              className="w-full rounded-md border border-slate-200 bg-white/[0.85] px-3 py-2 text-sm text-slate-900 focus:outline-none focus:ring-2 focus:ring-brand-500/[0.4] dark:border-white/10 dark:bg-white/[0.055] dark:text-slate-100"
             />
           </div>
         )}
@@ -133,7 +133,7 @@ function ResolveDialog({ dispute, onSuccess, onCancel }: ResolveDialogProps) {
             onChange={(e) => setResolution(e.target.value)}
             rows={3}
             placeholder="Describe la resolución de la disputa…"
-            className="w-full rounded-md border border-slate-200 bg-white/[0.85] px-3 py-2 text-sm text-slate-900 focus:outline-none focus:ring-2 focus:ring-sky-500/[0.4] dark:border-white/10 dark:bg-white/[0.055] dark:text-slate-100"
+            className="w-full rounded-md border border-slate-200 bg-white/[0.85] px-3 py-2 text-sm text-slate-900 focus:outline-none focus:ring-2 focus:ring-brand-500/[0.4] dark:border-white/10 dark:bg-white/[0.055] dark:text-slate-100"
           />
         </div>
 
@@ -295,7 +295,7 @@ export default function DisputeDetailClient({ disputeId }: Props) {
                 <dd className="mt-1">
                   <Link
                     href={`/admin/orders/${dispute.order_id}`}
-                    className="font-medium text-sky-600 hover:underline dark:text-sky-400"
+                    className="font-medium text-brand-600 hover:underline dark:text-brand-400"
                   >
                     #{dispute.order_id}
                   </Link>

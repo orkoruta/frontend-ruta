@@ -1,0 +1,16 @@
+{
+  "name": "@orkoruta/web-shared",
+  "version": "0.1.0",
+  "private": true,
+  "main": "src/index.ts",
+  "types": "src/index.ts",
+  "scripts": {
+    "build": "echo 'web-shared is source-only, no build needed'",
+    "typecheck": "tsc --noEmit"
+  },
+  "devDependencies": {
+    "typescript": "^5.5.0",
+    "@types/google.maps": "^3.65.2",
+    "@types/node": "^22"
+  }
+}

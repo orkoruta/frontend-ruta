@@ -126,7 +126,7 @@ export function AssignmentModal({
                         className={[
                           'w-full rounded-md border px-3 py-2.5 text-left transition-colors',
                           isPicked
-                            ? 'border-sky-400/60 bg-sky-500/[0.12]'
+                            ? 'border-brand-400/60 bg-brand-500/[0.12]'
                             : 'border-slate-200/90 hover:bg-slate-50/[0.6] dark:border-white/10 dark:hover:bg-white/[0.04]',
                         ].join(' ')}
                       >

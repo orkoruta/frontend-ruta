@@ -2,8 +2,9 @@ import type { Metadata } from 'next'
 import './globals.css'
 
 export const metadata: Metadata = {
-  title: 'Ruta Admin',
-  description: 'Panel de administración RUTA',
+  // El favicon lo resuelve Next con `src/app/icon.svg` (el imagotipo).
+  title: 'RUTA — Panel administrativo',
+  description: 'Panel administrativo de RUTA by ORKO',
 }
 
 export default function RootLayout({ children }: { children: React.ReactNode }) {

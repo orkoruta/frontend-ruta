@@ -21,7 +21,7 @@ function statusColor(status: RefundStatus): Color {
 
 const COLOR_CLASSES: Record<Color, string> = {
   amber:  'bg-amber-500/[0.12] text-amber-700 border-amber-400/25 dark:text-amber-300',
-  blue:   'bg-sky-500/[0.12] text-sky-700 border-sky-400/25 dark:text-sky-300',
+  blue:   'bg-blue-500/[0.12] text-blue-700 border-blue-400/25 dark:text-blue-300',
   violet: 'bg-violet-500/[0.12] text-violet-700 border-violet-400/25 dark:text-violet-300',
   green:  'bg-emerald-500/[0.12] text-emerald-700 border-emerald-400/25 dark:text-emerald-300',
   red:    'bg-rose-500/[0.12] text-rose-700 border-rose-400/25 dark:text-rose-300',

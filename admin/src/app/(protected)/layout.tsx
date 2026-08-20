@@ -1,10 +1,11 @@
 'use client'
 
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useCallback } from 'react'
 import { useRouter } from 'next/navigation'
 import { RutaSidebar } from '@/components/RutaSidebar'
 import { RutaHeader } from '@/components/RutaHeader'
 import { SessionContext } from '@/lib/session-context'
+import { onUnauthorized } from '@/lib/session-events'
 import { SESSION_KEY, type RutaSession } from '@/lib/session'
 
 export default function ProtectedLayout({ children }: { children: React.ReactNode }) {
@@ -28,6 +29,27 @@ export default function ProtectedLayout({ children }: { children: React.ReactNod
       setChecked(true)
     }
   }, [router])
+
+  /*
+   * Token caducado. Antes no lo manejaba nadie: las pantallas se quedaban
+   * vacías o soltaban errores sueltos y el usuario no tenía forma de saber que
+   * lo que pasaba es que había que volver a entrar. En el mapa de asignación,
+   * que recarga cada 30 s, era una ráfaga de 401 en consola y nada en pantalla.
+   *
+   * Se limpia la sesión guardada antes de redirigir: si no, el efecto de
+   * arriba la volvería a leer al montar el login y daría vueltas.
+   */
+  const handleUnauthorized = useCallback(() => {
+    try {
+      sessionStorage.removeItem(SESSION_KEY)
+    } catch {
+      // sessionStorage no disponible; la redirección sigue siendo lo correcto.
+    }
+    setSession(null)
+    router.replace('/login?expired=1')
+  }, [router])
+
+  useEffect(() => onUnauthorized(handleUnauthorized), [handleUnauthorized])
 
   if (!checked || !session) {
     return (

@@ -3,13 +3,13 @@
 import Link from 'next/link'
 import { useEffect, useState, type FormEvent } from 'react'
 import { RutaButton, RutaCard, RutaPill, RutaSectionHeader } from '@orkoruta/ui'
-import { getCourier, updateCourier, type ApiError, type Courier } from '@/lib/users.api'
+import { getCourier, updateCourier, type ApiError, type Courier, toCourierStatus } from '@/lib/users.api'
 import {
   composePhone,
   splitPhone,
   DEFAULT_PHONE_COUNTRY,
   PHONE_COUNTRY_CODES,
-} from '@/lib/phone_country_codes'
+} from '@orkoruta/web-shared'
 
 export default function CourierDetailClient({ id }: { id: string }) {
   const [courier, setCourier] = useState<Courier | null>(null)
@@ -62,10 +62,10 @@ export default function CourierDetailClient({ id }: { id: string }) {
     try {
       const data = await updateCourier(id, {
         full_name: form.full_name.trim(),
-        phone: composePhone(form.phone_country, form.phone) || null,
+        phone: composePhone(form.phone_country, form.phone) || undefined,
         // El backend valida `transport_mode`; `vehicle_type` no existe en su esquema.
         transport_mode: form.transport_mode.trim() || undefined,
-        status: form.status,
+        status: toCourierStatus(form.status),
       })
       setCourier(data)
       setSuccess('Repartidor actualizado.')
@@ -105,7 +105,7 @@ export default function CourierDetailClient({ id }: { id: string }) {
                   <select
                     value={form.phone_country}
                     onChange={(event) => setForm((value) => ({ ...value, phone_country: event.target.value }))}
-                    className="w-full rounded-md border border-slate-200 bg-white/[0.85] px-3 py-2 text-sm text-slate-900 focus:outline-none focus:ring-2 focus:ring-sky-400/40 dark:border-white/10 dark:bg-[#1d2025] dark:text-slate-100"
+                    className="w-full rounded-md border border-slate-200 bg-white/[0.85] px-3 py-2 text-sm text-slate-900 focus:outline-none focus:ring-2 focus:ring-brand-400/40 dark:border-white/10 dark:bg-[#1d2025] dark:text-slate-100"
                   >
                     {PHONE_COUNTRY_CODES.map((country) => (
                       <option key={country.code} value={country.code} title={country.country}>
@@ -121,7 +121,7 @@ export default function CourierDetailClient({ id }: { id: string }) {
                     inputMode="tel"
                     value={form.phone}
                     onChange={(event) => setForm((value) => ({ ...value, phone: event.target.value }))}
-                    className="w-full rounded-md border border-slate-200 bg-white/[0.85] px-3 py-2 text-sm text-slate-900 focus:outline-none focus:ring-2 focus:ring-sky-400/40 dark:border-white/10 dark:bg-white/[0.055] dark:text-slate-100"
+                    className="w-full rounded-md border border-slate-200 bg-white/[0.85] px-3 py-2 text-sm text-slate-900 focus:outline-none focus:ring-2 focus:ring-brand-400/40 dark:border-white/10 dark:bg-white/[0.055] dark:text-slate-100"
                   />
                 </label>
               </div>

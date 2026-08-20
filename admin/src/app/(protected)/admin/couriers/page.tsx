@@ -9,14 +9,13 @@ import {
   listCouriers,
   updateCourier,
   type ApiError,
-  type Courier,
-} from '@/lib/users.api'
+  type Courier, toCourierStatus } from '@/lib/users.api'
 import { PERSON_DOCUMENT_TYPES } from '@/lib/document_types'
 import {
   composePhone,
   DEFAULT_PHONE_COUNTRY,
   PHONE_COUNTRY_CODES,
-} from '@/lib/phone_country_codes'
+} from '@orkoruta/web-shared'
 
 const EMPTY_COURIER = {
   full_name: '',
@@ -132,7 +131,7 @@ export default function CouriersPage() {
               id="courier-search"
               value={search}
               onChange={(event) => setSearch(event.target.value)}
-              className="w-full rounded-md border border-slate-200 bg-white/[0.85] px-3 py-2 text-sm text-slate-900 placeholder-slate-400 focus:outline-none focus:ring-2 focus:ring-sky-400/40 dark:border-white/10 dark:bg-white/[0.055] dark:text-slate-100"
+              className="w-full rounded-md border border-slate-200 bg-white/[0.85] px-3 py-2 text-sm text-slate-900 placeholder-slate-400 focus:outline-none focus:ring-2 focus:ring-brand-400/40 dark:border-white/10 dark:bg-white/[0.055] dark:text-slate-100"
               placeholder="Nombre, correo, documento"
             />
           </RutaCard>
@@ -193,7 +192,7 @@ export default function CouriersPage() {
                   type={type}
                   value={form[key]}
                   onChange={(event) => setForm((value) => ({ ...value, [key]: event.target.value }))}
-                  className="w-full rounded-md border border-slate-200 bg-white/[0.85] px-3 py-2 text-sm text-slate-900 focus:outline-none focus:ring-2 focus:ring-sky-400/40 dark:border-white/10 dark:bg-white/[0.055] dark:text-slate-100"
+                  className="w-full rounded-md border border-slate-200 bg-white/[0.85] px-3 py-2 text-sm text-slate-900 focus:outline-none focus:ring-2 focus:ring-brand-400/40 dark:border-white/10 dark:bg-white/[0.055] dark:text-slate-100"
                 />
               </label>
             ))}
@@ -204,7 +203,7 @@ export default function CouriersPage() {
                 <select
                   value={form.phone_country}
                   onChange={(event) => setForm((value) => ({ ...value, phone_country: event.target.value }))}
-                  className="w-full rounded-md border border-slate-200 bg-white/[0.85] px-3 py-2 text-sm text-slate-900 focus:outline-none focus:ring-2 focus:ring-sky-400/40 dark:border-white/10 dark:bg-[#1d2025] dark:text-slate-100"
+                  className="w-full rounded-md border border-slate-200 bg-white/[0.85] px-3 py-2 text-sm text-slate-900 focus:outline-none focus:ring-2 focus:ring-brand-400/40 dark:border-white/10 dark:bg-[#1d2025] dark:text-slate-100"
                 >
                   {PHONE_COUNTRY_CODES.map((country) => (
                     <option key={country.code} value={country.code} title={country.country}>
@@ -222,7 +221,7 @@ export default function CouriersPage() {
                   placeholder="3001234567"
                   value={form.phone}
                   onChange={(event) => setForm((value) => ({ ...value, phone: event.target.value }))}
-                  className="w-full rounded-md border border-slate-200 bg-white/[0.85] px-3 py-2 text-sm text-slate-900 placeholder-slate-400 focus:outline-none focus:ring-2 focus:ring-sky-400/40 dark:border-white/10 dark:bg-white/[0.055] dark:text-slate-100"
+                  className="w-full rounded-md border border-slate-200 bg-white/[0.85] px-3 py-2 text-sm text-slate-900 placeholder-slate-400 focus:outline-none focus:ring-2 focus:ring-brand-400/40 dark:border-white/10 dark:bg-white/[0.055] dark:text-slate-100"
                 />
               </label>
             </div>
@@ -238,7 +237,7 @@ export default function CouriersPage() {
                 value={form.password}
                 onChange={(event) => setForm((value) => ({ ...value, password: event.target.value }))}
                 placeholder="Mínimo 8 caracteres"
-                className="w-full rounded-md border border-slate-200 bg-white/[0.85] px-3 py-2 text-sm text-slate-900 placeholder-slate-400 focus:outline-none focus:ring-2 focus:ring-sky-400/40 dark:border-white/10 dark:bg-white/[0.055] dark:text-slate-100"
+                className="w-full rounded-md border border-slate-200 bg-white/[0.85] px-3 py-2 text-sm text-slate-900 placeholder-slate-400 focus:outline-none focus:ring-2 focus:ring-brand-400/40 dark:border-white/10 dark:bg-white/[0.055] dark:text-slate-100"
               />
               <span className="mt-1 block text-xs text-slate-500 dark:text-slate-400">
                 Entrégasela al repartidor para que entre a su app.
@@ -252,7 +251,7 @@ export default function CouriersPage() {
                 <select
                   value={form.document_type}
                   onChange={(event) => setForm((value) => ({ ...value, document_type: event.target.value }))}
-                  className="w-full rounded-md border border-slate-200 bg-white/[0.85] px-3 py-2 text-sm text-slate-900 focus:outline-none focus:ring-2 focus:ring-sky-400/40 dark:border-white/10 dark:bg-[#1d2025] dark:text-slate-100"
+                  className="w-full rounded-md border border-slate-200 bg-white/[0.85] px-3 py-2 text-sm text-slate-900 focus:outline-none focus:ring-2 focus:ring-brand-400/40 dark:border-white/10 dark:bg-[#1d2025] dark:text-slate-100"
                 >
                   {PERSON_DOCUMENT_TYPES.map((type) => (
                     <option key={type.value} value={type.value} title={type.label}>
@@ -268,7 +267,7 @@ export default function CouriersPage() {
                   inputMode="numeric"
                   value={form.document_number}
                   onChange={(event) => setForm((value) => ({ ...value, document_number: event.target.value }))}
-                  className="w-full rounded-md border border-slate-200 bg-white/[0.85] px-3 py-2 text-sm text-slate-900 focus:outline-none focus:ring-2 focus:ring-sky-400/40 dark:border-white/10 dark:bg-white/[0.055] dark:text-slate-100"
+                  className="w-full rounded-md border border-slate-200 bg-white/[0.85] px-3 py-2 text-sm text-slate-900 focus:outline-none focus:ring-2 focus:ring-brand-400/40 dark:border-white/10 dark:bg-white/[0.055] dark:text-slate-100"
                 />
               </label>
             </div>
@@ -278,7 +277,7 @@ export default function CouriersPage() {
               <input
                 value={form.transport_mode}
                 onChange={(event) => setForm((value) => ({ ...value, transport_mode: event.target.value }))}
-                className="w-full rounded-md border border-slate-200 bg-white/[0.85] px-3 py-2 text-sm text-slate-900 focus:outline-none focus:ring-2 focus:ring-sky-400/40 dark:border-white/10 dark:bg-white/[0.055] dark:text-slate-100"
+                className="w-full rounded-md border border-slate-200 bg-white/[0.85] px-3 py-2 text-sm text-slate-900 focus:outline-none focus:ring-2 focus:ring-brand-400/40 dark:border-white/10 dark:bg-white/[0.055] dark:text-slate-100"
               />
             </label>
             <RutaButton type="submit" variant="primary" disabled={creating} className="w-full justify-center">
@@ -340,9 +339,9 @@ function CourierDetailClient({ id }: { id: string }) {
     try {
       const data = await updateCourier(id, {
         full_name: form.full_name.trim(),
-        phone: form.phone.trim() || null,
+        phone: form.phone.trim() || undefined,
         transport_mode: form.transport_mode.trim() || undefined,
-        status: form.status,
+        status: toCourierStatus(form.status),
       })
       setCourier(data)
       setSuccess('Repartidor actualizado.')
@@ -386,19 +385,19 @@ function CourierDetailClient({ id }: { id: string }) {
             <form onSubmit={handleSubmit} className="grid gap-4 md:grid-cols-2">
               <label className="block">
                 <span className="mb-1 block text-xs font-medium text-slate-600 dark:text-slate-400">Nombre completo</span>
-                <input required value={form.full_name} onChange={(event) => setForm((value) => ({ ...value, full_name: event.target.value }))} className="w-full rounded-md border border-slate-200 bg-white/[0.85] px-3 py-2 text-sm text-slate-900 focus:outline-none focus:ring-2 focus:ring-sky-400/40 dark:border-white/10 dark:bg-white/[0.055] dark:text-slate-100" />
+                <input required value={form.full_name} onChange={(event) => setForm((value) => ({ ...value, full_name: event.target.value }))} className="w-full rounded-md border border-slate-200 bg-white/[0.85] px-3 py-2 text-sm text-slate-900 focus:outline-none focus:ring-2 focus:ring-brand-400/40 dark:border-white/10 dark:bg-white/[0.055] dark:text-slate-100" />
               </label>
               <label className="block">
                 <span className="mb-1 block text-xs font-medium text-slate-600 dark:text-slate-400">Teléfono</span>
-                <input value={form.phone} onChange={(event) => setForm((value) => ({ ...value, phone: event.target.value }))} className="w-full rounded-md border border-slate-200 bg-white/[0.85] px-3 py-2 text-sm text-slate-900 focus:outline-none focus:ring-2 focus:ring-sky-400/40 dark:border-white/10 dark:bg-white/[0.055] dark:text-slate-100" />
+                <input value={form.phone} onChange={(event) => setForm((value) => ({ ...value, phone: event.target.value }))} className="w-full rounded-md border border-slate-200 bg-white/[0.85] px-3 py-2 text-sm text-slate-900 focus:outline-none focus:ring-2 focus:ring-brand-400/40 dark:border-white/10 dark:bg-white/[0.055] dark:text-slate-100" />
               </label>
               <label className="block">
                 <span className="mb-1 block text-xs font-medium text-slate-600 dark:text-slate-400">Medio de transporte</span>
-                <input value={form.transport_mode} onChange={(event) => setForm((value) => ({ ...value, transport_mode: event.target.value }))} className="w-full rounded-md border border-slate-200 bg-white/[0.85] px-3 py-2 text-sm text-slate-900 focus:outline-none focus:ring-2 focus:ring-sky-400/40 dark:border-white/10 dark:bg-white/[0.055] dark:text-slate-100" />
+                <input value={form.transport_mode} onChange={(event) => setForm((value) => ({ ...value, transport_mode: event.target.value }))} className="w-full rounded-md border border-slate-200 bg-white/[0.85] px-3 py-2 text-sm text-slate-900 focus:outline-none focus:ring-2 focus:ring-brand-400/40 dark:border-white/10 dark:bg-white/[0.055] dark:text-slate-100" />
               </label>
               <label className="block">
                 <span className="mb-1 block text-xs font-medium text-slate-600 dark:text-slate-400">Estado</span>
-                <select value={form.status} onChange={(event) => setForm((value) => ({ ...value, status: event.target.value }))} className="w-full rounded-md border border-slate-200 bg-white/[0.85] px-3 py-2 text-sm text-slate-900 focus:outline-none focus:ring-2 focus:ring-sky-400/40 dark:border-white/10 dark:bg-[#252930] dark:text-slate-100">
+                <select value={form.status} onChange={(event) => setForm((value) => ({ ...value, status: event.target.value }))} className="w-full rounded-md border border-slate-200 bg-white/[0.85] px-3 py-2 text-sm text-slate-900 focus:outline-none focus:ring-2 focus:ring-brand-400/40 dark:border-white/10 dark:bg-[#252930] dark:text-slate-100">
                   <option value="ACTIVE">Activo</option>
                   <option value="SUSPENDED">Suspendido</option>
                   <option value="INACTIVE">Inactivo</option>

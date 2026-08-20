@@ -13,10 +13,11 @@ import {
 import { RecurrenceStatusPill } from '../_components/RecurrenceStatusPill'
 
 const PERIODICITY_LABELS: Record<string, string> = {
+  DAILY: 'Diaria',
   WEEKLY: 'Semanal',
   BIWEEKLY: 'Quincenal',
   MONTHLY: 'Mensual',
-  CUSTOM: 'Personalizada',
+  CUSTOM_INTERVAL: 'Personalizada',
 }
 
 function formatDate(value: string | null) {
@@ -107,9 +108,9 @@ export default function RecurrenceDetailClient({ templateId }: Props) {
     )
   }
 
-  const isActive = template.status === 'RECURRENCE_ACTIVE'
-  const isPaused = template.status === 'RECURRENCE_PAUSED'
-  const isCancelled = template.status === 'RECURRENCE_CANCELLED'
+  const isActive = template.recurrence_status === 'RECURRENCE_ACTIVE'
+  const isPaused = template.recurrence_status === 'RECURRENCE_PAUSED'
+  const isCancelled = template.recurrence_status === 'RECURRENCE_CANCELLED'
 
   return (
     <div className="mx-auto flex max-w-4xl flex-col gap-5">
@@ -120,7 +121,7 @@ export default function RecurrenceDetailClient({ templateId }: Props) {
             plantilla #{template.id}
           </p>
           <div className="mt-2 flex flex-wrap items-center gap-3">
-            <RecurrenceStatusPill status={template.status} />
+            <RecurrenceStatusPill status={template.recurrence_status} />
             <span className="text-xs text-slate-500 dark:text-slate-400">
               Creada el {formatDate(template.created_at)}
             </span>
@@ -198,8 +199,8 @@ export default function RecurrenceDetailClient({ templateId }: Props) {
                   Periodicidad
                 </dt>
                 <dd className="mt-1">
-                  <span className="inline-flex items-center rounded-md border border-sky-400/25 bg-sky-500/[0.12] px-2.5 py-1 text-xs font-semibold text-sky-700 dark:text-sky-300">
-                    {PERIODICITY_LABELS[template.periodicity] ?? template.periodicity}
+                  <span className="inline-flex items-center rounded-md border border-brand-400/25 bg-brand-500/[0.12] px-2.5 py-1 text-xs font-semibold text-brand-700 dark:text-brand-300">
+                    {PERIODICITY_LABELS[template.recurrence_periodicity] ?? template.recurrence_periodicity}
                   </span>
                 </dd>
               </div>
@@ -209,7 +210,7 @@ export default function RecurrenceDetailClient({ templateId }: Props) {
                   Estado
                 </dt>
                 <dd className="mt-1">
-                  <RecurrenceStatusPill status={template.status} />
+                  <RecurrenceStatusPill status={template.recurrence_status} />
                 </dd>
               </div>
 
@@ -244,7 +245,7 @@ export default function RecurrenceDetailClient({ templateId }: Props) {
               pedidos asociados a este comprador, visita la sección de{' '}
               <Link
                 href="/admin/orders"
-                className="text-sky-600 hover:underline dark:text-sky-400"
+                className="text-brand-600 hover:underline dark:text-brand-400"
               >
                 Pedidos
               </Link>

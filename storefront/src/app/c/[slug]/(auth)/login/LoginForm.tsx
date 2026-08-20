@@ -12,7 +12,7 @@ const inputClass =
   'bg-white/[0.85] border-slate-200 text-slate-900 ' +
   'dark:bg-white/[0.055] dark:border-white/10 dark:text-slate-100 ' +
   'placeholder:text-slate-400 dark:placeholder:text-slate-500 ' +
-  'focus:outline-none focus:ring-2 focus:ring-sky-500/[0.4]'
+  'focus:outline-none focus:ring-2 focus:ring-brand-500/[0.4]'
 
 const labelClass = 'block text-sm font-medium text-slate-700 dark:text-slate-300 mb-1'
 
@@ -112,7 +112,7 @@ function LoginFormContent() {
               ¿No tienes cuenta?{' '}
               <Link
                 href={`/c/${slug}/register`}
-                className="text-sky-600 dark:text-sky-400 hover:underline font-medium"
+                className="text-brand-600 dark:text-brand-400 hover:underline font-medium"
               >
                 Crear cuenta
               </Link>

@@ -99,12 +99,12 @@ export default function ProductsPage() {
             value={query}
             onChange={(event) => setQuery(event.target.value)}
             placeholder="Buscar por nombre, SKU o descripción"
-            className="rounded-md border border-slate-200 bg-white/[0.85] px-3 py-2 text-sm text-slate-900 placeholder-slate-400 focus:outline-none focus:ring-2 focus:ring-sky-400/40 dark:border-white/10 dark:bg-white/[0.055] dark:text-slate-100"
+            className="rounded-md border border-slate-200 bg-white/[0.85] px-3 py-2 text-sm text-slate-900 placeholder-slate-400 focus:outline-none focus:ring-2 focus:ring-brand-400/40 dark:border-white/10 dark:bg-white/[0.055] dark:text-slate-100"
           />
           <select
             value={categoryId}
             onChange={(event) => setCategoryId(event.target.value)}
-            className="rounded-md border border-slate-200 bg-white/[0.85] px-3 py-2 text-sm text-slate-900 focus:outline-none focus:ring-2 focus:ring-sky-400/40 dark:border-white/10 dark:bg-[#1d2025] dark:text-slate-100"
+            className="rounded-md border border-slate-200 bg-white/[0.85] px-3 py-2 text-sm text-slate-900 focus:outline-none focus:ring-2 focus:ring-brand-400/40 dark:border-white/10 dark:bg-[#1d2025] dark:text-slate-100"
           >
             <option value="">Todas las categorías</option>
             {categories.map((category) => (
@@ -114,7 +114,7 @@ export default function ProductsPage() {
           <select
             value={status}
             onChange={(event) => setStatus(event.target.value as ProductStatus | '')}
-            className="rounded-md border border-slate-200 bg-white/[0.85] px-3 py-2 text-sm text-slate-900 focus:outline-none focus:ring-2 focus:ring-sky-400/40 dark:border-white/10 dark:bg-[#1d2025] dark:text-slate-100"
+            className="rounded-md border border-slate-200 bg-white/[0.85] px-3 py-2 text-sm text-slate-900 focus:outline-none focus:ring-2 focus:ring-brand-400/40 dark:border-white/10 dark:bg-[#1d2025] dark:text-slate-100"
           >
             <option value="">Todos los estados</option>
             <option value="ACTIVE">Activo</option>

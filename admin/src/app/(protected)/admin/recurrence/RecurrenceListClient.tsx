@@ -22,10 +22,11 @@ const STATUS_OPTIONS: { value: RecurrenceStatus | ''; label: string }[] = [
 ]
 
 const PERIODICITY_LABELS: Record<string, string> = {
+  DAILY: 'Diaria',
   WEEKLY: 'Semanal',
   BIWEEKLY: 'Quincenal',
   MONTHLY: 'Mensual',
-  CUSTOM: 'Personalizada',
+  CUSTOM_INTERVAL: 'Personalizada',
 }
 
 function formatDate(value: string | null) {
@@ -131,7 +132,7 @@ export default function RecurrenceListClient() {
             <select
               value={filters.status ?? ''}
               onChange={(e) => setStatus(e.target.value as RecurrenceStatus | '')}
-              className="rounded-md border border-slate-200 bg-white/[0.85] px-3 py-2 text-sm text-slate-900 focus:outline-none focus:ring-2 focus:ring-sky-500/[0.4] dark:border-white/10 dark:bg-white/[0.055] dark:text-slate-100"
+              className="rounded-md border border-slate-200 bg-white/[0.85] px-3 py-2 text-sm text-slate-900 focus:outline-none focus:ring-2 focus:ring-brand-500/[0.4] dark:border-white/10 dark:bg-white/[0.055] dark:text-slate-100"
             >
               {STATUS_OPTIONS.map((o) => (
                 <option key={o.value} value={o.value}>
@@ -204,9 +205,9 @@ export default function RecurrenceListClient() {
                 <tbody className="divide-y divide-slate-200/50 dark:divide-white/[0.07]">
                   {templates.map((tpl) => {
                     const isActing = acting === tpl.id
-                    const isActive = tpl.status === 'RECURRENCE_ACTIVE'
-                    const isPaused = tpl.status === 'RECURRENCE_PAUSED'
-                    const isCancelled = tpl.status === 'RECURRENCE_CANCELLED'
+                    const isActive = tpl.recurrence_status === 'RECURRENCE_ACTIVE'
+                    const isPaused = tpl.recurrence_status === 'RECURRENCE_PAUSED'
+                    const isCancelled = tpl.recurrence_status === 'RECURRENCE_CANCELLED'
 
                     return (
                       <tr key={tpl.id} className="hover:bg-white/[0.04]">
@@ -214,9 +215,13 @@ export default function RecurrenceListClient() {
                           #{tpl.id}
                         </td>
                         <td className="py-3 pr-4">
-                          <div className="font-medium text-slate-900 dark:text-slate-100">
+                          {/* El nombre es el enlace al detalle. */}
+                          <Link
+                            href={`/admin/recurrence/${tpl.id}`}
+                            className="font-medium text-brand-700 hover:underline dark:text-brand-300"
+                          >
                             {tpl.buyer_name ?? `Comprador #${tpl.buyer_id}`}
-                          </div>
+                          </Link>
                           {tpl.buyer_email && (
                             <div className="text-xs text-slate-500 dark:text-slate-400">
                               {tpl.buyer_email}
@@ -224,15 +229,15 @@ export default function RecurrenceListClient() {
                           )}
                         </td>
                         <td className="py-3 pr-4">
-                          <span className="inline-flex items-center rounded-md border border-sky-400/25 bg-sky-500/[0.12] px-2 py-0.5 text-[11px] font-semibold text-sky-700 dark:text-sky-300">
-                            {PERIODICITY_LABELS[tpl.periodicity] ?? tpl.periodicity}
+                          <span className="inline-flex items-center rounded-md border border-brand-400/25 bg-brand-500/[0.12] px-2 py-0.5 text-[11px] font-semibold text-brand-700 dark:text-brand-300">
+                            {PERIODICITY_LABELS[tpl.recurrence_periodicity] ?? tpl.recurrence_periodicity}
                           </span>
                         </td>
                         <td className="py-3 pr-4 text-xs text-slate-500 dark:text-slate-400">
                           {formatDate(tpl.next_generation_at)}
                         </td>
                         <td className="py-3 pr-4">
-                          <RecurrenceStatusPill status={tpl.status} />
+                          <RecurrenceStatusPill status={tpl.recurrence_status} />
                         </td>
                         <td className="py-3 text-right">
                           <div className="flex items-center justify-end gap-2">
@@ -275,12 +280,6 @@ export default function RecurrenceListClient() {
                                 {isActing ? '…' : 'Cancelar'}
                               </button>
                             )}
-                            <Link
-                              href={`/admin/recurrence/${tpl.id}`}
-                              className="text-xs font-medium text-sky-600 hover:underline dark:text-sky-400"
-                            >
-                              Ver
-                            </Link>
                           </div>
                         </td>
                       </tr>

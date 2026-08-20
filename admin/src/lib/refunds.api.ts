@@ -1,3 +1,6 @@
+import type { RefundOutcome, InitiateRefundInput } from '@orkoruta/shared'
+import { notifyUnauthorized } from './session-events'
+
 const API_BASE = process.env.NEXT_PUBLIC_API_URL ?? 'http://localhost:3001'
 
 export type RefundStatus =
@@ -8,9 +11,14 @@ export type RefundStatus =
   | 'PARTIALLY_REFUNDED'
   | 'FAILED'
 
-export type RefundModality = 'STORE_CREDIT' | 'BANK_REFUND'
+export type RefundModality = InitiateRefundInput['refund_modality']
 
-export type RefundResult = 'REFUNDED' | 'PARTIALLY_REFUNDED' | 'FAILED'
+/**
+ * Derivado del esquema de la API, no escrito a mano: si el backend añade o
+ * quita un resultado, esto pasa a ser un error de compilación en vez de un 400
+ * en producción.
+ */
+export type RefundResult = RefundOutcome
 
 export interface Refund {
   id: number
@@ -71,6 +79,7 @@ async function request<T>(path: string, init?: RequestInit): Promise<T> {
     },
   })
 
+  if (res.status === 401) notifyUnauthorized()
   if (!res.ok) throw await parseError(res)
   if (res.status === 204) return undefined as T
   return (await res.json()) as T
@@ -122,15 +131,22 @@ export function requestProviderRefund(refundId: number): Promise<Refund> {
   })
 }
 
+/**
+ * El campo del cuerpo se llama `outcome`, no `result`.
+ *
+ * Se mandaba `result`, que el esquema no conoce, y como `outcome` es
+ * **obligatorio** la petición no se colaba en silencio: devolvía siempre 400.
+ * Marcar un reembolso como ejecutado no funcionaba nunca desde el panel.
+ */
 export function markRefundExecuted(
   refundId: number,
-  result: RefundResult,
+  outcome: RefundResult,
   amount_executed?: number,
   external_provider_refund_id?: string,
 ): Promise<Refund> {
   return request<Refund>(`/admin/refunds/${refundId}/mark-executed`, {
     method: 'POST',
     headers: { 'X-Idempotency-Key': idempotencyKey() },
-    body: JSON.stringify({ result, amount_executed, external_provider_refund_id }),
+    body: JSON.stringify({ outcome, amount_executed, external_provider_refund_id }),
   })
 }

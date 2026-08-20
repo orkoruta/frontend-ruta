@@ -155,7 +155,7 @@ export default function ControlViewPage() {
                 onChange={(e) =>
                   setSelectedClientId(e.target.value === '' ? '' : Number(e.target.value))
                 }
-                className="rounded-md border border-slate-200 bg-white/[0.85] px-3 py-2 text-sm text-slate-900 focus:outline-none focus:ring-2 focus:ring-sky-400/40 dark:border-white/10 dark:bg-[#1d2025] dark:text-slate-100"
+                className="rounded-md border border-slate-200 bg-white/[0.85] px-3 py-2 text-sm text-slate-900 focus:outline-none focus:ring-2 focus:ring-brand-400/40 dark:border-white/10 dark:bg-[#1d2025] dark:text-slate-100"
               >
                 <option value="">Selecciona un cliente…</option>
                 {clients.map((c) => (
@@ -181,7 +181,7 @@ export default function ControlViewPage() {
               value={masterPassword}
               onChange={(e) => setMasterPassword(e.target.value)}
               placeholder="Contraseña maestra de Vista de Control"
-              className="rounded-md border border-slate-200 bg-white/[0.85] px-3 py-2 text-sm text-slate-900 placeholder-slate-400 focus:outline-none focus:ring-2 focus:ring-sky-400/40 dark:border-white/10 dark:bg-white/[0.055] dark:text-slate-100"
+              className="rounded-md border border-slate-200 bg-white/[0.85] px-3 py-2 text-sm text-slate-900 placeholder-slate-400 focus:outline-none focus:ring-2 focus:ring-brand-400/40 dark:border-white/10 dark:bg-white/[0.055] dark:text-slate-100"
             />
           </div>
 
@@ -199,7 +199,7 @@ export default function ControlViewPage() {
               value={reason}
               onChange={(e) => setReason(e.target.value)}
               placeholder="Ej. Soporte ticket #1234 — revisar pedido bloqueado"
-              className="rounded-md border border-slate-200 bg-white/[0.85] px-3 py-2 text-sm text-slate-900 placeholder-slate-400 focus:outline-none focus:ring-2 focus:ring-sky-400/40 dark:border-white/10 dark:bg-white/[0.055] dark:text-slate-100"
+              className="rounded-md border border-slate-200 bg-white/[0.85] px-3 py-2 text-sm text-slate-900 placeholder-slate-400 focus:outline-none focus:ring-2 focus:ring-brand-400/40 dark:border-white/10 dark:bg-white/[0.055] dark:text-slate-100"
             />
           </div>
 

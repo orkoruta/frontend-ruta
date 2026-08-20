@@ -1,3 +1,5 @@
+import { notifyUnauthorized } from './session-events'
+
 const API_BASE = process.env.NEXT_PUBLIC_API_URL ?? 'http://localhost:3001'
 
 async function parseError(res: Response): Promise<Error> {
@@ -30,6 +32,7 @@ export async function verifyPickupIdentity(
     },
   )
 
+  if (res.status === 401) notifyUnauthorized()
   if (!res.ok) throw await parseError(res)
 }
 
@@ -50,6 +53,7 @@ export async function recordPickupCollection(
     },
   )
 
+  if (res.status === 401) notifyUnauthorized()
   if (!res.ok) throw await parseError(res)
 }
 
@@ -66,5 +70,6 @@ export async function markPickupDelivered(orderId: number): Promise<void> {
     },
   )
 
+  if (res.status === 401) notifyUnauthorized()
   if (!res.ok) throw await parseError(res)
 }

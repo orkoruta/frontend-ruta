@@ -111,7 +111,7 @@ export default function ReturnsListClient() {
             <select
               value={filters.status ?? ''}
               onChange={(e) => setStatus(e.target.value as ReturnStatus | '')}
-              className="rounded-md border border-slate-200 bg-white/[0.85] px-3 py-2 text-sm text-slate-900 focus:outline-none focus:ring-2 focus:ring-sky-500/[0.4] dark:border-white/10 dark:bg-white/[0.055] dark:text-slate-100"
+              className="rounded-md border border-slate-200 bg-white/[0.85] px-3 py-2 text-sm text-slate-900 focus:outline-none focus:ring-2 focus:ring-brand-500/[0.4] dark:border-white/10 dark:bg-white/[0.055] dark:text-slate-100"
             >
               {STATUS_OPTIONS.map((o) => (
                 <option key={o.value} value={o.value}>
@@ -128,7 +128,7 @@ export default function ReturnsListClient() {
             <select
               value={filters.return_mechanism ?? ''}
               onChange={(e) => setMechanism(e.target.value as ReturnMechanism | '')}
-              className="rounded-md border border-slate-200 bg-white/[0.85] px-3 py-2 text-sm text-slate-900 focus:outline-none focus:ring-2 focus:ring-sky-500/[0.4] dark:border-white/10 dark:bg-white/[0.055] dark:text-slate-100"
+              className="rounded-md border border-slate-200 bg-white/[0.85] px-3 py-2 text-sm text-slate-900 focus:outline-none focus:ring-2 focus:ring-brand-500/[0.4] dark:border-white/10 dark:bg-white/[0.055] dark:text-slate-100"
             >
               {MECHANISM_OPTIONS.map((o) => (
                 <option key={o.value} value={o.value}>
@@ -209,7 +209,7 @@ export default function ReturnsListClient() {
                       <td className="py-3 text-right">
                         <Link
                           href={`/admin/returns/${ret.id}`}
-                          className="text-xs font-medium text-sky-600 hover:underline dark:text-sky-400"
+                          className="text-xs font-medium text-brand-600 hover:underline dark:text-brand-400"
                         >
                           Ver
                         </Link>
@@ -259,7 +259,7 @@ function MechanismBadge({ mechanism }: { mechanism: ReturnMechanism }) {
         'inline-flex items-center rounded-md border px-2 py-0.5 text-[11px] font-semibold',
         isPickup
           ? 'bg-violet-500/[0.12] text-violet-700 border-violet-400/25 dark:text-violet-300'
-          : 'bg-sky-500/[0.12] text-sky-700 border-sky-400/25 dark:text-sky-300',
+          : 'bg-brand-500/[0.12] text-brand-700 border-brand-400/25 dark:text-brand-300',
       ].join(' ')}
     >
       {MECHANISM_LABELS[mechanism]}

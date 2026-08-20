@@ -29,7 +29,7 @@ function MetricCard({
 }) {
   const colorMap: Record<string, string> = {
     slate: 'text-slate-900 dark:text-slate-100',
-    blue: 'text-sky-700 dark:text-sky-300',
+    blue: 'text-brand-700 dark:text-brand-300',
     green: 'text-emerald-700 dark:text-emerald-300',
     amber: 'text-amber-700 dark:text-amber-300',
   }
@@ -153,7 +153,7 @@ export default function RutaAdminDashboardPage() {
             <div className="mt-3 flex flex-wrap gap-3">
               <Link
                 href="/ruta-admin/clients"
-                className="inline-flex items-center rounded-md border border-sky-400/40 bg-sky-500/[0.12] px-4 py-2 text-sm font-medium text-sky-700 transition-colors hover:bg-sky-500/[0.2] dark:border-sky-400/25 dark:text-sky-300"
+                className="inline-flex items-center rounded-md border border-brand-400/40 bg-brand-500/[0.12] px-4 py-2 text-sm font-medium text-brand-700 transition-colors hover:bg-brand-500/[0.2] dark:border-brand-400/25 dark:text-brand-300"
               >
                 Ver todos los clientes
               </Link>

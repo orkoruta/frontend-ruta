@@ -148,7 +148,7 @@ export default function RutaAdminClientsPage() {
 
         <Link
           href="/ruta-admin/clients/new"
-          className="inline-flex items-center justify-center rounded-md border border-sky-400/40 bg-sky-500/[0.12] px-4 py-2 text-sm font-medium text-sky-700 transition-colors hover:bg-sky-500/[0.2] dark:border-sky-400/25 dark:text-sky-300"
+          className="inline-flex items-center justify-center rounded-md border border-brand-400/40 bg-brand-500/[0.12] px-4 py-2 text-sm font-medium text-brand-700 transition-colors hover:bg-brand-500/[0.2] dark:border-brand-400/25 dark:text-brand-300"
         >
           Crear Cliente
         </Link>
@@ -161,7 +161,7 @@ export default function RutaAdminClientsPage() {
             value={draftQ}
             onChange={(e) => setDraftQ(e.target.value)}
             placeholder="Nombre, slug o identificador"
-            className="rounded-md border border-slate-200 bg-white/[0.85] px-3 py-2 text-sm text-slate-900 placeholder-slate-400 focus:outline-none focus:ring-2 focus:ring-sky-400/40 dark:border-white/10 dark:bg-white/[0.055] dark:text-slate-100"
+            className="rounded-md border border-slate-200 bg-white/[0.85] px-3 py-2 text-sm text-slate-900 placeholder-slate-400 focus:outline-none focus:ring-2 focus:ring-brand-400/40 dark:border-white/10 dark:bg-white/[0.055] dark:text-slate-100"
           />
 
           <select
@@ -170,7 +170,7 @@ export default function RutaAdminClientsPage() {
               setClientType(e.target.value as ClientType | '')
               setPage(1)
             }}
-            className="rounded-md border border-slate-200 bg-white/[0.85] px-3 py-2 text-sm text-slate-900 focus:outline-none focus:ring-2 focus:ring-sky-400/40 dark:border-white/10 dark:bg-[#1d2025] dark:text-slate-100"
+            className="rounded-md border border-slate-200 bg-white/[0.85] px-3 py-2 text-sm text-slate-900 focus:outline-none focus:ring-2 focus:ring-brand-400/40 dark:border-white/10 dark:bg-[#1d2025] dark:text-slate-100"
           >
             <option value="">Todos los tipos</option>
             <option value="API">API</option>
@@ -183,7 +183,7 @@ export default function RutaAdminClientsPage() {
               setStatus(e.target.value as ClientStatus | '')
               setPage(1)
             }}
-            className="rounded-md border border-slate-200 bg-white/[0.85] px-3 py-2 text-sm text-slate-900 focus:outline-none focus:ring-2 focus:ring-sky-400/40 dark:border-white/10 dark:bg-[#1d2025] dark:text-slate-100"
+            className="rounded-md border border-slate-200 bg-white/[0.85] px-3 py-2 text-sm text-slate-900 focus:outline-none focus:ring-2 focus:ring-brand-400/40 dark:border-white/10 dark:bg-[#1d2025] dark:text-slate-100"
           >
             <option value="">Todos los estados</option>
             <option value="ACTIVE">Activo</option>

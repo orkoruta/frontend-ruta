@@ -2,6 +2,7 @@
 
 import { useContext } from 'react'
 import { useRouter } from 'next/navigation'
+import { RutaLogo } from '@orkoruta/ui'
 import { SessionContext } from '@/lib/session-context'
 import { SESSION_KEY } from '@/lib/session'
 import { logout } from '@/lib/auth.api'
@@ -57,7 +58,7 @@ export function RutaHeader({ onToggleSidebar }: RutaHeaderProps) {
       )}
 
       {/* Main header bar */}
-      <header className="flex h-14 items-center justify-between border-b border-slate-200 dark:border-white/10 bg-white/[0.72] dark:bg-[#181a1e]/[0.78] backdrop-blur-sm px-4 gap-4">
+      <header className="flex h-24 items-center justify-between border-b border-slate-200 dark:border-white/10 bg-white/[0.72] dark:bg-[#181a1e]/[0.78] backdrop-blur-md px-5 gap-4 shadow-[0_1px_0_0_rgb(253_139_67/0.12)]">
         {/* Left: sidebar toggle + identity */}
         <div className="flex items-center gap-3">
           <button
@@ -80,6 +81,10 @@ export function RutaHeader({ onToggleSidebar }: RutaHeaderProps) {
               />
             </svg>
           </button>
+
+          {/* En móvil la barra lateral (y con ella el logo) está oculta: aquí
+              queda la marca visible. En escritorio no se repite. */}
+          <RutaLogo className="h-auto w-28 shrink-0 text-brand-500 lg:hidden" />
 
           {session?.user_type === 'ADMIN_RUTA' ? (
             <span className="text-[11px] font-bold uppercase tracking-[0.2em] text-violet-600 dark:text-violet-400">

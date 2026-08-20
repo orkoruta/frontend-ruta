@@ -1,3 +1,5 @@
+import { notifyUnauthorized } from './session-events'
+
 const API_BASE = process.env.NEXT_PUBLIC_API_URL ?? 'http://localhost:3001'
 
 export type RecurrenceStatus =
@@ -16,10 +18,11 @@ export interface RecurrenceTemplate {
   buyer_id: number
   buyer_name: string | null
   buyer_email: string | null
-  periodicity: RecurrencePeriodicity
+  // El backend emite estos nombres (recurrence_*), no `periodicity`/`status`.
+  recurrence_periodicity: RecurrencePeriodicity
   next_generation_at: string | null
   last_generated_at: string | null
-  status: RecurrenceStatus
+  recurrence_status: RecurrenceStatus
   created_at: string
   updated_at: string
 }
@@ -59,6 +62,7 @@ async function request<T>(path: string, init?: RequestInit): Promise<T> {
     },
   })
 
+  if (res.status === 401) notifyUnauthorized()
   if (!res.ok) throw await parseError(res)
   if (res.status === 204) return undefined as T
   return (await res.json()) as T
@@ -83,20 +87,30 @@ export function getRecurrenceTemplate(id: number): Promise<RecurrenceTemplate> {
   return request<RecurrenceTemplate>(`/admin/recurrence/${id}`)
 }
 
+// Las mutaciones exigen X-Idempotency-Key (regla 4.5); sin él el backend
+// responde 400 "Header X-Idempotency-Key requerido".
+function idempotencyKey(): string {
+  if (typeof crypto !== 'undefined' && 'randomUUID' in crypto) return crypto.randomUUID()
+  return `${Date.now()}-${Math.random().toString(16).slice(2)}`
+}
+
 export function pauseTemplate(id: number): Promise<RecurrenceTemplate> {
   return request<RecurrenceTemplate>(`/admin/recurrence/${id}/pause`, {
     method: 'POST',
+    headers: { 'X-Idempotency-Key': idempotencyKey() },
   })
 }
 
 export function resumeTemplate(id: number): Promise<RecurrenceTemplate> {
   return request<RecurrenceTemplate>(`/admin/recurrence/${id}/resume`, {
     method: 'POST',
+    headers: { 'X-Idempotency-Key': idempotencyKey() },
   })
 }
 
 export function cancelTemplate(id: number): Promise<RecurrenceTemplate> {
   return request<RecurrenceTemplate>(`/admin/recurrence/${id}/cancel`, {
     method: 'POST',
+    headers: { 'X-Idempotency-Key': idempotencyKey() },
   })
 }

@@ -1,3 +1,4 @@
+import { notifyUnauthorized } from './session-events'
 /**
  * Evidencia del cobro contra entrega.
  *
@@ -38,6 +39,7 @@ export async function getCollectionEvidence(
 
   const res = await fetch(`${API_BASE}${path}`, { credentials: 'include' })
 
+  if (res.status === 401) notifyUnauthorized()
   if (!res.ok) {
     try {
       throw (await res.json()) as ApiError

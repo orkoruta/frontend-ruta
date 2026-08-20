@@ -67,7 +67,7 @@ export function MarkRefundExecutedDialog({ refund, onSuccess, onCancel }: Props)
             value={result}
             onChange={(e) => setResult(e.target.value as RefundResult)}
             disabled={loading}
-            className="w-full rounded-md border border-slate-200 bg-white/[0.85] px-3 py-2 text-sm text-slate-900 focus:outline-none focus:ring-2 focus:ring-sky-500/[0.4] disabled:opacity-50 dark:border-white/10 dark:bg-white/[0.055] dark:text-slate-100"
+            className="w-full rounded-md border border-slate-200 bg-white/[0.85] px-3 py-2 text-sm text-slate-900 focus:outline-none focus:ring-2 focus:ring-brand-500/[0.4] disabled:opacity-50 dark:border-white/10 dark:bg-white/[0.055] dark:text-slate-100"
           >
             <option value="REFUNDED">Reembolsado completamente</option>
             <option value="PARTIALLY_REFUNDED">Reembolso parcial</option>
@@ -89,7 +89,7 @@ export function MarkRefundExecutedDialog({ refund, onSuccess, onCancel }: Props)
               onChange={(e) => setAmountExecuted(e.target.value)}
               placeholder={`Máx ${refund.amount.toLocaleString('es-CO')}`}
               disabled={loading}
-              className="w-full rounded-md border border-slate-200 bg-white/[0.85] px-3 py-2 text-sm text-slate-900 placeholder:text-slate-400 focus:outline-none focus:ring-2 focus:ring-sky-500/[0.4] disabled:opacity-50 dark:border-white/10 dark:bg-white/[0.055] dark:text-slate-100 dark:placeholder:text-slate-500"
+              className="w-full rounded-md border border-slate-200 bg-white/[0.85] px-3 py-2 text-sm text-slate-900 placeholder:text-slate-400 focus:outline-none focus:ring-2 focus:ring-brand-500/[0.4] disabled:opacity-50 dark:border-white/10 dark:bg-white/[0.055] dark:text-slate-100 dark:placeholder:text-slate-500"
             />
           </div>
         )}
@@ -106,7 +106,7 @@ export function MarkRefundExecutedDialog({ refund, onSuccess, onCancel }: Props)
               onChange={(e) => setExternalId(e.target.value)}
               placeholder="Ej. wompi-refund-abc123"
               disabled={loading}
-              className="w-full rounded-md border border-slate-200 bg-white/[0.85] px-3 py-2 text-sm text-slate-900 placeholder:text-slate-400 focus:outline-none focus:ring-2 focus:ring-sky-500/[0.4] disabled:opacity-50 dark:border-white/10 dark:bg-white/[0.055] dark:text-slate-100 dark:placeholder:text-slate-500"
+              className="w-full rounded-md border border-slate-200 bg-white/[0.85] px-3 py-2 text-sm text-slate-900 placeholder:text-slate-400 focus:outline-none focus:ring-2 focus:ring-brand-500/[0.4] disabled:opacity-50 dark:border-white/10 dark:bg-white/[0.055] dark:text-slate-100 dark:placeholder:text-slate-500"
             />
           </div>
         )}

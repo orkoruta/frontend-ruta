@@ -250,7 +250,7 @@ export default function ClientDetailClient({ clientId }: ClientDetailClientProps
               className={[
                 'inline-flex items-center rounded-md border px-2.5 py-1 text-xs font-semibold',
                 client.client_type === 'API'
-                  ? 'border-sky-400/40 bg-sky-500/[0.18] text-sky-700 dark:border-sky-400/25 dark:text-sky-300'
+                  ? 'border-brand-400/40 bg-brand-500/[0.18] text-brand-700 dark:border-brand-400/25 dark:text-brand-300'
                   : 'border-violet-400/40 bg-violet-500/[0.12] text-violet-700 dark:border-violet-400/25 dark:text-violet-300',
               ].join(' ')}
             >
@@ -337,7 +337,7 @@ export default function ClientDetailClient({ clientId }: ClientDetailClientProps
                 required
                 value={name}
                 onChange={(e) => setName(e.target.value)}
-                className="w-full rounded-md border border-slate-200 bg-white/[0.85] px-3 py-2 text-sm text-slate-900 focus:outline-none focus:ring-2 focus:ring-sky-400/40 dark:border-white/10 dark:bg-white/[0.055] dark:text-slate-100"
+                className="w-full rounded-md border border-slate-200 bg-white/[0.85] px-3 py-2 text-sm text-slate-900 focus:outline-none focus:ring-2 focus:ring-brand-400/40 dark:border-white/10 dark:bg-white/[0.055] dark:text-slate-100"
               />
             </div>
 
@@ -354,7 +354,7 @@ export default function ClientDetailClient({ clientId }: ClientDetailClientProps
                 maxLength={20}
                 value={businessCode}
                 onChange={(e) => setBusinessCode(normalizeBusinessCode(e.target.value))}
-                className="w-full rounded-md border border-slate-200 bg-white/[0.85] px-3 py-2 text-sm text-slate-900 focus:outline-none focus:ring-2 focus:ring-sky-400/40 dark:border-white/10 dark:bg-white/[0.055] dark:text-slate-100"
+                className="w-full rounded-md border border-slate-200 bg-white/[0.85] px-3 py-2 text-sm text-slate-900 focus:outline-none focus:ring-2 focus:ring-brand-400/40 dark:border-white/10 dark:bg-white/[0.055] dark:text-slate-100"
               />
             </div>
           </div>
@@ -371,7 +371,7 @@ export default function ClientDetailClient({ clientId }: ClientDetailClientProps
               required
               value={slug}
               onChange={(e) => setSlug(normalizeSlug(e.target.value))}
-              className="w-full rounded-md border border-slate-200 bg-white/[0.85] px-3 py-2 text-sm text-slate-900 focus:outline-none focus:ring-2 focus:ring-sky-400/40 dark:border-white/10 dark:bg-white/[0.055] dark:text-slate-100"
+              className="w-full rounded-md border border-slate-200 bg-white/[0.85] px-3 py-2 text-sm text-slate-900 focus:outline-none focus:ring-2 focus:ring-brand-400/40 dark:border-white/10 dark:bg-white/[0.055] dark:text-slate-100"
             />
             <p className="mt-1 text-xs text-slate-500 dark:text-slate-400">
               Vista pública: {publicPreview}
@@ -390,7 +390,7 @@ export default function ClientDetailClient({ clientId }: ClientDetailClientProps
               rows={4}
               value={description}
               onChange={(e) => setDescription(e.target.value)}
-              className="w-full rounded-md border border-slate-200 bg-white/[0.85] px-3 py-2 text-sm text-slate-900 focus:outline-none focus:ring-2 focus:ring-sky-400/40 dark:border-white/10 dark:bg-white/[0.055] dark:text-slate-100"
+              className="w-full rounded-md border border-slate-200 bg-white/[0.85] px-3 py-2 text-sm text-slate-900 focus:outline-none focus:ring-2 focus:ring-brand-400/40 dark:border-white/10 dark:bg-white/[0.055] dark:text-slate-100"
             />
           </div>
 
@@ -406,7 +406,7 @@ export default function ClientDetailClient({ clientId }: ClientDetailClientProps
                     className={[
                       'flex cursor-pointer items-center justify-center rounded-md border px-3 py-2 text-sm font-medium transition-colors',
                       clientType === type
-                        ? 'border-sky-400/40 bg-sky-500/[0.12] text-sky-700 dark:border-sky-400/25 dark:text-sky-300'
+                        ? 'border-brand-400/40 bg-brand-500/[0.12] text-brand-700 dark:border-brand-400/25 dark:text-brand-300'
                         : 'border-slate-200 bg-white/[0.06] text-slate-600 dark:border-white/10 dark:text-slate-300',
                     ].join(' ')}
                   >
@@ -458,8 +458,8 @@ export default function ClientDetailClient({ clientId }: ClientDetailClientProps
               </fieldset>
             )}
             {clientType === 'API' && (
-              <div className="flex items-center rounded-md border border-sky-400/25 bg-sky-500/[0.08] px-3 py-3">
-                <p className="text-xs text-sky-700 dark:text-sky-300">
+              <div className="flex items-center rounded-md border border-brand-400/25 bg-brand-500/[0.08] px-3 py-3">
+                <p className="text-xs text-brand-700 dark:text-brand-300">
                   Los clientes de tipo API no utilizan frontend propio.
                 </p>
               </div>
@@ -490,7 +490,7 @@ export default function ClientDetailClient({ clientId }: ClientDetailClientProps
           <div className="mt-3">
             <Link
               href="/admin/api-keys"
-              className="inline-flex items-center gap-2 rounded-md border border-sky-400/40 bg-sky-500/[0.12] px-4 py-2 text-sm font-medium text-sky-700 transition-colors hover:bg-sky-500/[0.2] dark:border-sky-400/25 dark:text-sky-300"
+              className="inline-flex items-center gap-2 rounded-md border border-brand-400/40 bg-brand-500/[0.12] px-4 py-2 text-sm font-medium text-brand-700 transition-colors hover:bg-brand-500/[0.2] dark:border-brand-400/25 dark:text-brand-300"
             >
               Gestionar API Keys →
             </Link>

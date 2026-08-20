@@ -1,9 +1,10 @@
+import type { BuyerStatus } from '@orkoruta/shared'
 'use client'
 
 import Link from 'next/link'
 import { useEffect, useMemo, useState, type FormEvent } from 'react'
 import { RutaButton, RutaCard, RutaPill, RutaSectionHeader } from '@orkoruta/ui'
-import { getBuyer, listBuyers, updateBuyer, type ApiError, type Buyer } from '@/lib/users.api'
+import { getBuyer, listBuyers, updateBuyer, type ApiError, type Buyer, toBuyerStatus } from '@/lib/users.api'
 
 function statusVariant(status?: string | null): 'green' | 'red' | 'amber' | 'slate' {
   if (status === 'ACTIVE') return 'green'
@@ -24,7 +25,9 @@ export default function BuyersPage() {
       setLoading(true)
       setError(null)
       try {
-        const response = await listBuyers({ search, page: 1, limit: 20 })
+        // `q` y `page_size`, no `search`/`limit`: el backend ignora en silencio lo
+        // que no reconoce, así que este buscador llevaba sin filtrar nada.
+        const response = await listBuyers({ q: search.trim() || undefined, page: 1, page_size: 20 })
         if (active) setBuyers(response.data)
       } catch (err) {
         const apiErr = err as ApiError
@@ -67,7 +70,7 @@ export default function BuyersPage() {
           id="buyer-search"
           value={search}
           onChange={(event) => setSearch(event.target.value)}
-          className="w-full rounded-md border border-slate-200 bg-white/[0.85] px-3 py-2 text-sm text-slate-900 placeholder-slate-400 focus:outline-none focus:ring-2 focus:ring-sky-400/40 dark:border-white/10 dark:bg-white/[0.055] dark:text-slate-100"
+          className="w-full rounded-md border border-slate-200 bg-white/[0.85] px-3 py-2 text-sm text-slate-900 placeholder-slate-400 focus:outline-none focus:ring-2 focus:ring-brand-400/40 dark:border-white/10 dark:bg-white/[0.055] dark:text-slate-100"
           placeholder="Ej. comprador@empresa.com"
         />
       </RutaCard>
@@ -141,7 +144,7 @@ export default function BuyersPage() {
 
 function BuyerDetailClient({ id }: { id: string }) {
   const [buyer, setBuyer] = useState<Buyer | null>(null)
-  const [form, setForm] = useState({ full_name: '', phone: '', status: 'ACTIVE' })
+  const [form, setForm] = useState<{ full_name: string; phone: string; status: BuyerStatus }>({ full_name: '', phone: '', status: 'ACTIVE' })
   const [loading, setLoading] = useState(true)
   const [saving, setSaving] = useState(false)
   const [error, setError] = useState<string | null>(null)
@@ -159,7 +162,7 @@ function BuyerDetailClient({ id }: { id: string }) {
         setForm({
           full_name: data.full_name,
           phone: data.phone ?? '',
-          status: data.status ?? 'ACTIVE',
+          status: toBuyerStatus(data.status),
         })
       } catch (err) {
         const apiErr = err as ApiError
@@ -182,7 +185,7 @@ function BuyerDetailClient({ id }: { id: string }) {
     try {
       const data = await updateBuyer(id, {
         full_name: form.full_name.trim(),
-        phone: form.phone.trim() || null,
+        phone: form.phone.trim() || undefined,
         status: form.status,
       })
       setBuyer(data)
@@ -232,15 +235,15 @@ function BuyerDetailClient({ id }: { id: string }) {
             <form onSubmit={handleSubmit} className="grid gap-4 md:grid-cols-2">
               <label className="block">
                 <span className="mb-1 block text-xs font-medium text-slate-600 dark:text-slate-400">Nombre completo</span>
-                <input required value={form.full_name} onChange={(event) => setForm((value) => ({ ...value, full_name: event.target.value }))} className="w-full rounded-md border border-slate-200 bg-white/[0.85] px-3 py-2 text-sm text-slate-900 focus:outline-none focus:ring-2 focus:ring-sky-400/40 dark:border-white/10 dark:bg-white/[0.055] dark:text-slate-100" />
+                <input required value={form.full_name} onChange={(event) => setForm((value) => ({ ...value, full_name: event.target.value }))} className="w-full rounded-md border border-slate-200 bg-white/[0.85] px-3 py-2 text-sm text-slate-900 focus:outline-none focus:ring-2 focus:ring-brand-400/40 dark:border-white/10 dark:bg-white/[0.055] dark:text-slate-100" />
               </label>
               <label className="block">
                 <span className="mb-1 block text-xs font-medium text-slate-600 dark:text-slate-400">Teléfono</span>
-                <input value={form.phone} onChange={(event) => setForm((value) => ({ ...value, phone: event.target.value }))} className="w-full rounded-md border border-slate-200 bg-white/[0.85] px-3 py-2 text-sm text-slate-900 focus:outline-none focus:ring-2 focus:ring-sky-400/40 dark:border-white/10 dark:bg-white/[0.055] dark:text-slate-100" />
+                <input value={form.phone} onChange={(event) => setForm((value) => ({ ...value, phone: event.target.value }))} className="w-full rounded-md border border-slate-200 bg-white/[0.85] px-3 py-2 text-sm text-slate-900 focus:outline-none focus:ring-2 focus:ring-brand-400/40 dark:border-white/10 dark:bg-white/[0.055] dark:text-slate-100" />
               </label>
               <label className="block">
                 <span className="mb-1 block text-xs font-medium text-slate-600 dark:text-slate-400">Estado</span>
-                <select value={form.status} onChange={(event) => setForm((value) => ({ ...value, status: event.target.value }))} className="w-full rounded-md border border-slate-200 bg-white/[0.85] px-3 py-2 text-sm text-slate-900 focus:outline-none focus:ring-2 focus:ring-sky-400/40 dark:border-white/10 dark:bg-[#252930] dark:text-slate-100">
+                <select value={form.status} onChange={(event) => setForm((value) => ({ ...value, status: toBuyerStatus(event.target.value) }))} className="w-full rounded-md border border-slate-200 bg-white/[0.85] px-3 py-2 text-sm text-slate-900 focus:outline-none focus:ring-2 focus:ring-brand-400/40 dark:border-white/10 dark:bg-[#252930] dark:text-slate-100">
                   <option value="ACTIVE">Activo</option>
                   <option value="SUSPENDED">Suspendido</option>
                   <option value="INACTIVE">Inactivo</option>

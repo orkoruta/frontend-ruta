@@ -1,3 +1,5 @@
+import { notifyUnauthorized } from './session-events'
+
 const API_BASE = process.env.NEXT_PUBLIC_API_URL ?? 'http://localhost:3001'
 
 export type OrderStatus =
@@ -77,7 +79,31 @@ export type PaymentStatus =
   | 'PAYMENT_NOT_COLLECTED'
 
 export type DeliveryType = 'SHIP' | 'PICKUP'
-export type OrderOrigin = 'UI' | 'API'
+
+/**
+ * De dónde salió el pedido. Son los valores del CHECK de `orders.order_origin`.
+ *
+ * Aquí decía `'UI' | 'API'`, que **no son valores que la API emita ni acepte**.
+ * No se notaba porque el backend descartaba el filtro en silencio y la insignia
+ * de la tabla comparaba con `'API'`, que nunca coincidía. Al empezar a validarse
+ * el filtro, mandar `'UI'` sería un 400.
+ */
+export type OrderOrigin =
+  | 'BUYER_UI'
+  | 'CORPORATE_MANUAL'
+  | 'RECURRENCE'
+  | 'FULL_LANDING_API'
+  | 'API_LOGISTICS'
+
+/** Etiquetas para el panel. El código va en inglés; la UI, en español. */
+export const ORDER_ORIGIN_LABELS: Record<OrderOrigin, string> = {
+  BUYER_UI: 'Tienda',
+  CORPORATE_MANUAL: 'Corporativo',
+  RECURRENCE: 'Recurrente',
+  FULL_LANDING_API: 'Landing',
+  API_LOGISTICS: 'API',
+}
+
 export type BuyerType = 'INDIVIDUAL' | 'CORPORATE'
 
 export interface ApiError {
@@ -92,6 +118,10 @@ export interface OrderSummary {
   payment_status: PaymentStatus
   delivery_type: DeliveryType
   buyer_name: string
+  /** Teléfono del comprador. Para un invitado es el único contacto real. */
+  buyer_phone: string | null
+  /** Pidió sin cuenta: su correo es sintético y no lleva a ninguna bandeja. */
+  buyer_is_guest: boolean
   item_count: number
   total: number
   courier_name: string | null
@@ -140,13 +170,21 @@ export interface OrderStateHistoryEntry {
   occurred_at: string
 }
 
+/**
+ * Solo llega en el detalle del pedido; en el listado es `null`.
+ *
+ * No trae la evidencia de cobro: es un JSONB que hoy guarda la foto en base64,
+ * y meterla aquí cargaría cientos de kB en cada lectura del pedido. La sirve
+ * `GET /admin/orders/:id/collection-evidence`, que es lo que consume
+ * `CollectionEvidenceCard`.
+ */
 export interface PaymentDetail {
   id: number
   status: PaymentStatus
   method: string
   amount: number
+  /** Confirmación de la pasarela o, en contra entrega, el momento del cobro. */
   confirmed_at: string | null
-  evidence_url: string | null
 }
 
 export type RefundOrderStatus =
@@ -173,11 +211,22 @@ export interface OrderDetail {
   notes: string | null
   delivery_address: string | null
   pickup_point_name: string | null
+  /** Día de entrega fijado por el Cliente (`YYYY-MM-DD`). `null` si no lo ha fijado. */
+  scheduled_delivery_date: string | null
+  /**
+   * Método pactado al crear el pedido. Siempre presente, a diferencia de
+   * `payment`, que no existe hasta que hay un cobro registrado.
+   */
+  payment_method: 'ONLINE_AT_ORDER' | 'ELECTRONIC_ON_DELIVERY' | 'CASH_ON_DELIVERY'
+  /** `PAYMENT_LINK` = pagó (o debe pagar) por link de Nequi: se confirma a mano. */
+  payment_method_submethod: string | null
   buyer: {
     id: number
     name: string
+    /** Sintético (`guest-<uuid>@guest.ruta`) cuando `is_guest` es `true`. */
     email: string
     phone: string | null
+    is_guest: boolean
   }
   courier: {
     id: number
@@ -236,6 +285,7 @@ async function request<T>(path: string, init?: RequestInit): Promise<T> {
     },
   })
 
+  if (res.status === 401) notifyUnauthorized()
   if (!res.ok) throw await parseError(res)
   if (res.status === 204) return undefined as T
   return (await res.json()) as T
@@ -295,6 +345,32 @@ export function markReady(
     ...(deliveryCarrierType
       ? { body: JSON.stringify({ delivery_carrier_type: deliveryCarrierType }) }
       : {}),
+  })
+}
+
+/**
+ * Fija el día de entrega del pedido. `null` limpia la programación, para poder
+ * deshacer una fecha puesta por error.
+ */
+export function setDeliveryDate(
+  orderId: number,
+  scheduledDeliveryDate: string | null,
+): Promise<OrderDetail> {
+  return request<OrderDetail>(`/admin/orders/${orderId}/delivery-date`, {
+    method: 'PUT',
+    headers: { 'X-Idempotency-Key': idempotencyKey() },
+    body: JSON.stringify({ scheduled_delivery_date: scheduledDeliveryDate }),
+  })
+}
+
+/**
+ * Marca como recibido un pago hecho por link de Nequi. Ese medio no tiene
+ * webhook, así que la confirmación la da el Cliente tras verlo en su app.
+ */
+export function confirmLinkPayment(orderId: number): Promise<OrderDetail> {
+  return request<OrderDetail>(`/admin/orders/${orderId}/confirm-payment`, {
+    method: 'POST',
+    headers: { 'X-Idempotency-Key': idempotencyKey() },
   })
 }
 

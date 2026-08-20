@@ -1,19 +1,21 @@
 'use client'
 
 import { RutaCard, RutaPill, RutaSectionHeader } from '@orkoruta/ui'
-import type { PaymentMethod, PaymentSubmethod } from './CheckoutStepper'
+import type { PaymentChoice, PaymentSubmethod } from './CheckoutStepper'
 
 interface PaymentStepProps {
-  paymentMethod: PaymentMethod
+  paymentChoice: PaymentChoice
   paymentSubmethod: PaymentSubmethod
   /** Si el Cliente no tiene Wompi configurado, no se muestra la opción online. */
   onlinePaymentEnabled: boolean
-  onPaymentMethodChange: (value: PaymentMethod) => void
+  /** Link de Nequi del Cliente. `null` = no ofrece ese medio y no se muestra. */
+  nequiPaymentLink: string | null
+  onPaymentChoiceChange: (value: PaymentChoice) => void
   onPaymentSubmethodChange: (value: PaymentSubmethod) => void
 }
 
 const paymentOptions: Array<{
-  value: PaymentMethod
+  value: PaymentChoice
   title: string
   description: string
   badge: string
@@ -23,6 +25,14 @@ const paymentOptions: Array<{
     title: 'Pago online',
     description: 'Serás redirigido a Wompi para completar el pago.',
     badge: 'Wompi',
+  },
+  {
+    value: 'NEQUI_LINK',
+    title: 'Link de pago Nequi',
+    // Se dice que el negocio verifica el pago: con Nequi no hay confirmación
+    // automática y el pedido no arranca hasta que lo revisen.
+    description: 'Pagas desde tu app de Nequi. El negocio verifica el pago y prepara tu pedido.',
+    badge: 'Nequi',
   },
   {
     value: 'ELECTRONIC_ON_DELIVERY',
@@ -45,29 +55,32 @@ const submethods: Array<{ value: PaymentSubmethod; label: string }> = [
 ]
 
 export default function PaymentStep({
-  paymentMethod,
+  paymentChoice,
   paymentSubmethod,
   onlinePaymentEnabled,
-  onPaymentMethodChange,
+  nequiPaymentLink,
+  onPaymentChoiceChange,
   onPaymentSubmethodChange,
 }: PaymentStepProps) {
-  const showSubmethods = paymentMethod === 'ELECTRONIC_ON_DELIVERY'
-  // Oculta "Pago online (Wompi)" cuando el Cliente no tiene la pasarela activa.
-  const visibleOptions = paymentOptions.filter(
-    (option) => option.value !== 'ONLINE_AT_ORDER' || onlinePaymentEnabled,
-  )
+  const showSubmethods = paymentChoice === 'ELECTRONIC_ON_DELIVERY'
+  // Cada medio en línea aparece solo si el Cliente lo tiene configurado.
+  const visibleOptions = paymentOptions.filter((option) => {
+    if (option.value === 'ONLINE_AT_ORDER') return onlinePaymentEnabled
+    if (option.value === 'NEQUI_LINK') return Boolean(nequiPaymentLink)
+    return true
+  })
 
   return (
     <RutaCard>
       <RutaSectionHeader title="Método de pago" subtitle="paso 3" />
       <div className="space-y-3">
         {visibleOptions.map((option) => {
-          const selected = paymentMethod === option.value
+          const selected = paymentChoice === option.value
           return (
             <button
               key={option.value}
               type="button"
-              onClick={() => onPaymentMethodChange(option.value)}
+              onClick={() => onPaymentChoiceChange(option.value)}
               className={`w-full rounded-lg border p-4 text-left transition-colors ${
                 selected
                   ? 'border-emerald-400/50 bg-emerald-500/[0.12] dark:border-emerald-400/25'

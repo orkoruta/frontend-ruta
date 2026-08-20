@@ -1,3 +1,4 @@
+import { notifyUnauthorized } from './session-events'
 const API_BASE = process.env.NEXT_PUBLIC_API_URL ?? 'http://localhost:3001'
 
 export type ProductStatus = 'ACTIVE' | 'INACTIVE'
@@ -101,6 +102,7 @@ function toQuery(params: Record<string, string | number | undefined>): string {
 
 async function readJson<T>(res: Response): Promise<T> {
   const data = (await res.json().catch(() => null)) as T | ApiError | null
+  if (res.status === 401) notifyUnauthorized()
   if (!res.ok) {
     throw (data ?? { code: 'REQUEST_FAILED', message: 'No se pudo completar la solicitud.' }) as ApiError
   }
@@ -179,6 +181,10 @@ export async function uploadFileToPresignedUrl(upload: PresignedUpload, file: Fi
     headers: { 'Content-Type': file.type || 'application/octet-stream' },
     body: file,
   })
+  // Aquí **no** se emite `notifyUnauthorized`: esta petición va a la URL
+  // prefirmada del bucket, no a la API de RUTA. Un 401 suyo significa que la
+  // firma caducó, no que la sesión del panel lo haya hecho, y cerrarla sería
+  // echar al usuario por un fallo que no tiene nada que ver.
   if (!res.ok) {
     throw { code: 'UPLOAD_FAILED', message: 'No se pudo subir la imagen.' } satisfies ApiError
   }

@@ -3,26 +3,42 @@
 import Link from 'next/link'
 import { useEffect, useState, type FormEvent } from 'react'
 import { RutaButton, RutaCard, RutaPill, RutaSectionHeader } from '@orkoruta/ui'
-import { deletePickupPoint, getPickupPoint, updatePickupPoint, type ApiError, type PickupPoint } from '@/lib/users.api'
+import {
+  activatePickupPoint,
+  deactivatePickupPoint,
+  getPickupPoint,
+  updatePickupPoint,
+  type ApiError,
+  type PickupPoint,
+} from '@/lib/users.api'
+import { openingHoursToText, textToOpeningHours } from '@/lib/pickup_point_hours'
 
-const FIELDS = ['name', 'address', 'city', 'state', 'phone', 'schedule', 'latitude', 'longitude'] as const
+/** Los nombres son los del contrato; las etiquetas, las que lee el operador. */
+const FIELDS = [
+  { key: 'name', label: 'Nombre', required: true },
+  { key: 'address_line', label: 'Dirección', required: true },
+  { key: 'city', label: 'Ciudad', required: false },
+  { key: 'state', label: 'Departamento', required: false },
+  { key: 'contact_phone', label: 'Teléfono', required: false },
+  { key: 'latitude', label: 'Latitud', required: false },
+  { key: 'longitude', label: 'Longitud', required: false },
+] as const
 
 export default function PickupPointDetailClient({ id }: { id: string }) {
   const [point, setPoint] = useState<PickupPoint | null>(null)
   const [form, setForm] = useState({
     name: '',
-    address: '',
+    address_line: '',
     city: '',
     state: '',
-    phone: '',
-    schedule: '',
+    contact_phone: '',
+    opening_hours: '',
     latitude: '',
     longitude: '',
-    status: 'ACTIVE',
   })
   const [loading, setLoading] = useState(true)
   const [saving, setSaving] = useState(false)
-  const [deleting, setDeleting] = useState(false)
+  const [changingStatus, setChangingStatus] = useState(false)
   const [error, setError] = useState<string | null>(null)
   const [success, setSuccess] = useState<string | null>(null)
 
@@ -36,14 +52,13 @@ export default function PickupPointDetailClient({ id }: { id: string }) {
         setPoint(data)
         setForm({
           name: data.name,
-          address: data.address,
+          address_line: data.address_line,
           city: data.city ?? '',
           state: data.state ?? '',
-          phone: data.phone ?? '',
-          schedule: data.schedule ?? '',
+          contact_phone: data.contact_phone ?? '',
+          opening_hours: openingHoursToText(data.opening_hours),
           latitude: data.latitude?.toString() ?? '',
           longitude: data.longitude?.toString() ?? '',
-          status: data.status ?? 'ACTIVE',
         })
       } catch (err) {
         const apiErr = err as ApiError
@@ -64,16 +79,21 @@ export default function PickupPointDetailClient({ id }: { id: string }) {
     setError(null)
     setSuccess(null)
     try {
+      /*
+       * Los opcionales van como `undefined`, no `null`: el esquema los declara
+       * `.min(1).optional()`, así que una cadena vacía la rechaza con 400.
+       * Efecto secundario conocido: un campo ya guardado no se puede vaciar
+       * desde aquí, solo sustituir.
+       */
       const data = await updatePickupPoint(id, {
         name: form.name.trim(),
-        address: form.address.trim(),
-        city: form.city.trim() || null,
-        state: form.state.trim() || null,
-        phone: form.phone.trim() || null,
-        schedule: form.schedule.trim() || null,
-        latitude: form.latitude ? Number(form.latitude) : null,
-        longitude: form.longitude ? Number(form.longitude) : null,
-        status: form.status,
+        address_line: form.address_line.trim(),
+        city: form.city.trim() || undefined,
+        state: form.state.trim() || undefined,
+        contact_phone: form.contact_phone.trim() || undefined,
+        opening_hours: textToOpeningHours(form.opening_hours),
+        latitude: form.latitude ? Number(form.latitude) : undefined,
+        longitude: form.longitude ? Number(form.longitude) : undefined,
       })
       setPoint(data)
       setSuccess('Punto físico actualizado.')
@@ -85,18 +105,21 @@ export default function PickupPointDetailClient({ id }: { id: string }) {
     }
   }
 
-  async function handleDelete() {
-    setDeleting(true)
+  async function handleToggleStatus() {
+    if (!point) return
+    const willDeactivate = point.status === 'ACTIVE'
+    setChangingStatus(true)
     setError(null)
     setSuccess(null)
     try {
-      await deletePickupPoint(id)
-      setSuccess('Punto físico eliminado.')
+      const data = willDeactivate ? await deactivatePickupPoint(id) : await activatePickupPoint(id)
+      setPoint(data)
+      setSuccess(willDeactivate ? 'Punto físico desactivado.' : 'Punto físico activado.')
     } catch (err) {
       const apiErr = err as ApiError
-      setError(apiErr.message ?? 'No pudimos eliminar el punto físico.')
+      setError(apiErr.message ?? 'No pudimos cambiar el estado del punto físico.')
     } finally {
-      setDeleting(false)
+      setChangingStatus(false)
     }
   }
 
@@ -113,15 +136,15 @@ export default function PickupPointDetailClient({ id }: { id: string }) {
         <div className="grid gap-5 xl:grid-cols-[minmax(0,1fr)_360px]">
           <RutaCard>
             <div className="mb-5 flex items-start justify-between gap-4">
-              <div><p className="text-[11px] font-bold uppercase tracking-[0.24em] text-slate-500 dark:text-slate-400">punto #{point.id}</p><h1 className="mt-1 text-xl font-bold text-slate-900 dark:text-slate-100">{point.name}</h1><p className="text-sm text-slate-500 dark:text-slate-400">{point.address}</p></div>
-              <RutaPill variant={point.status === 'ACTIVE' ? 'green' : 'red'}>{point.status ?? 'SIN_ESTADO'}</RutaPill>
+              <div><p className="text-[11px] font-bold uppercase tracking-[0.24em] text-slate-500 dark:text-slate-400">punto #{point.id}</p><h1 className="mt-1 text-xl font-bold text-slate-900 dark:text-slate-100">{point.name}</h1><p className="text-sm text-slate-500 dark:text-slate-400">{point.address_line}</p></div>
+              <RutaPill variant={point.status === 'ACTIVE' ? 'green' : 'red'}>{point.status === 'ACTIVE' ? 'Activo' : 'Inactivo'}</RutaPill>
             </div>
             <form onSubmit={handleSubmit} className="grid gap-4 md:grid-cols-2">
-              {FIELDS.map((key) => (
-                <label key={key} className="block"><span className="mb-1 block text-xs font-medium capitalize text-slate-600 dark:text-slate-400">{key.replace('_', ' ')}</span><input required={key === 'name' || key === 'address'} value={form[key]} onChange={(event) => setForm((value) => ({ ...value, [key]: event.target.value }))} className="w-full rounded-md border border-slate-200 bg-white/[0.85] px-3 py-2 text-sm text-slate-900 dark:border-white/10 dark:bg-white/[0.055] dark:text-slate-100" /></label>
+              {FIELDS.map((field) => (
+                <label key={field.key} className="block"><span className="mb-1 block text-xs font-medium text-slate-600 dark:text-slate-400">{field.label}</span><input required={field.required} value={form[field.key]} onChange={(event) => setForm((value) => ({ ...value, [field.key]: event.target.value }))} className="w-full rounded-md border border-slate-200 bg-white/[0.85] px-3 py-2 text-sm text-slate-900 dark:border-white/10 dark:bg-white/[0.055] dark:text-slate-100" /></label>
               ))}
-              <label className="block"><span className="mb-1 block text-xs font-medium text-slate-600 dark:text-slate-400">Estado</span><select value={form.status} onChange={(event) => setForm((value) => ({ ...value, status: event.target.value }))} className="w-full rounded-md border border-slate-200 bg-white/[0.85] px-3 py-2 text-sm text-slate-900 dark:border-white/10 dark:bg-[#252930] dark:text-slate-100"><option value="ACTIVE">Activo</option><option value="INACTIVE">Inactivo</option></select></label>
-              <div className="flex items-end gap-3"><RutaButton type="submit" variant="primary" disabled={saving}>{saving ? 'Guardando...' : 'Guardar cambios'}</RutaButton><RutaButton type="button" variant="danger" disabled={deleting} onClick={handleDelete}>{deleting ? 'Eliminando...' : 'Eliminar'}</RutaButton></div>
+              <label className="block md:col-span-2"><span className="mb-1 block text-xs font-medium text-slate-600 dark:text-slate-400">Horario</span><textarea rows={3} value={form.opening_hours} onChange={(event) => setForm((value) => ({ ...value, opening_hours: event.target.value }))} placeholder={'lunes-domingo: 12:00-22:00\nfestivos: cerrado'} className="w-full rounded-md border border-slate-200 bg-white/[0.85] px-3 py-2 font-mono text-sm text-slate-900 dark:border-white/10 dark:bg-white/[0.055] dark:text-slate-100" /><span className="mt-1 block text-xs text-slate-500 dark:text-slate-400">Una franja por línea, en formato <code>días: horas</code>.</span></label>
+              <div className="flex items-end gap-3 md:col-span-2"><RutaButton type="submit" variant="primary" disabled={saving}>{saving ? 'Guardando...' : 'Guardar cambios'}</RutaButton><RutaButton type="button" variant={point.status === 'ACTIVE' ? 'danger' : 'neutral'} disabled={changingStatus} onClick={handleToggleStatus}>{changingStatus ? 'Cambiando...' : point.status === 'ACTIVE' ? 'Desactivar' : 'Activar'}</RutaButton></div>
             </form>
           </RutaCard>
           <RutaCard>

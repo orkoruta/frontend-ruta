@@ -42,7 +42,7 @@ export default function DeliveryStep({ value, onChange }: DeliveryStepProps) {
               onClick={() => onChange(option.value)}
               className={`rounded-lg border p-4 text-left transition-colors ${
                 selected
-                  ? 'border-sky-400/50 bg-sky-500/[0.12] dark:border-sky-400/25'
+                  ? 'border-brand-400/50 bg-brand-500/[0.12] dark:border-brand-400/25'
                   : 'border-slate-200/90 bg-white/[0.5] hover:bg-white/[0.76] dark:border-white/10 dark:bg-white/[0.04] dark:hover:bg-white/[0.06]'
               }`}
             >

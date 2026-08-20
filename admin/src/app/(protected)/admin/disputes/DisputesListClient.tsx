@@ -107,7 +107,7 @@ export default function DisputesListClient() {
             <select
               value={filters.status ?? ''}
               onChange={(e) => setStatus(e.target.value as DisputeStatus | '')}
-              className="rounded-md border border-slate-200 bg-white/[0.85] px-3 py-2 text-sm text-slate-900 focus:outline-none focus:ring-2 focus:ring-sky-500/[0.4] dark:border-white/10 dark:bg-white/[0.055] dark:text-slate-100"
+              className="rounded-md border border-slate-200 bg-white/[0.85] px-3 py-2 text-sm text-slate-900 focus:outline-none focus:ring-2 focus:ring-brand-500/[0.4] dark:border-white/10 dark:bg-white/[0.055] dark:text-slate-100"
             >
               {STATUS_OPTIONS.map((o) => (
                 <option key={o.value} value={o.value}>
@@ -213,7 +213,7 @@ export default function DisputesListClient() {
                           )}
                           <Link
                             href={`/admin/disputes/${dispute.id}`}
-                            className="text-xs font-medium text-sky-600 hover:underline dark:text-sky-400"
+                            className="text-xs font-medium text-brand-600 hover:underline dark:text-brand-400"
                           >
                             Ver
                           </Link>

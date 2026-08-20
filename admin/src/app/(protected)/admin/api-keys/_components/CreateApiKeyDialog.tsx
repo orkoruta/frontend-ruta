@@ -119,7 +119,7 @@ export function CreateApiKeyDialog({ onCreated, onClose }: CreateApiKeyDialogPro
                 onChange={(e) => setName(e.target.value)}
                 placeholder="Mi integración"
                 disabled={loading}
-                className="w-full rounded-md border border-white/10 bg-white/[0.055] px-3 py-2 text-sm text-slate-100 placeholder-slate-500 focus:outline-none focus:ring-2 focus:ring-sky-400/40 disabled:opacity-50"
+                className="w-full rounded-md border border-white/10 bg-white/[0.055] px-3 py-2 text-sm text-slate-100 placeholder-slate-500 focus:outline-none focus:ring-2 focus:ring-brand-400/40 disabled:opacity-50"
               />
             </div>
 
@@ -139,7 +139,7 @@ export function CreateApiKeyDialog({ onCreated, onClose }: CreateApiKeyDialogPro
                       checked={scopes.includes(value)}
                       onChange={() => toggleScope(value)}
                       disabled={loading}
-                      className="accent-sky-500"
+                      className="accent-brand-500"
                     />
                     {label}
                   </label>
@@ -162,7 +162,7 @@ export function CreateApiKeyDialog({ onCreated, onClose }: CreateApiKeyDialogPro
                 value={expiresAt}
                 onChange={(e) => setExpiresAt(e.target.value)}
                 disabled={loading}
-                className="w-full rounded-md border border-white/10 bg-white/[0.055] px-3 py-2 text-sm text-slate-100 focus:outline-none focus:ring-2 focus:ring-sky-400/40 disabled:opacity-50"
+                className="w-full rounded-md border border-white/10 bg-white/[0.055] px-3 py-2 text-sm text-slate-100 focus:outline-none focus:ring-2 focus:ring-brand-400/40 disabled:opacity-50"
               />
             </div>
 

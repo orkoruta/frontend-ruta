@@ -5,14 +5,18 @@ import { SessionContext } from '@/lib/session-context'
 import { RutaCard, RutaSectionHeader } from '@orkoruta/ui'
 import { BusinessInfoTab } from './_components/BusinessInfoTab'
 import { WompiTab } from './_components/WompiTab'
+import { NequiTab } from './_components/NequiTab'
+import { DeliveryEmailTab } from './_components/DeliveryEmailTab'
 import { WebhooksTab } from './_components/WebhooksTab'
 import { ParametersTab } from './_components/ParametersTab'
 
-type TabId = 'info' | 'wompi' | 'webhooks' | 'parameters'
+type TabId = 'info' | 'wompi' | 'nequi' | 'correos' | 'webhooks' | 'parameters'
 
 const TABS: Array<{ id: TabId; label: string }> = [
   { id: 'info', label: 'Información' },
   { id: 'wompi', label: 'Wompi' },
+  { id: 'nequi', label: 'Nequi' },
+  { id: 'correos', label: 'Correos' },
   { id: 'webhooks', label: 'Webhooks' },
   { id: 'parameters', label: 'Parámetros' },
 ]
@@ -58,7 +62,7 @@ export default function SettingsPage() {
               className={[
                 'flex-1 rounded-md px-4 py-2 text-sm font-medium transition-colors',
                 isActive
-                  ? 'bg-sky-500/[0.12] text-sky-700 dark:text-sky-300'
+                  ? 'bg-brand-500/[0.12] text-brand-700 dark:text-brand-300'
                   : 'text-slate-600 hover:bg-slate-100/[0.7] dark:text-slate-400 dark:hover:bg-white/[0.04]',
               ].join(' ')}
             >
@@ -71,6 +75,8 @@ export default function SettingsPage() {
       {/* Tab content */}
       {activeTab === 'info' && <BusinessInfoTab />}
       {activeTab === 'wompi' && <WompiTab />}
+      {activeTab === 'nequi' && <NequiTab />}
+      {activeTab === 'correos' && <DeliveryEmailTab />}
       {activeTab === 'webhooks' && <WebhooksTab />}
       {activeTab === 'parameters' && <ParametersTab />}
     </div>

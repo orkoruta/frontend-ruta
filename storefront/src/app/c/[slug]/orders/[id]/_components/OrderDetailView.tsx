@@ -20,6 +20,9 @@ import {
 } from '@/lib/buyer_orders.api'
 import { requestReturn, type ReturnStatus, type ReturnMechanism } from '@/lib/returns.api'
 import { openDispute, type DisputeStatus } from '@/lib/disputes.api'
+import { formatDeliveryDate } from '@orkoruta/web-shared'
+import { getClientBySlug } from '@/lib/catalog.api'
+import { CourierTrackingCard } from './CourierTrackingCard'
 
 type StatusColor = 'slate' | 'violet' | 'amber' | 'blue' | 'green' | 'red'
 type ActionKind = 'cancel' | 'request-cancel' | 'confirm-receipt'
@@ -406,7 +409,7 @@ function TimelineEntry({ item, isLast }: { item: TimelineItem; isLast: boolean }
     slate: 'bg-slate-400 dark:bg-slate-500',
     violet: 'bg-violet-500',
     amber: 'bg-amber-500',
-    blue: 'bg-sky-500',
+    blue: 'bg-blue-500',
     green: 'bg-emerald-500',
     red: 'bg-rose-500',
   }
@@ -453,6 +456,8 @@ export default function OrderDetailView() {
 
   const [order, setOrder] = useState<BuyerOrder | null>(null)
   const [refundData, setRefundData] = useState<BuyerOrderRefundResponse | null>(null)
+  // Link de Nequi del comercio: solo hace falta si el pago sigue pendiente.
+  const [nequiLink, setNequiLink] = useState<string | null>(null)
   const [loading, setLoading] = useState(true)
   const [acting, setActing] = useState(false)
   const [actionKind, setActionKind] = useState<ActionKind | null>(null)
@@ -470,6 +475,24 @@ export default function OrderDetailView() {
   const [disputeActing, setDisputeActing] = useState(false)
   const [disputeError, setDisputeError] = useState<string | null>(null)
   const [disputeSuccess, setDisputeSuccess] = useState(false)
+
+  // Link de pago del comercio. Se carga siempre (es una llamada pública y
+  // barata) porque el hook no puede ir dentro del bloque que decide si el pago
+  // sigue pendiente: eso está después de un `return` condicional.
+  useEffect(() => {
+    if (!slug) return
+    let active = true
+    getClientBySlug(slug)
+      .then((c) => {
+        if (active) setNequiLink(c.nequi_payment_link ?? null)
+      })
+      .catch(() => {
+        if (active) setNequiLink(null)
+      })
+    return () => {
+      active = false
+    }
+  }, [slug])
 
   const loadOrder = useCallback(async () => {
     if (!Number.isFinite(orderId) || orderId <= 0) {
@@ -621,6 +644,20 @@ export default function OrderDetailView() {
   // Un DRAFT es un carrito sin confirmar: el comprador debe poder retomarlo y
   // llevarlo al checkout, no solo cancelarlo.
   const canCheckout = order.order_status === 'DRAFT'
+  const scheduledDelivery = formatDeliveryDate(order.scheduled_delivery_date)
+  // Pago por link de Nequi todavía pendiente: hay que darle el enlace otra vez,
+  // porque puede volver a esta pantalla más tarde para terminar de pagar.
+  // Mismos estados que deja seguir el backend (`TRACKABLE_STATUSES`): desde
+  // que el repartidor pulsa "Iniciar despacho" hasta que llega.
+  const isBeingDelivered =
+    order.order_status === 'SHIPPED' ||
+    order.order_status === 'IN_TRANSIT' ||
+    order.order_status === 'OUT_FOR_DELIVERY' ||
+    order.order_status === 'ARRIVED_AT_CUSTOMER'
+
+  const awaitingNequiPayment =
+    order.payment_method_submethod === 'PAYMENT_LINK' &&
+    order.payment_status === 'PENDING_ONLINE_PAYMENT'
 
   return (
     <div className="mx-auto max-w-5xl px-4 py-8 sm:px-6">
@@ -672,8 +709,48 @@ export default function OrderDetailView() {
             </div>
           </RutaCard>
 
+          {/* Con el pedido en la calle, esto es lo que el comprador entra a ver,
+              así que va primero. */}
+          {isBeingDelivered && <CourierTrackingCard orderId={order.id} active />}
+
+          {/* Pago por link de Nequi pendiente: el comprador puede volver aquí
+              a terminar de pagar, así que el enlace tiene que seguir a mano. */}
+          {awaitingNequiPayment && (
+            <RutaCard className="border-brand-400/40 bg-brand-500/[0.07]">
+              <RutaSectionHeader title="Termina tu pago con Nequi" subtitle="pago pendiente" />
+              <p className="text-sm text-slate-700 dark:text-slate-300">
+                Abre el link, paga desde tu app de Nequi y guarda el comprobante.
+                El negocio verifica el pago y prepara tu pedido; puede tardar un
+                rato en reflejarse aquí.
+              </p>
+              {nequiLink ? (
+                <a
+                  href={nequiLink}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="u-lift mt-3 inline-flex items-center justify-center rounded-lg bg-brand-500 px-5 py-3 text-sm font-semibold text-white shadow-brand transition-colors hover:bg-brand-600"
+                >
+                  Pagar con Nequi
+                </a>
+              ) : (
+                <p className="mt-3 text-sm text-slate-500 dark:text-slate-400">
+                  No pudimos cargar el link. Escríbele al negocio para que te lo
+                  comparta.
+                </p>
+              )}
+            </RutaCard>
+          )}
+
           <RutaCard>
             <RutaSectionHeader title="Detalle de entrega" subtitle="logística" />
+            {/* Día prometido por el negocio. Se destaca arriba de la ficha
+                porque es el dato que el comprador vuelve a mirar. */}
+            {scheduledDelivery && (
+              <p className="mt-3 rounded-md border border-brand-400/40 bg-brand-500/[0.12] px-3 py-2 text-sm text-brand-800 dark:border-brand-400/25 dark:text-brand-200">
+                📅 Entrega programada para{' '}
+                <span className="font-semibold">{scheduledDelivery}</span>
+              </p>
+            )}
             <dl className="mt-3 grid gap-3 text-sm sm:grid-cols-2">
               <div>
                 <dt className="text-[11px] font-bold uppercase tracking-[0.18em] text-slate-500 dark:text-slate-400">
@@ -844,7 +921,7 @@ export default function OrderDetailView() {
                         ? 'border-rose-400/25 bg-rose-500/[0.12] text-rose-700 dark:text-rose-300'
                         : order.refund_status === 'REFUNDED'
                           ? 'border-emerald-400/25 bg-emerald-500/[0.12] text-emerald-700 dark:text-emerald-300'
-                          : 'border-sky-400/25 bg-sky-500/[0.10] text-sky-700 dark:text-sky-300',
+                          : 'border-brand-400/25 bg-brand-500/[0.10] text-brand-700 dark:text-brand-300',
                     ].join(' ')}
                   >
                     {refundStatusMessage(order.refund_status)}
@@ -878,7 +955,7 @@ export default function OrderDetailView() {
                           ? 'border-emerald-400/25 bg-emerald-500/[0.12] text-emerald-700 dark:text-emerald-300'
                           : activeReturnStatus === 'RETURN_REQUESTED' || activeReturnStatus === 'RETURN_UNDER_REVIEW'
                             ? 'border-amber-400/25 bg-amber-500/[0.10] text-amber-700 dark:text-amber-300'
-                            : 'border-sky-400/25 bg-sky-500/[0.10] text-sky-700 dark:text-sky-300',
+                            : 'border-brand-400/25 bg-brand-500/[0.10] text-brand-700 dark:text-brand-300',
                     ].join(' ')}
                   >
                     {returnStatusMessage(activeReturnStatus, activeReturnMechanism)}
@@ -912,14 +989,14 @@ export default function OrderDetailView() {
                     <div>
                       <label htmlFor="return-reason" className="text-xs font-semibold text-slate-700 dark:text-slate-300">Razón</label>
                       <select id="return-reason" value={returnReason} onChange={(e) => setReturnReason(e.target.value)} disabled={returnActing}
-                        className="mt-2 w-full rounded-md border border-slate-200 bg-white/[0.8] px-3 py-2 text-sm text-slate-900 outline-none transition-colors focus:border-sky-400 dark:border-white/10 dark:bg-[#111214] dark:text-slate-100">
+                        className="mt-2 w-full rounded-md border border-slate-200 bg-white/[0.8] px-3 py-2 text-sm text-slate-900 outline-none transition-colors focus:border-brand-400 dark:border-white/10 dark:bg-[#111214] dark:text-slate-100">
                         {RETURN_REASONS.map((r) => (<option key={r} value={r}>{r}</option>))}
                       </select>
                     </div>
                     <div>
                       <label htmlFor="return-complaint" className="text-xs font-semibold text-slate-700 dark:text-slate-300">Descripción (opcional)</label>
                       <textarea id="return-complaint" value={returnComplaint} onChange={(e) => setReturnComplaint(e.target.value)} rows={3} disabled={returnActing}
-                        className="mt-2 w-full rounded-md border border-slate-200 bg-white/[0.8] px-3 py-2 text-sm text-slate-900 outline-none transition-colors focus:border-sky-400 dark:border-white/10 dark:bg-[#111214] dark:text-slate-100"
+                        className="mt-2 w-full rounded-md border border-slate-200 bg-white/[0.8] px-3 py-2 text-sm text-slate-900 outline-none transition-colors focus:border-brand-400 dark:border-white/10 dark:bg-[#111214] dark:text-slate-100"
                         placeholder="Cuéntanos más detalles sobre el problema." />
                     </div>
                     <div className="flex justify-end gap-2">
@@ -953,7 +1030,7 @@ export default function OrderDetailView() {
                       activeDisputeStatus === 'DISPUTED'
                         ? 'border-amber-400/25 bg-amber-500/[0.10] text-amber-700 dark:text-amber-300'
                         : activeDisputeStatus === 'DISPUTE_UNDER_REVIEW'
-                          ? 'border-sky-400/25 bg-sky-500/[0.10] text-sky-700 dark:text-sky-300'
+                          ? 'border-brand-400/25 bg-brand-500/[0.10] text-brand-700 dark:text-brand-300'
                           : activeDisputeStatus === 'DISPUTE_RESOLVED_WITH_RETURN' || activeDisputeStatus === 'DISPUTE_RESOLVED_WITH_REFUND'
                             ? 'border-emerald-400/25 bg-emerald-500/[0.12] text-emerald-700 dark:text-emerald-300'
                             : 'border-slate-200/80 bg-slate-500/[0.08] text-slate-700 dark:text-slate-300',
@@ -995,7 +1072,7 @@ export default function OrderDetailView() {
                         onChange={(e) => setDisputeReason(e.target.value)}
                         rows={3}
                         disabled={disputeActing}
-                        className="mt-2 w-full rounded-md border border-slate-200 bg-white/[0.8] px-3 py-2 text-sm text-slate-900 outline-none transition-colors focus:border-sky-400 dark:border-white/10 dark:bg-[#111214] dark:text-slate-100"
+                        className="mt-2 w-full rounded-md border border-slate-200 bg-white/[0.8] px-3 py-2 text-sm text-slate-900 outline-none transition-colors focus:border-brand-400 dark:border-white/10 dark:bg-[#111214] dark:text-slate-100"
                         placeholder="Cuéntanos el motivo de tu disputa."
                       />
                     </div>
@@ -1070,7 +1147,7 @@ export default function OrderDetailView() {
                     value={reason}
                     onChange={(event) => setReason(event.target.value)}
                     rows={3}
-                    className="mt-2 w-full rounded-md border border-slate-200 bg-white/[0.8] px-3 py-2 text-sm text-slate-900 outline-none transition-colors focus:border-sky-400 dark:border-white/10 dark:bg-[#111214] dark:text-slate-100"
+                    className="mt-2 w-full rounded-md border border-slate-200 bg-white/[0.8] px-3 py-2 text-sm text-slate-900 outline-none transition-colors focus:border-brand-400 dark:border-white/10 dark:bg-[#111214] dark:text-slate-100"
                     placeholder="Cuéntanos por qué quieres cancelar."
                     disabled={acting}
                   />

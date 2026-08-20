@@ -6,6 +6,7 @@ import Link from 'next/link'
 import Image from 'next/image'
 import { getClientBySlug, type ClientPublicInfo } from '@/lib/catalog.api'
 import { logoutBuyer } from '@/lib/auth.api'
+import { RutaMark } from '@orkoruta/ui'
 import { StoreProvider, useStore } from '@/lib/store-context'
 
 /** Primer nombre, para un saludo más corto y cálido. */
@@ -42,7 +43,7 @@ function HeaderActions({ slug }: { slug: string }) {
         <span aria-hidden="true">🛒</span>
         <span className="hidden sm:inline">Carrito</span>
         {cartCount > 0 && (
-          <span className="ml-0.5 inline-flex min-w-[18px] items-center justify-center rounded-full bg-sky-600 px-1.5 text-[11px] font-bold leading-5 text-white">
+          <span className="ml-0.5 inline-flex min-w-[18px] items-center justify-center rounded-full bg-brand-600 px-1.5 text-[11px] font-bold leading-5 text-white">
             {cartCount}
           </span>
         )}
@@ -168,8 +169,14 @@ export default function ClientLayout({ children }: { children: React.ReactNode }
                   {clientInfo.name}
                 </p>
               )}
-              <p className="text-[10px] tracking-wide text-slate-400 dark:text-slate-600">
-                Powered by RUTA
+              {/* La marca de la plataforma va aquí y no en la cabecera: el
+                  header es del Cliente, la tienda es suya. */}
+              <p className="inline-flex items-center gap-1.5 text-[10px] tracking-wide text-slate-400 dark:text-slate-500">
+                Con tecnología de
+                <RutaMark className="h-3.5 w-auto text-brand-500" title={null} />
+                <span className="font-semibold text-slate-500 dark:text-slate-400">
+                  RUTA by ORKO
+                </span>
               </p>
             </div>
           </div>

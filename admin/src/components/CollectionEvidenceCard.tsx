@@ -131,7 +131,7 @@ export function CollectionEvidenceCard({ orderId, scope }: Props) {
               href={evidence.evidence_url}
               target="_blank"
               rel="noopener noreferrer"
-              className="text-sm font-medium text-sky-700 dark:text-sky-300"
+              className="text-sm font-medium text-brand-700 dark:text-brand-300"
             >
               Ver en tamaño completo →
             </a>

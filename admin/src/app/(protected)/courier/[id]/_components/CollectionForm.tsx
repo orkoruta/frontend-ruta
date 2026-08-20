@@ -26,10 +26,10 @@ function formatCOP(amount: number) {
 }
 
 const INPUT_CLASS =
-  'w-full rounded-md border border-slate-200 bg-white/[0.85] px-3 py-3 text-base text-slate-900 placeholder-slate-400 focus:outline-none focus:ring-2 focus:ring-sky-400/[0.4] dark:border-white/10 dark:bg-white/[0.055] dark:text-slate-100'
+  'w-full rounded-md border border-slate-200 bg-white/[0.85] px-3 py-3 text-base text-slate-900 placeholder-slate-400 focus:outline-none focus:ring-2 focus:ring-brand-400/[0.4] dark:border-white/10 dark:bg-white/[0.055] dark:text-slate-100'
 
 const SELECT_CLASS =
-  'w-full rounded-md border border-slate-200 bg-white/[0.85] px-3 py-3 text-base text-slate-900 focus:outline-none focus:ring-2 focus:ring-sky-400/[0.4] dark:border-white/10 dark:bg-[#1d2025] dark:text-slate-100'
+  'w-full rounded-md border border-slate-200 bg-white/[0.85] px-3 py-3 text-base text-slate-900 focus:outline-none focus:ring-2 focus:ring-brand-400/[0.4] dark:border-white/10 dark:bg-[#1d2025] dark:text-slate-100'
 
 export default function CollectionForm({ orderId, totalDue, onSuccess }: CollectionFormProps) {
   const [amount, setAmount] = useState(String(totalDue))

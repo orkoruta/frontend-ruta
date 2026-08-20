@@ -18,3 +18,147 @@ body {
   color: rgb(var(--foreground-rgb));
   background: rgb(var(--background-rgb));
 }
+
+/* ──────────────────────────────────────────────────────────────────────────
+   Sistema de movimiento
+   ──────────────────────────────────────────────────────────────────────────
+   Tres reglas que lo gobiernan:
+
+   1. El movimiento explica algo o no existe. Entrar = de dónde viene el
+      contenido; hover = qué es pulsable; el trazo del chulo = algo se cumplió.
+   2. Una sola familia de curvas y duraciones, para que toda la app se sienta
+      del mismo material.
+   3. Nada es obligatorio: con `prefers-reduced-motion` todo se apaga y la
+      interfaz queda idéntica pero quieta.
+   ────────────────────────────────────────────────────────────────────────── */
+
+:root {
+  /* Salida suave: rápido al principio, se posa al final. Es la curva por
+     defecto de toda la app. */
+  --u-ease: cubic-bezier(0.22, 0.61, 0.36, 1);
+  /* Con un rebote mínimo, para cosas que "aparecen" (modales, toasts). */
+  --u-ease-pop: cubic-bezier(0.34, 1.56, 0.64, 1);
+  --u-fast: 180ms;
+  --u-base: 320ms;
+  --u-slow: 640ms;
+}
+
+@keyframes u-fade-up {
+  from { opacity: 0; transform: translateY(10px); }
+  to   { opacity: 1; transform: none; }
+}
+
+@keyframes u-fade-in {
+  from { opacity: 0; }
+  to   { opacity: 1; }
+}
+
+@keyframes u-pop-in {
+  from { opacity: 0; transform: scale(0.96); }
+  to   { opacity: 1; transform: none; }
+}
+
+@keyframes u-slide-in-right {
+  from { opacity: 0; transform: translateX(16px); }
+  to   { opacity: 1; transform: none; }
+}
+
+/* Dibuja un trazo SVG. Requiere `pathLength="1"` en el path. */
+@keyframes u-draw {
+  from { stroke-dashoffset: 1; }
+  to   { stroke-dashoffset: 0; }
+}
+
+/* Recorrido de la ruta: el guion avanza a lo largo del trazo. */
+@keyframes u-travel {
+  from { stroke-dashoffset: 0; }
+  to   { stroke-dashoffset: -1; }
+}
+
+@keyframes u-float {
+  0%, 100% { transform: translateY(0); }
+  50%      { transform: translateY(-6px); }
+}
+
+@keyframes u-shimmer {
+  from { background-position: -200% 0; }
+  to   { background-position: 200% 0; }
+}
+
+/* ── Utilidades de entrada ─────────────────────────────────────────────── */
+
+.u-in        { animation: u-fade-up var(--u-base) var(--u-ease) both; }
+.u-in-fade   { animation: u-fade-in var(--u-base) var(--u-ease) both; }
+.u-in-pop    { animation: u-pop-in var(--u-fast) var(--u-ease-pop) both; }
+.u-in-right  { animation: u-slide-in-right var(--u-fast) var(--u-ease) both; }
+
+/*
+ * Escalonado: el contenedor lleva `.u-stagger` y cada hijo entra un pelín
+ * después que el anterior. El tope de 12 evita que en una lista larga los
+ * últimos tarden un segundo en aparecer.
+ */
+.u-stagger > *          { animation: u-fade-up var(--u-base) var(--u-ease) both; }
+.u-stagger > *:nth-child(1)  { animation-delay: 0ms; }
+.u-stagger > *:nth-child(2)  { animation-delay: 40ms; }
+.u-stagger > *:nth-child(3)  { animation-delay: 80ms; }
+.u-stagger > *:nth-child(4)  { animation-delay: 120ms; }
+.u-stagger > *:nth-child(5)  { animation-delay: 160ms; }
+.u-stagger > *:nth-child(6)  { animation-delay: 200ms; }
+.u-stagger > *:nth-child(7)  { animation-delay: 240ms; }
+.u-stagger > *:nth-child(8)  { animation-delay: 280ms; }
+.u-stagger > *:nth-child(n+9) { animation-delay: 320ms; }
+
+/* ── Interacción ───────────────────────────────────────────────────────── */
+
+/* Tarjeta pulsable: se levanta al pasar por encima. */
+.u-lift {
+  transition: transform var(--u-fast) var(--u-ease), box-shadow var(--u-fast) var(--u-ease);
+}
+.u-lift:hover { transform: translateY(-2px); }
+
+/* Fila de lista: se desplaza un poco hacia la derecha al pasar por encima. */
+.u-nudge { transition: transform var(--u-fast) var(--u-ease); }
+.u-nudge:hover { transform: translateX(2px); }
+
+/* ── Ilustraciones ─────────────────────────────────────────────────────── */
+
+.u-draw {
+  stroke-dasharray: 1;
+  animation: u-draw var(--u-slow) var(--u-ease) both;
+}
+.u-travel {
+  stroke-dasharray: 0.06 0.06;
+  animation: u-travel 2.4s linear infinite;
+}
+.u-float { animation: u-float 4s ease-in-out infinite; }
+
+/* Esqueleto de carga: barrido de luz sobre un bloque neutro. */
+.u-skeleton {
+  background-image: linear-gradient(
+    90deg,
+    rgb(148 163 184 / 0.10) 25%,
+    rgb(148 163 184 / 0.20) 37%,
+    rgb(148 163 184 / 0.10) 63%
+  );
+  background-size: 200% 100%;
+  animation: u-shimmer 1.4s ease-in-out infinite;
+}
+
+/* ── Accesibilidad ─────────────────────────────────────────────────────── */
+/*
+ * Quien pidió menos movimiento no debe recibir ninguno. Se anulan también
+ * las animaciones en bucle (`u-travel`, `u-float`, `u-skeleton`), que son las
+ * que de verdad molestan: se quedan en su estado final, visibles y quietas.
+ */
+@media (prefers-reduced-motion: reduce) {
+  .u-in, .u-in-fade, .u-in-pop, .u-in-right,
+  .u-stagger > *,
+  .u-draw, .u-travel, .u-float, .u-skeleton {
+    animation: none !important;
+    opacity: 1 !important;
+    transform: none !important;
+    stroke-dashoffset: 0 !important;
+  }
+  .u-lift, .u-nudge { transition: none; }
+  .u-lift:hover, .u-nudge:hover { transform: none; }
+}

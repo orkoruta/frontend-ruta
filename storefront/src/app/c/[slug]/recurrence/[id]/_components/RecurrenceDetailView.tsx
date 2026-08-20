@@ -238,7 +238,7 @@ export default function RecurrenceDetailView() {
             </dt>
             <dd className="text-sm font-semibold text-slate-900 dark:text-slate-100">
               <Link href={`/c/${slug}/orders/${template.order_id}`}>
-                <span className="text-sky-600 hover:underline dark:text-sky-400">
+                <span className="text-brand-600 hover:underline dark:text-brand-400">
                   Pedido #{template.order_id}
                 </span>
               </Link>

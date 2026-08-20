@@ -157,6 +157,8 @@ export interface BuyerOrder {
   closure_reason: string | null
   delivery_address: BuyerDeliveryAddress | null
   pickup_point_id: number | null
+  /** Día de entrega prometido por el negocio (`YYYY-MM-DD`). `null` si aún no lo fija. */
+  scheduled_delivery_date: string | null
   subtotal: number
   tax: number
   shipping_fee: number

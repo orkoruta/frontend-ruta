@@ -210,7 +210,7 @@ export default function RefundDetailClient({ refundId }: Props) {
                 <dd className="mt-1">
                   <Link
                     href={`/admin/orders/${refund.order_id}`}
-                    className="font-medium text-sky-600 hover:underline dark:text-sky-400"
+                    className="font-medium text-brand-600 hover:underline dark:text-brand-400"
                   >
                     #{refund.order_id}
                   </Link>
@@ -280,7 +280,7 @@ export default function RefundDetailClient({ refundId }: Props) {
                 {sortedHistory.map((entry, idx) => (
                   <div key={entry.id} className="flex gap-3">
                     <div className="flex flex-col items-center">
-                      <div className="mt-1 h-3 w-3 flex-shrink-0 rounded-full bg-sky-500" />
+                      <div className="mt-1 h-3 w-3 flex-shrink-0 rounded-full bg-brand-500" />
                       {idx < sortedHistory.length - 1 && (
                         <div className="mt-1 w-px flex-1 bg-slate-200 dark:bg-white/10" />
                       )}
@@ -387,7 +387,7 @@ function ModalityIndicator({ modality }: { modality: string }) {
         'inline-flex items-center rounded-md border px-2.5 py-1 text-xs font-semibold',
         isStore
           ? 'bg-violet-500/[0.12] text-violet-700 border-violet-400/25 dark:text-violet-300'
-          : 'bg-sky-500/[0.12] text-sky-700 border-sky-400/25 dark:text-sky-300',
+          : 'bg-brand-500/[0.12] text-brand-700 border-brand-400/25 dark:text-brand-300',
       ].join(' ')}
     >
       {MODALITY_LABELS[modality] ?? modality}

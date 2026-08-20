@@ -1,3 +1,5 @@
+import { notifyUnauthorized } from './session-events'
+
 const API_BASE = process.env.NEXT_PUBLIC_API_URL ?? 'http://localhost:3001'
 
 export type ReturnStatus =
@@ -72,6 +74,7 @@ async function request<T>(path: string, init?: RequestInit): Promise<T> {
     },
   })
 
+  if (res.status === 401) notifyUnauthorized()
   if (!res.ok) throw await parseError(res)
   if (res.status === 204) return undefined as T
   return (await res.json()) as T

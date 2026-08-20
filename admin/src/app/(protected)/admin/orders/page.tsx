@@ -8,6 +8,7 @@ import {
   listOrders,
   type ApiError,
   type OrderListFilters,
+  ORDER_ORIGIN_LABELS,
   type OrderOrigin,
   type OrderStatus,
   type OrderSummary,
@@ -94,10 +95,10 @@ const PAYMENT_STATUS_OPTIONS: Array<[PaymentStatus | '', string]> = [
 ]
 
 const SELECT_CLASS =
-  'rounded-md border border-slate-200 bg-white/[0.85] px-3 py-2 text-sm text-slate-900 focus:outline-none focus:ring-2 focus:ring-sky-400/[0.4] dark:border-white/10 dark:bg-[#1d2025] dark:text-slate-100'
+  'rounded-md border border-slate-200 bg-white/[0.85] px-3 py-2 text-sm text-slate-900 focus:outline-none focus:ring-2 focus:ring-brand-400/[0.4] dark:border-white/10 dark:bg-[#1d2025] dark:text-slate-100'
 
 const INPUT_CLASS =
-  'rounded-md border border-slate-200 bg-white/[0.85] px-3 py-2 text-sm text-slate-900 placeholder-slate-400 focus:outline-none focus:ring-2 focus:ring-sky-400/[0.4] dark:border-white/10 dark:bg-white/[0.055] dark:text-slate-100'
+  'rounded-md border border-slate-200 bg-white/[0.85] px-3 py-2 text-sm text-slate-900 placeholder-slate-400 focus:outline-none focus:ring-2 focus:ring-brand-400/[0.4] dark:border-white/10 dark:bg-white/[0.055] dark:text-slate-100'
 
 export default function AdminOrdersPage() {
   const session = useContext(SessionContext)
@@ -214,7 +215,12 @@ export default function AdminOrdersPage() {
 
         {/* Filtro por origen */}
         <div className="mb-3 flex gap-2">
-          {(['', 'UI', 'API'] as Array<OrderOrigin | ''>) .map((origin) => (
+          {/*
+            Las pestañas ofrecían «UI» y «API», que no son valores de
+            `order_origin`: el backend los descartaba y el filtro no filtraba.
+            Ahora son los cinco orígenes reales, con su etiqueta en español.
+          */}
+          {(['', ...Object.keys(ORDER_ORIGIN_LABELS)] as Array<OrderOrigin | ''>).map((origin) => (
             <button
               key={origin}
               type="button"
@@ -222,13 +228,13 @@ export default function AdminOrdersPage() {
               className={[
                 'rounded-full border px-3 py-1 text-xs font-medium transition-colors',
                 orderOrigin === origin
-                  ? origin === 'API'
-                    ? 'border-sky-400/40 bg-sky-500/[0.18] text-sky-700 dark:border-sky-400/25 dark:text-sky-300'
+                  ? origin === 'API_LOGISTICS'
+                    ? 'border-brand-400/40 bg-brand-500/[0.18] text-brand-700 dark:border-brand-400/25 dark:text-brand-300'
                     : 'border-violet-400/40 bg-violet-500/[0.12] text-violet-700 dark:border-violet-400/25 dark:text-violet-300'
                   : 'border-slate-200 bg-white/[0.06] text-slate-500 hover:text-slate-700 dark:border-white/10 dark:text-slate-400 dark:hover:text-slate-200',
               ].join(' ')}
             >
-              {origin === '' ? 'Todos' : origin}
+              {origin === '' ? 'Todos' : ORDER_ORIGIN_LABELS[origin]}
             </button>
           ))}
         </div>
@@ -335,15 +341,35 @@ export default function AdminOrdersPage() {
                     <td className="px-4 py-3 font-mono text-xs text-slate-500 dark:text-slate-400">
                       <span className="flex items-center gap-1.5">
                         #{order.id}
-                        {order.order_origin === 'API' && (
-                          <span className="inline-flex items-center rounded border border-sky-400/40 bg-sky-500/[0.18] px-1 py-0.5 text-[10px] font-bold uppercase tracking-wide text-sky-700 dark:border-sky-400/25 dark:text-sky-300">
+                        {order.order_origin === 'API_LOGISTICS' && (
+                          <span className="inline-flex items-center rounded border border-brand-400/40 bg-brand-500/[0.18] px-1 py-0.5 text-[10px] font-bold uppercase tracking-wide text-brand-700 dark:border-brand-400/25 dark:text-brand-300">
                             API
                           </span>
                         )}
                       </span>
                     </td>
-                    <td className="px-4 py-3 font-medium text-slate-900 dark:text-slate-100">
-                      {order.buyer_name}
+                    <td className="px-4 py-3">
+                      <span className="font-medium text-slate-900 dark:text-slate-100">
+                        {order.buyer_name}
+                      </span>
+                      {/* Marca de invitado: avisa de que no hay cuenta detrás
+                          y de que su correo no sirve para contactarlo. */}
+                      {order.buyer_is_guest && (
+                        <span className="ml-1.5 inline-flex items-center rounded-full border border-slate-300 px-1.5 py-px text-[10px] font-semibold uppercase tracking-wide text-slate-500 dark:border-white/15 dark:text-slate-400">
+                          invitado
+                        </span>
+                      )}
+                      {/* El teléfono va en la lista porque es el dato con el
+                          que el operador llama sin abrir el pedido. */}
+                      {order.buyer_phone && (
+                        <a
+                          href={`tel:${order.buyer_phone}`}
+                          onClick={(e) => e.stopPropagation()}
+                          className="mt-0.5 block font-mono text-xs text-brand-700 hover:underline dark:text-brand-300"
+                        >
+                          {order.buyer_phone}
+                        </a>
+                      )}
                     </td>
                     <td className="px-4 py-3 text-slate-600 dark:text-slate-400">
                       {order.item_count}

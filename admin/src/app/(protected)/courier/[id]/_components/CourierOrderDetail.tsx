@@ -21,6 +21,8 @@ import {
   formatDeliveryAddress,
   isCollectOnDelivery,
 } from '@/lib/courier_orders.api'
+import { formatDeliveryDate } from '@orkoruta/web-shared'
+import { useCourierLocationReporter } from '@/lib/use_courier_location_reporter'
 import CollectionForm from './CollectionForm'
 import { CollectionEvidenceCard } from '@/components/CollectionEvidenceCard'
 
@@ -41,7 +43,7 @@ type StatusColor = StatusTone
 
 
 const COLOR_BADGE: Record<StatusColor, string> = {
-  blue:   'bg-sky-500/[0.12] text-sky-700 border-sky-400/25 dark:text-sky-300',
+  blue:   'bg-blue-500/[0.12] text-blue-700 border-blue-400/25 dark:text-blue-300',
   amber:  'bg-amber-500/[0.12] text-amber-700 border-amber-400/25 dark:text-amber-300',
   green:  'bg-emerald-500/[0.12] text-emerald-700 border-emerald-400/25 dark:text-emerald-300',
   slate:  'bg-white/[0.06] text-slate-600 border-white/10 dark:text-slate-300',
@@ -49,7 +51,7 @@ const COLOR_BADGE: Record<StatusColor, string> = {
 }
 
 const TIMELINE_DOT: Record<StatusColor, string> = {
-  blue:   'bg-sky-500',
+  blue:   'bg-blue-500',
   amber:  'bg-amber-500',
   green:  'bg-emerald-500',
   slate:  'bg-slate-400 dark:bg-slate-500',
@@ -72,6 +74,23 @@ function StatusBadge({ status }: { status: CourierOrderStatus }) {
 
 export default function CourierOrderDetail({ orderId }: Props) {
   const [order, setOrder] = useState<CourierOrderDetailType | null>(null)
+
+  /**
+   * Estados en los que el pedido va de camino: los mismos que el backend deja
+   * seguir al comprador (`TRACKABLE_STATUSES`). Fuera de ellos no se comparte
+   * ubicación — ni antes de salir ni después de entregar.
+   *
+   * Se calcula aquí arriba, y no junto al resto de banderas, porque el hook que
+   * lo consume tiene que llamarse siempre en el mismo orden: más abajo hay
+   * `return` tempranos por carga y por pedido inexistente.
+   */
+  const trackedStatus = order?.order_status
+  const sharingLocation =
+    trackedStatus === 'SHIPPED' ||
+    trackedStatus === 'IN_TRANSIT' ||
+    trackedStatus === 'OUT_FOR_DELIVERY' ||
+    trackedStatus === 'ARRIVED_AT_CUSTOMER'
+  const reporterState = useCourierLocationReporter(sharingLocation)
   const [loading, setLoading] = useState(true)
   const [acting, setActing] = useState(false)
   const [error, setError] = useState<string | null>(null)
@@ -148,7 +167,7 @@ export default function CourierOrderDetail({ orderId }: Props) {
           )}
           <Link
             href="/courier"
-            className="mt-3 inline-flex items-center text-sm text-sky-600 hover:underline dark:text-sky-400"
+            className="mt-3 inline-flex items-center text-sm text-brand-600 hover:underline dark:text-brand-400"
           >
             ← Volver
           </Link>
@@ -158,6 +177,7 @@ export default function CourierOrderDetail({ orderId }: Props) {
   }
 
   const status = order.order_status
+
   const isCOD = isCollectOnDelivery(order.payment_method)
 
   const showStartShipping = status === 'COURIER_ASSIGNED'
@@ -170,6 +190,7 @@ export default function CourierOrderDetail({ orderId }: Props) {
   // Con coordenadas el enlace lleva al punto exacto; el texto de la dirección
   // es un último recurso, porque la nomenclatura colombiana se resuelve mal.
   const address = order.delivery_address
+  const scheduledDelivery = formatDeliveryDate(order.scheduled_delivery_date)
   const hasCoords = address?.latitude != null && address?.longitude != null
   const addressQuery = encodeURIComponent(formatDeliveryAddress(address))
 
@@ -234,7 +255,7 @@ export default function CourierOrderDetail({ orderId }: Props) {
           {order.buyer?.phone && (
             <a
               href={`tel:${order.buyer.phone}`}
-              className="flex min-h-[48px] items-center gap-2 rounded-md border border-sky-400/40 bg-sky-500/[0.12] px-4 text-sm font-semibold text-sky-700 dark:border-sky-400/25 dark:text-sky-300"
+              className="flex min-h-[48px] items-center gap-2 rounded-md border border-brand-400/40 bg-brand-500/[0.12] px-4 text-sm font-semibold text-brand-700 dark:border-brand-400/25 dark:text-brand-300"
             >
               📞 {order.buyer.phone}
             </a>
@@ -245,6 +266,37 @@ export default function CourierOrderDetail({ orderId }: Props) {
       {/* Address */}
       <RutaCard>
         <RutaSectionHeader title="Dirección de entrega" subtitle="destino" />
+
+        {/* Se le dice al repartidor cuándo se está compartiendo su ubicación:
+            que una app te siga sin avisarte no es aceptable. */}
+        {sharingLocation && (
+          <p
+            className={[
+              'mb-2 inline-flex items-center gap-1.5 rounded-md px-2.5 py-1 text-xs font-medium',
+              reporterState === 'sharing'
+                ? 'bg-emerald-500/[0.12] text-emerald-700 dark:text-emerald-300'
+                : reporterState === 'denied' || reporterState === 'unreachable'
+                  ? 'bg-rose-500/[0.12] text-rose-700 dark:text-rose-300'
+                  : 'bg-slate-500/[0.10] text-slate-600 dark:text-slate-400',
+            ].join(' ')}
+          >
+            {reporterState === 'sharing' && '📍 El comprador está viendo tu ubicación'}
+            {reporterState === 'locating' && '📍 Buscando señal GPS…'}
+            {reporterState === 'unreachable' &&
+              '📍 Sin conexión: tu ubicación no está llegando.'}
+            {reporterState === 'denied' &&
+              '📍 Ubicación bloqueada. Actívala para que el comprador te siga.'}
+            {reporterState === 'unavailable' && '📍 Este dispositivo no comparte ubicación.'}
+            {reporterState === 'off' && ''}
+          </p>
+        )}
+        {/* El día que el negocio le prometió al comprador: va arriba de todo
+            porque condiciona si esta entrega es para hoy o no. */}
+        {scheduledDelivery && (
+          <p className="mt-2 inline-flex items-center gap-2 rounded-md border border-brand-400/40 bg-brand-500/[0.12] px-3 py-1.5 text-sm font-semibold text-brand-700 dark:border-brand-400/25 dark:text-brand-300">
+            📅 Entrega: {scheduledDelivery}
+          </p>
+        )}
         <p className="mt-2 text-base text-slate-800 dark:text-slate-200">
           {formatDeliveryAddress(address)}
         </p>
@@ -268,7 +320,7 @@ export default function CourierOrderDetail({ orderId }: Props) {
             href={wazeUrl}
             target="_blank"
             rel="noopener noreferrer"
-            className="flex min-h-[48px] flex-1 items-center justify-center gap-2 rounded-md border border-sky-400/40 bg-sky-500/[0.12] px-4 text-sm font-semibold text-sky-700 dark:border-sky-400/25 dark:text-sky-300"
+            className="flex min-h-[48px] flex-1 items-center justify-center gap-2 rounded-md border border-brand-400/40 bg-brand-500/[0.12] px-4 text-sm font-semibold text-brand-700 dark:border-brand-400/25 dark:text-brand-300"
           >
             🚗 Waze
           </a>
@@ -433,7 +485,7 @@ export default function CourierOrderDetail({ orderId }: Props) {
                   onChange={(e) => setFailedReason(e.target.value)}
                   rows={3}
                   placeholder="Ej: cliente no respondió, dirección incorrecta…"
-                  className="w-full rounded-md border border-slate-200 bg-white/[0.85] px-3 py-2 text-sm text-slate-900 placeholder-slate-400 focus:outline-none focus:ring-2 focus:ring-sky-400/[0.4] dark:border-white/10 dark:bg-white/[0.055] dark:text-slate-100"
+                  className="w-full rounded-md border border-slate-200 bg-white/[0.85] px-3 py-2 text-sm text-slate-900 placeholder-slate-400 focus:outline-none focus:ring-2 focus:ring-brand-400/[0.4] dark:border-white/10 dark:bg-white/[0.055] dark:text-slate-100"
                 />
                 <div className="flex gap-2">
                   <RutaButton

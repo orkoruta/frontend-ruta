@@ -269,7 +269,7 @@ export default function CorporateOrderForm({ onSuccess }: Props) {
               className={[
                 'rounded-md border px-4 py-2 text-sm font-medium transition-colors',
                 mode === value
-                  ? 'border-sky-400/50 bg-sky-500/[0.15] text-sky-700 dark:text-sky-300'
+                  ? 'border-brand-400/50 bg-brand-500/[0.15] text-brand-700 dark:text-brand-300'
                   : 'border-slate-200 text-slate-600 hover:bg-white/[0.06] dark:border-white/10 dark:text-slate-400',
               ].join(' ')}
             >
@@ -293,7 +293,7 @@ export default function CorporateOrderForm({ onSuccess }: Props) {
               value={buyerId}
               onChange={(e) => setBuyerId(e.target.value)}
               required
-              className="w-full rounded-md border border-slate-200 bg-white/[0.85] px-3 py-2 text-sm text-slate-900 focus:outline-none focus:ring-2 focus:ring-sky-500/[0.4] dark:border-white/10 dark:bg-white/[0.055] dark:text-slate-100"
+              className="w-full rounded-md border border-slate-200 bg-white/[0.85] px-3 py-2 text-sm text-slate-900 focus:outline-none focus:ring-2 focus:ring-brand-500/[0.4] dark:border-white/10 dark:bg-white/[0.055] dark:text-slate-100"
             >
               <option value="">Selecciona un comprador…</option>
               {buyers.map((b) => (
@@ -317,7 +317,7 @@ export default function CorporateOrderForm({ onSuccess }: Props) {
                 onChange={(e) => setContactName(e.target.value)}
                 placeholder="Nombre de quien recibe o gestiona"
                 required
-                className="w-full rounded-md border border-slate-200 bg-white/[0.85] px-3 py-2 text-sm text-slate-900 placeholder:text-slate-400 focus:outline-none focus:ring-2 focus:ring-sky-500/[0.4] dark:border-white/10 dark:bg-white/[0.055] dark:text-slate-100"
+                className="w-full rounded-md border border-slate-200 bg-white/[0.85] px-3 py-2 text-sm text-slate-900 placeholder:text-slate-400 focus:outline-none focus:ring-2 focus:ring-brand-500/[0.4] dark:border-white/10 dark:bg-white/[0.055] dark:text-slate-100"
               />
             </div>
             <div>
@@ -329,7 +329,7 @@ export default function CorporateOrderForm({ onSuccess }: Props) {
                 value={contactEmail}
                 onChange={(e) => setContactEmail(e.target.value)}
                 placeholder="contacto@empresa.com"
-                className="w-full rounded-md border border-slate-200 bg-white/[0.85] px-3 py-2 text-sm text-slate-900 placeholder:text-slate-400 focus:outline-none focus:ring-2 focus:ring-sky-500/[0.4] dark:border-white/10 dark:bg-white/[0.055] dark:text-slate-100"
+                className="w-full rounded-md border border-slate-200 bg-white/[0.85] px-3 py-2 text-sm text-slate-900 placeholder:text-slate-400 focus:outline-none focus:ring-2 focus:ring-brand-500/[0.4] dark:border-white/10 dark:bg-white/[0.055] dark:text-slate-100"
               />
             </div>
             <div>
@@ -341,7 +341,7 @@ export default function CorporateOrderForm({ onSuccess }: Props) {
                 value={contactPhone}
                 onChange={(e) => setContactPhone(e.target.value)}
                 placeholder="+57 300 000 0000"
-                className="w-full rounded-md border border-slate-200 bg-white/[0.85] px-3 py-2 text-sm text-slate-900 placeholder:text-slate-400 focus:outline-none focus:ring-2 focus:ring-sky-500/[0.4] dark:border-white/10 dark:bg-white/[0.055] dark:text-slate-100"
+                className="w-full rounded-md border border-slate-200 bg-white/[0.85] px-3 py-2 text-sm text-slate-900 placeholder:text-slate-400 focus:outline-none focus:ring-2 focus:ring-brand-500/[0.4] dark:border-white/10 dark:bg-white/[0.055] dark:text-slate-100"
               />
             </div>
           </div>
@@ -356,7 +356,7 @@ export default function CorporateOrderForm({ onSuccess }: Props) {
             <button
               type="button"
               onClick={addItem}
-              className="rounded-md border border-sky-400/30 bg-sky-500/[0.08] px-3 py-1.5 text-xs font-medium text-sky-700 hover:bg-sky-500/[0.15] dark:text-sky-300"
+              className="rounded-md border border-brand-400/30 bg-brand-500/[0.08] px-3 py-1.5 text-xs font-medium text-brand-700 hover:bg-brand-500/[0.15] dark:text-brand-300"
             >
               + Agregar ítem
             </button>
@@ -370,7 +370,7 @@ export default function CorporateOrderForm({ onSuccess }: Props) {
                     value={row.product_id || ''}
                     onChange={(e) => updateItem(idx, 'product_id', Number(e.target.value))}
                     required
-                    className="w-full rounded-md border border-slate-200 bg-white/[0.85] px-3 py-2 text-sm text-slate-900 focus:outline-none focus:ring-2 focus:ring-sky-500/[0.4] dark:border-white/10 dark:bg-white/[0.055] dark:text-slate-100"
+                    className="w-full rounded-md border border-slate-200 bg-white/[0.85] px-3 py-2 text-sm text-slate-900 focus:outline-none focus:ring-2 focus:ring-brand-500/[0.4] dark:border-white/10 dark:bg-white/[0.055] dark:text-slate-100"
                   >
                     <option value="">Selecciona un producto…</option>
                     {products.map((p) => (
@@ -389,7 +389,7 @@ export default function CorporateOrderForm({ onSuccess }: Props) {
                     onChange={(e) => updateItem(idx, 'quantity', Number(e.target.value))}
                     placeholder="Cant."
                     required
-                    className="w-full rounded-md border border-slate-200 bg-white/[0.85] px-3 py-2 text-sm text-slate-900 focus:outline-none focus:ring-2 focus:ring-sky-500/[0.4] dark:border-white/10 dark:bg-white/[0.055] dark:text-slate-100"
+                    className="w-full rounded-md border border-slate-200 bg-white/[0.85] px-3 py-2 text-sm text-slate-900 focus:outline-none focus:ring-2 focus:ring-brand-500/[0.4] dark:border-white/10 dark:bg-white/[0.055] dark:text-slate-100"
                   />
                 </div>
                 {items.length > 1 && (
@@ -426,7 +426,7 @@ export default function CorporateOrderForm({ onSuccess }: Props) {
               <select
                 value={deliveryType}
                 onChange={(e) => setDeliveryType(e.target.value as DeliveryType)}
-                className="w-full rounded-md border border-slate-200 bg-white/[0.85] px-3 py-2 text-sm text-slate-900 focus:outline-none focus:ring-2 focus:ring-sky-500/[0.4] dark:border-white/10 dark:bg-white/[0.055] dark:text-slate-100"
+                className="w-full rounded-md border border-slate-200 bg-white/[0.85] px-3 py-2 text-sm text-slate-900 focus:outline-none focus:ring-2 focus:ring-brand-500/[0.4] dark:border-white/10 dark:bg-white/[0.055] dark:text-slate-100"
               >
                 {(Object.keys(DELIVERY_LABELS) as DeliveryType[]).map((k) => (
                   <option key={k} value={k}>
@@ -456,7 +456,7 @@ export default function CorporateOrderForm({ onSuccess }: Props) {
                   setPaymentMethod(e.target.value as PaymentMethod)
                   setPaymentSubmethod('')
                 }}
-                className="w-full rounded-md border border-slate-200 bg-white/[0.85] px-3 py-2 text-sm text-slate-900 focus:outline-none focus:ring-2 focus:ring-sky-500/[0.4] dark:border-white/10 dark:bg-white/[0.055] dark:text-slate-100"
+                className="w-full rounded-md border border-slate-200 bg-white/[0.85] px-3 py-2 text-sm text-slate-900 focus:outline-none focus:ring-2 focus:ring-brand-500/[0.4] dark:border-white/10 dark:bg-white/[0.055] dark:text-slate-100"
               >
                 {(Object.keys(PAYMENT_LABELS) as PaymentMethod[]).map((k) => (
                   <option key={k} value={k}>
@@ -473,7 +473,7 @@ export default function CorporateOrderForm({ onSuccess }: Props) {
                 <select
                   value={paymentSubmethod}
                   onChange={(e) => setPaymentSubmethod(e.target.value as PaymentSubmethod | '')}
-                  className="w-full rounded-md border border-slate-200 bg-white/[0.85] px-3 py-2 text-sm text-slate-900 focus:outline-none focus:ring-2 focus:ring-sky-500/[0.4] dark:border-white/10 dark:bg-white/[0.055] dark:text-slate-100"
+                  className="w-full rounded-md border border-slate-200 bg-white/[0.85] px-3 py-2 text-sm text-slate-900 focus:outline-none focus:ring-2 focus:ring-brand-500/[0.4] dark:border-white/10 dark:bg-white/[0.055] dark:text-slate-100"
                 >
                   <option value="">Sin especificar</option>
                   {availableSubmethods.map((s) => (
@@ -493,7 +493,7 @@ export default function CorporateOrderForm({ onSuccess }: Props) {
                 onChange={(e) => setNotes(e.target.value)}
                 rows={2}
                 placeholder="Instrucciones adicionales para el pedido"
-                className="w-full resize-none rounded-md border border-slate-200 bg-white/[0.85] px-3 py-2 text-sm text-slate-900 placeholder:text-slate-400 focus:outline-none focus:ring-2 focus:ring-sky-500/[0.4] dark:border-white/10 dark:bg-white/[0.055] dark:text-slate-100"
+                className="w-full resize-none rounded-md border border-slate-200 bg-white/[0.85] px-3 py-2 text-sm text-slate-900 placeholder:text-slate-400 focus:outline-none focus:ring-2 focus:ring-brand-500/[0.4] dark:border-white/10 dark:bg-white/[0.055] dark:text-slate-100"
               />
             </div>
           </div>
@@ -512,7 +512,7 @@ export default function CorporateOrderForm({ onSuccess }: Props) {
               <select
                 value={periodicity}
                 onChange={(e) => setPeriodicity(e.target.value as RecurrencePeriodicity)}
-                className="w-full rounded-md border border-slate-200 bg-white/[0.85] px-3 py-2 text-sm text-slate-900 focus:outline-none focus:ring-2 focus:ring-sky-500/[0.4] dark:border-white/10 dark:bg-white/[0.055] dark:text-slate-100"
+                className="w-full rounded-md border border-slate-200 bg-white/[0.85] px-3 py-2 text-sm text-slate-900 focus:outline-none focus:ring-2 focus:ring-brand-500/[0.4] dark:border-white/10 dark:bg-white/[0.055] dark:text-slate-100"
               >
                 {(Object.keys(PERIODICITY_LABELS) as RecurrencePeriodicity[]).map((k) => (
                   <option key={k} value={k}>
@@ -533,7 +533,7 @@ export default function CorporateOrderForm({ onSuccess }: Props) {
                   onChange={(e) => setCustomIntervalDays(e.target.value)}
                   placeholder="p.ej. 10"
                   required={periodicity === 'CUSTOM_INTERVAL'}
-                  className="w-full rounded-md border border-slate-200 bg-white/[0.85] px-3 py-2 text-sm text-slate-900 placeholder:text-slate-400 focus:outline-none focus:ring-2 focus:ring-sky-500/[0.4] dark:border-white/10 dark:bg-white/[0.055] dark:text-slate-100"
+                  className="w-full rounded-md border border-slate-200 bg-white/[0.85] px-3 py-2 text-sm text-slate-900 placeholder:text-slate-400 focus:outline-none focus:ring-2 focus:ring-brand-500/[0.4] dark:border-white/10 dark:bg-white/[0.055] dark:text-slate-100"
                 />
               </div>
             )}

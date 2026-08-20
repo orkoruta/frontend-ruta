@@ -1,3 +1,5 @@
+import { notifyUnauthorized } from './session-events'
+
 const API_BASE = process.env.NEXT_PUBLIC_API_URL ?? 'http://localhost:3001'
 
 export type CourierOrderStatus =
@@ -45,6 +47,8 @@ export interface CourierOrder {
   id: number
   order_status: CourierOrderStatus
   delivery_address: CourierDeliveryAddress | null
+  /** Día de entrega fijado por el negocio (`YYYY-MM-DD`), o `null`. */
+  scheduled_delivery_date: string | null
   buyer_name: string
   buyer_phone: string | null
   total: number
@@ -64,6 +68,8 @@ export interface CourierOrderDetail {
   id: number
   order_status: CourierOrderStatus
   delivery_address: CourierDeliveryAddress | null
+  /** Día de entrega fijado por el negocio (`YYYY-MM-DD`), o `null`. */
+  scheduled_delivery_date: string | null
   buyer: {
     name: string
     phone: string | null
@@ -158,6 +164,7 @@ async function request<T>(
     },
   })
 
+  if (res.status === 401) notifyUnauthorized()
   if (!res.ok) throw await parseError(res)
   if (res.status === 204) return undefined as T
   return (await res.json()) as T

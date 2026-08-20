@@ -6,6 +6,9 @@ import Link from 'next/link'
 import Image from 'next/image'
 import {
   RutaCard,
+  RutaEmptyState,
+  RutaRouteBackdrop,
+  IllustrationNoOrders,
   RutaButton,
   RutaPill,
   RutaSectionHeader,
@@ -55,7 +58,7 @@ function ProductCard({
 
   return (
     <Link href={`/c/${slug}/product/${product.id}`} className="group block">
-      <RutaCard className="flex h-full flex-col transition-shadow hover:shadow-md">
+      <RutaCard className="u-lift flex h-full flex-col hover:shadow-md">
         {/* Imagen */}
         <div className="relative mb-3 h-40 overflow-hidden rounded-md bg-slate-100 dark:bg-slate-800">
           {product.image_url ? (
@@ -252,7 +255,7 @@ export default function CatalogView() {
                 onClick={() => handleCategoryClick(undefined)}
                 className={`w-full rounded-md px-3 py-1.5 text-left text-sm transition-colors ${
                   selectedCategory === undefined
-                    ? 'bg-sky-500/[0.12] font-medium text-sky-700 dark:text-sky-300'
+                    ? 'bg-brand-500/[0.12] font-medium text-brand-700 dark:text-brand-300'
                     : 'text-slate-600 hover:bg-slate-100 dark:text-slate-400 dark:hover:bg-white/[0.06]'
                 }`}
               >
@@ -266,7 +269,7 @@ export default function CatalogView() {
                     onClick={() => handleCategoryClick(cat.id)}
                     className={`w-full rounded-md px-3 py-1.5 text-left text-sm transition-colors ${
                       selectedCategory === cat.id
-                        ? 'bg-sky-500/[0.12] font-medium text-sky-700 dark:text-sky-300'
+                        ? 'bg-brand-500/[0.12] font-medium text-brand-700 dark:text-brand-300'
                         : 'text-slate-600 hover:bg-slate-100 dark:text-slate-400 dark:hover:bg-white/[0.06]'
                     }`}
                   >
@@ -280,7 +283,10 @@ export default function CatalogView() {
         {/* Área principal */}
         <div className="min-w-0 flex-1">
           {/* Bienvenida */}
-          <div className="mb-4">
+          {/* `relative isolate overflow-hidden` es lo que necesita el fondo de
+              rutas para quedar contenido aquí y no escaparse detrás de la página. */}
+          <div className="u-in relative isolate mb-4 -mx-4 overflow-hidden px-4 py-3 sm:-mx-6 sm:px-6">
+            <RutaRouteBackdrop variant="corner" className="text-brand-500/[0.14]" />
             <h1 className="text-xl font-black tracking-tight text-slate-900 dark:text-slate-100">
               {profile
                 ? `¡Hola, ${(profile.full_name ?? '').trim().split(/\s+/)[0] || 'de nuevo'}! 👋`
@@ -300,7 +306,7 @@ export default function CatalogView() {
               value={search}
               onChange={(e) => setSearch(e.target.value)}
               placeholder="Buscar productos…"
-              className="flex-1 rounded-md border border-slate-200 bg-white/[0.85] px-3 py-2 text-sm placeholder-slate-400 focus:outline-none focus:ring-2 focus:ring-sky-400/[0.5] dark:border-white/10 dark:bg-white/[0.055] dark:text-slate-100 dark:placeholder-slate-500"
+              className="flex-1 rounded-md border border-slate-200 bg-white/[0.85] px-3 py-2 text-sm placeholder-slate-400 focus:outline-none focus:ring-2 focus:ring-brand-400/[0.5] dark:border-white/10 dark:bg-white/[0.055] dark:text-slate-100 dark:placeholder-slate-500"
             />
             <RutaButton type="submit" variant="primary" size="md">
               Buscar
@@ -314,7 +320,7 @@ export default function CatalogView() {
                 onClick={() => handleCategoryClick(undefined)}
                 className={`shrink-0 rounded-md border px-3 py-1 text-xs font-medium transition-colors ${
                   selectedCategory === undefined
-                    ? 'border-sky-400/25 bg-sky-500/[0.12] text-sky-700 dark:text-sky-300'
+                    ? 'border-brand-400/25 bg-brand-500/[0.12] text-brand-700 dark:text-brand-300'
                     : 'border-slate-200 bg-white/[0.85] text-slate-600 dark:border-white/10 dark:bg-white/[0.055] dark:text-slate-400'
                 }`}
               >
@@ -326,7 +332,7 @@ export default function CatalogView() {
                   onClick={() => handleCategoryClick(cat.id)}
                   className={`shrink-0 rounded-md border px-3 py-1 text-xs font-medium transition-colors ${
                     selectedCategory === cat.id
-                      ? 'border-sky-400/25 bg-sky-500/[0.12] text-sky-700 dark:text-sky-300'
+                      ? 'border-brand-400/25 bg-brand-500/[0.12] text-brand-700 dark:text-brand-300'
                       : 'border-slate-200 bg-white/[0.85] text-slate-600 dark:border-white/10 dark:bg-white/[0.055] dark:text-slate-400'
                   }`}
                 >
@@ -357,17 +363,19 @@ export default function CatalogView() {
 
           {/* Estado: empty */}
           {!loadingProducts && !error && products.length === 0 && (
-            <RutaCard className="py-16 text-center">
-              <p className="text-sm text-slate-500 dark:text-slate-400">
-                Este comercio aún no tiene productos publicados
-              </p>
+            <RutaCard>
+              <RutaEmptyState
+                illustration={<IllustrationNoOrders className="w-full" />}
+                title="Todavía no hay productos"
+                description="Este comercio aún no ha publicado su catálogo. Vuelve en un rato."
+              />
             </RutaCard>
           )}
 
           {/* Grid de productos */}
           {!loadingProducts && !error && products.length > 0 && (
             <>
-              <div className="grid grid-cols-2 gap-4 sm:grid-cols-3 lg:grid-cols-4">
+              <div className="u-stagger grid grid-cols-2 gap-4 sm:grid-cols-3 lg:grid-cols-4">
                 {products.map((product) => (
                   <ProductCard
                     key={product.id}

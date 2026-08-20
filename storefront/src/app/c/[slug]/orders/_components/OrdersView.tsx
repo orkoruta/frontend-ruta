@@ -11,6 +11,7 @@ import {
   type OrderStatus,
 } from '@/lib/buyer_orders.api'
 import { repeatLastOrder } from '@/lib/recurrence.api'
+import { formatDeliveryDateShort } from '@orkoruta/web-shared'
 
 type OrderFilter = 'all' | 'active' | 'completed' | 'cancelled'
 type StatusColor = 'slate' | 'violet' | 'amber' | 'blue' | 'green' | 'red'
@@ -300,7 +301,7 @@ export default function OrdersView() {
               className={[
                 'rounded-md border px-3 py-1.5 text-xs font-semibold transition-colors',
                 filter === value
-                  ? 'border-sky-400/40 bg-sky-500/[0.12] text-sky-700 dark:text-sky-300'
+                  ? 'border-brand-400/40 bg-brand-500/[0.12] text-brand-700 dark:text-brand-300'
                   : 'border-slate-200 bg-white/[0.06] text-slate-600 hover:bg-white/[0.12] dark:border-white/10 dark:text-slate-300',
               ].join(' ')}
             >
@@ -346,6 +347,12 @@ export default function OrdersView() {
                     {order.items.length} {order.items.length === 1 ? 'item' : 'items'} -{' '}
                     {formatCOP(order.total)}
                   </p>
+                  {/* Día prometido por el negocio, si ya lo fijó. */}
+                  {order.scheduled_delivery_date && (
+                    <p className="mt-1 text-xs font-semibold text-brand-700 dark:text-brand-300">
+                      Entrega: {formatDeliveryDateShort(order.scheduled_delivery_date)}
+                    </p>
+                  )}
                   <div className="mt-3">
                     <StatusPill status={order.order_status} />
                   </div>

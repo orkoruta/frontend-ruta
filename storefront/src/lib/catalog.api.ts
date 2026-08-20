@@ -9,6 +9,11 @@ export interface ClientPublicInfo {
   frontend_mode: string
   /** El Cliente tiene su pasarela Wompi configurada y activa. */
   online_payment_enabled?: boolean
+  /**
+   * Link de pago de Nequi Negocios del Cliente, o `null` si no lo tiene activo.
+   * Es público por naturaleza: el negocio lo comparte para que le paguen.
+   */
+  nequi_payment_link?: string | null
 }
 
 export interface Category {

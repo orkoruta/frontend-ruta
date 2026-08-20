@@ -7,7 +7,13 @@ import {
   courierStatusTone,
   type StatusTone,
 } from '@/lib/courier_status_labels'
-import { RutaCard } from '@orkoruta/ui'
+import {
+  RutaCard,
+  RutaEmptyState,
+  RutaRouteBackdrop,
+  IllustrationAllDone,
+  IllustrationNoOrders,
+} from '@orkoruta/ui'
 import {
   getAssignedOrders,
   type ApiError,
@@ -16,6 +22,7 @@ import {
   formatDeliveryAddress,
   isCollectOnDelivery,
 } from '@/lib/courier_orders.api'
+import { formatDeliveryDateShort } from '@orkoruta/web-shared'
 
 type Tab = 'active' | 'completed'
 
@@ -32,7 +39,7 @@ type StatusColor = StatusTone
 
 
 const COLOR_CLASSES: Record<StatusColor, string> = {
-  blue:   'bg-sky-500/[0.12] text-sky-700 border-sky-400/25 dark:text-sky-300',
+  blue:   'bg-blue-500/[0.12] text-blue-700 border-blue-400/25 dark:text-blue-300',
   amber:  'bg-amber-500/[0.12] text-amber-700 border-amber-400/25 dark:text-amber-300',
   green:  'bg-emerald-500/[0.12] text-emerald-700 border-emerald-400/25 dark:text-emerald-300',
   slate:  'bg-white/[0.06] text-slate-600 border-white/10 dark:text-slate-300',
@@ -78,7 +85,7 @@ function OrderCard({ order }: { order: CourierOrder }) {
 
   return (
     <Link href={`/courier/${order.id}`}>
-      <RutaCard className="transition-shadow hover:shadow-md active:scale-[0.99]">
+      <RutaCard className="u-lift hover:shadow-md active:scale-[0.99]">
         <div className="flex items-start justify-between gap-3">
           <div className="flex-1 min-w-0">
             <p className="text-[11px] font-bold uppercase tracking-[0.2em] text-slate-500 dark:text-slate-400">
@@ -90,6 +97,12 @@ function OrderCard({ order }: { order: CourierOrder }) {
             <p className="mt-0.5 text-sm text-slate-600 dark:text-slate-400">
               {order.buyer_name}
             </p>
+            {/* Día prometido al comprador: en la lista decide qué entregar primero. */}
+            {order.scheduled_delivery_date && (
+              <p className="mt-0.5 text-xs font-semibold text-brand-700 dark:text-brand-300">
+                📅 Entrega: {formatDeliveryDateShort(order.scheduled_delivery_date)}
+              </p>
+            )}
           </div>
           <StatusBadge status={order.order_status} />
         </div>
@@ -104,7 +117,7 @@ function OrderCard({ order }: { order: CourierOrder }) {
             )}
           </div>
           {!completed && (
-            <span className="inline-flex min-h-[48px] items-center justify-center rounded-md border border-sky-400/40 bg-sky-500/[0.12] px-4 text-sm font-semibold text-sky-700 dark:border-sky-400/25 dark:text-sky-300">
+            <span className="inline-flex min-h-[48px] items-center justify-center rounded-md border border-brand-400/40 bg-brand-500/[0.12] px-4 text-sm font-semibold text-brand-700 dark:border-brand-400/25 dark:text-brand-300">
               {ctaLabel(order.order_status)}
             </span>
           )}
@@ -147,7 +160,8 @@ export default function CourierDashboard() {
 
   return (
     <div className="mx-auto max-w-lg space-y-4">
-      <div className="flex items-center justify-between">
+      <div className="relative isolate -mx-4 -mt-2 flex items-center justify-between overflow-hidden px-4 pb-2 pt-2">
+        <RutaRouteBackdrop variant="corner" />
         <div>
           <p className="text-[11px] font-bold uppercase tracking-[0.24em] text-slate-500 dark:text-slate-400">
             mis pedidos
@@ -193,21 +207,25 @@ export default function CourierDashboard() {
       )}
 
       {loading && (
-        <p className="py-8 text-center text-sm text-slate-500 dark:text-slate-400">
-          Cargando pedidos…
-        </p>
+        <div className="space-y-3" aria-label="Cargando pedidos" role="status">
+          {[...Array(3)].map((_, i) => (
+            <div key={i} className="u-skeleton h-32 rounded-xl" />
+          ))}
+        </div>
       )}
 
       {!loading && tab === 'active' && (
         <>
           {active.length === 0 ? (
-            <div className="rounded-lg border border-dashed border-slate-300 p-8 text-center dark:border-white/10">
-              <p className="text-sm text-slate-500 dark:text-slate-400">
-                No tienes pedidos activos en este momento.
-              </p>
+            <div className="rounded-xl border border-dashed border-slate-300 dark:border-white/10">
+              <RutaEmptyState
+                illustration={<IllustrationAllDone className="w-full" />}
+                title="Estás al día"
+                description="No tienes pedidos activos. Te avisamos cuando te asignen uno."
+              />
             </div>
           ) : (
-            <div className="space-y-3">
+            <div className="u-stagger space-y-3">
               {active.map((order) => (
                 <OrderCard key={order.id} order={order} />
               ))}

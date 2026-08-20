@@ -22,6 +22,8 @@ export interface GeocodeResult {
   formattedAddress: string
   /** `false` cuando Google ubicó la vía o el sector en vez del predio. */
   isPrecise: boolean
+  /** Código postal del punto, si Google lo conoce. */
+  postalCode: string | null
 }
 
 interface GeocodeResponse {
@@ -30,7 +32,18 @@ interface GeocodeResponse {
     longitude: number
     formatted_address: string
     is_precise: boolean
+    postal_code: string | null
   } | null
+}
+
+function toResult(d: NonNullable<GeocodeResponse['data']>): GeocodeResult {
+  return {
+    latitude: d.latitude,
+    longitude: d.longitude,
+    formattedAddress: d.formatted_address,
+    isPrecise: d.is_precise,
+    postalCode: d.postal_code ?? null,
+  }
 }
 
 /**
@@ -56,12 +69,26 @@ export async function geocodeAddress(
   if (!res.ok) throw new Error('No pudimos buscar la dirección')
 
   const body = (await res.json()) as GeocodeResponse
-  if (!body.data) return null
+  return body.data ? toResult(body.data) : null
+}
 
-  return {
-    latitude: body.data.latitude,
-    longitude: body.data.longitude,
-    formattedAddress: body.data.formatted_address,
-    isPrecise: body.data.is_precise,
-  }
+/**
+ * Geocodificación inversa: de coordenadas a dirección. Se usa para sacar el
+ * código postal del punto donde el comprador dejó el pin en el mapa.
+ * Propaga `AbortError` si se cancela.
+ */
+export async function reverseGeocode(
+  lat: number,
+  lng: number,
+  signal?: AbortSignal,
+): Promise<GeocodeResult | null> {
+  const res = await fetch(`${API_BASE}/geocode/reverse?lat=${lat}&lng=${lng}`, {
+    signal,
+    credentials: 'include',
+  })
+
+  if (!res.ok) throw new Error('No pudimos ubicar el código postal')
+
+  const body = (await res.json()) as GeocodeResponse
+  return body.data ? toResult(body.data) : null
 }

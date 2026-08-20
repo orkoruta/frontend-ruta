@@ -14,6 +14,8 @@ import {
   cancelOrder,
   approveCancelRequest,
   rejectCancelRequest,
+  setDeliveryDate,
+  confirmLinkPayment,
   type ApiError,
   type OrderDetail,
   type DeliveryCarrierType,
@@ -26,6 +28,7 @@ import {
   type RefundModality,
 } from '@/lib/refunds.api'
 import { PickupActions } from './_components/PickupActions'
+import { DeliveryDateCard } from './_components/DeliveryDateCard'
 import { CollectionEvidenceCard } from '@/components/CollectionEvidenceCard'
 import {
   adminStatusLabel,
@@ -49,11 +52,35 @@ function formatDate(value: string) {
   }).format(new Date(value))
 }
 
+/**
+ * Estados en los que el pedido ya terminó y programar la entrega no aplica.
+ * Espeja `SCHEDULING_CLOSED_STATUSES` del backend (`routes/admin_orders.ts`):
+ * aquí solo decide si se muestra el formulario; quien manda es el servidor.
+ */
+const SCHEDULING_CLOSED_STATUSES: ReadonlySet<OrderStatus> = new Set<OrderStatus>([
+  'DELIVERED',
+  'PICKED_UP',
+  'CONFIRMED_BY_CUSTOMER',
+  'CONFIRMED_BY_SYSTEM',
+  'COMPLETED_SUCCESSFULLY',
+  'CLOSED',
+  'EXPIRED',
+  'PICKUP_EXPIRED',
+  'LOST_IN_TRANSIT',
+  'LOST_IN_RETURN',
+  'CANCELLED_BY_CUSTOMER',
+  'CANCELLED_BY_SELLER',
+  'CANCELLED_BY_SYSTEM',
+  'CANCELLED_BY_ADMIN',
+  'CANCELLED_NO_PAYMENT',
+  'PICKUP_CANCELLED_BY_CUSTOMER',
+])
+
 const TIMELINE_DOT: Record<StatusColor, string> = {
   slate:  'bg-slate-400 dark:bg-slate-500',
   violet: 'bg-violet-500',
   amber:  'bg-amber-500',
-  blue:   'bg-sky-500',
+  blue:   'bg-blue-500',
   green:  'bg-emerald-500',
   red:    'bg-rose-500',
 }
@@ -248,7 +275,16 @@ export default function OrderDetailClient({ orderId }: OrderDetailClientProps) {
     }
   }
 
-  const isApiOrder = order.order_origin === 'API'
+  /*
+   * Comparaba con `'API'`, que no es un valor de `order_origin`: **nunca daba
+   * true**, así que a los pedidos de Cliente API se les ofrecían acciones de
+   * Flujo 1, 4 y 6 que el backend rechaza con 422.
+   *
+   * Es `API_LOGISTICS` y no cualquier origen que venga por API:
+   * `FULL_LANDING_API` es el landing de un Cliente **Full**, que sí tiene esos
+   * flujos.
+   */
+  const isApiOrder = order.order_origin === 'API_LOGISTICS'
   const status = order.order_status
   // Flujo 1 actions are hidden for API orders (LOGISTICS_ONLY_FEATURE_UNAVAILABLE)
   const showAcceptReject = !isApiOrder && status === 'VALIDATION_APPROVED'
@@ -269,6 +305,12 @@ export default function OrderDetailClient({ orderId }: OrderDetailClientProps) {
 
   // El historial mezcla dimensiones (order_status, payment_status, refund_status…).
   // Esta línea de tiempo es la del pedido; las demás tienen su propia pantalla.
+  // Solo para pagos por link pendientes: Wompi lo confirma por webhook y el
+  // contra entrega lo registra el repartidor.
+  const showConfirmLinkPayment =
+    order.payment_method_submethod === 'PAYMENT_LINK' &&
+    order.payment_status === 'PENDING_ONLINE_PAYMENT'
+
   const sortedHistory = [...(order.history ?? [])]
     .filter((entry) => entry.state_dimension === 'order_status')
     .sort((a, b) => new Date(b.occurred_at).getTime() - new Date(a.occurred_at).getTime())
@@ -283,7 +325,7 @@ export default function OrderDetailClient({ orderId }: OrderDetailClientProps) {
           <div className="mt-2 flex flex-wrap items-center gap-3">
             <StatusBadge status={order.order_status} />
             {isApiOrder && (
-              <span className="inline-flex items-center rounded-md border border-sky-400/40 bg-sky-500/[0.18] px-2.5 py-1 text-xs font-semibold text-sky-700 dark:border-sky-400/25 dark:text-sky-300">
+              <span className="inline-flex items-center rounded-md border border-brand-400/40 bg-brand-500/[0.18] px-2.5 py-1 text-xs font-semibold text-brand-700 dark:border-brand-400/25 dark:text-brand-300">
                 Pedido vía API
               </span>
             )}
@@ -320,6 +362,17 @@ export default function OrderDetailClient({ orderId }: OrderDetailClientProps) {
           {/* Buyer */}
           <RutaCard>
             <RutaSectionHeader title="Comprador" subtitle="datos de contacto" />
+
+            {/* Un invitado pidió sin cuenta: su correo es una dirección
+                sintética que no existe. Se avisa aquí para que nadie intente
+                escribirle, y el teléfono queda como el contacto de verdad. */}
+            {order.buyer.is_guest && (
+              <p className="mb-3 rounded-lg border border-slate-300/60 bg-slate-500/[0.08] px-3 py-2 text-xs text-slate-600 dark:border-white/10 dark:text-slate-400">
+                Pidió como <strong>invitado</strong>, sin crear cuenta. Contáctalo
+                por teléfono: no tiene correo real.
+              </p>
+            )}
+
             <dl className="grid gap-2 text-sm sm:grid-cols-2">
               <div>
                 <dt className="text-[11px] font-bold uppercase tracking-[0.18em] text-slate-500 dark:text-slate-400">
@@ -329,20 +382,34 @@ export default function OrderDetailClient({ orderId }: OrderDetailClientProps) {
                   {order.buyer.name}
                 </dd>
               </div>
-              <div>
-                <dt className="text-[11px] font-bold uppercase tracking-[0.18em] text-slate-500 dark:text-slate-400">
-                  Email
-                </dt>
-                <dd className="mt-1 text-slate-700 dark:text-slate-300">{order.buyer.email}</dd>
-              </div>
-              {order.buyer.phone && (
+
+              {/* El correo solo se muestra si es real. */}
+              {!order.buyer.is_guest && (
                 <div>
                   <dt className="text-[11px] font-bold uppercase tracking-[0.18em] text-slate-500 dark:text-slate-400">
-                    Teléfono
+                    Email
                   </dt>
-                  <dd className="mt-1 text-slate-700 dark:text-slate-300">{order.buyer.phone}</dd>
+                  <dd className="mt-1 text-slate-700 dark:text-slate-300">{order.buyer.email}</dd>
                 </div>
               )}
+
+              <div>
+                <dt className="text-[11px] font-bold uppercase tracking-[0.18em] text-slate-500 dark:text-slate-400">
+                  Teléfono
+                </dt>
+                <dd className="mt-1">
+                  {order.buyer.phone ? (
+                    <a
+                      href={`tel:${order.buyer.phone}`}
+                      className="font-medium text-brand-700 hover:underline dark:text-brand-300"
+                    >
+                      {order.buyer.phone}
+                    </a>
+                  ) : (
+                    <span className="text-slate-400 dark:text-slate-500">Sin registrar</span>
+                  )}
+                </dd>
+              </div>
               <div>
                 <dt className="text-[11px] font-bold uppercase tracking-[0.18em] text-slate-500 dark:text-slate-400">
                   Tipo entrega
@@ -377,6 +444,14 @@ export default function OrderDetailClient({ orderId }: OrderDetailClientProps) {
               )}
             </dl>
           </RutaCard>
+
+          {/* Día de entrega: se fija a mano y lo ven comprador y repartidor. */}
+          <DeliveryDateCard
+            orderId={order.id}
+            scheduledDeliveryDate={order.scheduled_delivery_date}
+            editable={!SCHEDULING_CLOSED_STATUSES.has(order.order_status)}
+            onSaved={() => { void refetch() }}
+          />
 
           {/* Courier */}
           {order.courier && (
@@ -504,18 +579,12 @@ export default function OrderDetailClient({ orderId }: OrderDetailClientProps) {
                     </dd>
                   </div>
                 )}
-                {order.payment.evidence_url && (
-                  <div className="pt-1">
-                    <a
-                      href={order.payment.evidence_url}
-                      target="_blank"
-                      rel="noopener noreferrer"
-                      className="text-xs text-sky-600 hover:underline dark:text-sky-400"
-                    >
-                      Ver evidencia
-                    </a>
-                  </div>
-                )}
+                {/*
+                  La evidencia de cobro la muestra `CollectionEvidenceCard` más
+                  arriba, con su propio endpoint. Aquí había un enlace a
+                  `payment.evidence_url` que obligaría a arrastrar la foto en
+                  base64 dentro de cada lectura del pedido.
+                */}
               </dl>
             </RutaCard>
           )}
@@ -524,6 +593,33 @@ export default function OrderDetailClient({ orderId }: OrderDetailClientProps) {
           <RutaCard>
             <RutaSectionHeader title="Acciones" subtitle="gestión del pedido" />
             <div className="mt-3 flex flex-col gap-2">
+              {/* Pago por link de Nequi: no hay webhook que lo confirme, así
+                  que el pedido no avanza hasta que el Cliente verifique el pago
+                  en su app y lo marque aquí. */}
+              {showConfirmLinkPayment && (
+                <div className="rounded-lg border border-amber-400/30 bg-amber-500/[0.12] p-3">
+                  <p className="text-sm text-amber-800 dark:text-amber-200">
+                    Este pedido se paga con <strong>link de Nequi</strong>.
+                    Verifica el pago en tu app y confírmalo para que el pedido
+                    siga su curso.
+                  </p>
+                  <RutaButton
+                    type="button"
+                    variant="primary"
+                    className="mt-2"
+                    disabled={acting}
+                    onClick={() =>
+                      void runAction(
+                        () => confirmLinkPayment(orderId),
+                        'Pago confirmado. El pedido continúa.',
+                      )
+                    }
+                  >
+                    Confirmar pago recibido
+                  </RutaButton>
+                </div>
+              )}
+
               {showConfirmCorporate && (
                 <RutaButton
                   type="button"
@@ -595,7 +691,7 @@ export default function OrderDetailClient({ orderId }: OrderDetailClientProps) {
                         onChange={(e) =>
                           setCarrierType(e.target.value as DeliveryCarrierType)
                         }
-                        className="rounded-md border border-slate-200 bg-white/[0.85] px-3 py-2 text-sm text-slate-900 focus:outline-none focus:ring-2 focus:ring-sky-400/40 dark:border-white/10 dark:bg-[#1d2025] dark:text-slate-100"
+                        className="rounded-md border border-slate-200 bg-white/[0.85] px-3 py-2 text-sm text-slate-900 focus:outline-none focus:ring-2 focus:ring-brand-400/40 dark:border-white/10 dark:bg-[#1d2025] dark:text-slate-100"
                       >
                         <option value="OWN_FLEET">Flota propia (asignar repartidor)</option>
                         <option value="EXTERNAL_COURIER">Mensajería externa</option>
@@ -636,7 +732,7 @@ export default function OrderDetailClient({ orderId }: OrderDetailClientProps) {
               {showGoToMap && (
                 <Link
                   href="/admin/orders/map"
-                  className="flex w-full items-center justify-center rounded-md border border-sky-400/40 bg-sky-500/[0.12] px-4 py-2 text-sm font-medium text-sky-700 transition-colors hover:bg-sky-500/[0.2] dark:border-sky-400/25 dark:text-sky-300"
+                  className="flex w-full items-center justify-center rounded-md border border-brand-400/40 bg-brand-500/[0.12] px-4 py-2 text-sm font-medium text-brand-700 transition-colors hover:bg-brand-500/[0.2] dark:border-brand-400/25 dark:text-brand-300"
                 >
                   Ir al mapa de asignación
                 </Link>
@@ -711,7 +807,7 @@ export default function OrderDetailClient({ orderId }: OrderDetailClientProps) {
                         value={refundModality}
                         onChange={(e) => setRefundModality(e.target.value as RefundModality)}
                         disabled={refundLoading}
-                        className="w-full rounded-md border border-slate-200 bg-white/[0.85] px-3 py-2 text-sm text-slate-900 focus:outline-none focus:ring-2 focus:ring-sky-500/[0.4] disabled:opacity-50 dark:border-white/10 dark:bg-white/[0.055] dark:text-slate-100"
+                        className="w-full rounded-md border border-slate-200 bg-white/[0.85] px-3 py-2 text-sm text-slate-900 focus:outline-none focus:ring-2 focus:ring-brand-500/[0.4] disabled:opacity-50 dark:border-white/10 dark:bg-white/[0.055] dark:text-slate-100"
                       >
                         <option value="STORE_CREDIT">Crédito en tienda</option>
                         <option value="BANK_REFUND">Devolución bancaria</option>
@@ -729,7 +825,7 @@ export default function OrderDetailClient({ orderId }: OrderDetailClientProps) {
                         onChange={(e) => setRefundAmount(e.target.value)}
                         placeholder={`Total: ${formatCOP(order.total)}`}
                         disabled={refundLoading}
-                        className="w-full rounded-md border border-slate-200 bg-white/[0.85] px-3 py-2 text-sm text-slate-900 placeholder:text-slate-400 focus:outline-none focus:ring-2 focus:ring-sky-500/[0.4] disabled:opacity-50 dark:border-white/10 dark:bg-white/[0.055] dark:text-slate-100 dark:placeholder:text-slate-500"
+                        className="w-full rounded-md border border-slate-200 bg-white/[0.85] px-3 py-2 text-sm text-slate-900 placeholder:text-slate-400 focus:outline-none focus:ring-2 focus:ring-brand-500/[0.4] disabled:opacity-50 dark:border-white/10 dark:bg-white/[0.055] dark:text-slate-100 dark:placeholder:text-slate-500"
                       />
                     </div>
                     <div>
@@ -742,7 +838,7 @@ export default function OrderDetailClient({ orderId }: OrderDetailClientProps) {
                         onChange={(e) => setRefundReason(e.target.value)}
                         placeholder="Ej. Producto no entregado"
                         disabled={refundLoading}
-                        className="w-full rounded-md border border-slate-200 bg-white/[0.85] px-3 py-2 text-sm text-slate-900 placeholder:text-slate-400 focus:outline-none focus:ring-2 focus:ring-sky-500/[0.4] disabled:opacity-50 dark:border-white/10 dark:bg-white/[0.055] dark:text-slate-100 dark:placeholder:text-slate-500"
+                        className="w-full rounded-md border border-slate-200 bg-white/[0.85] px-3 py-2 text-sm text-slate-900 placeholder:text-slate-400 focus:outline-none focus:ring-2 focus:ring-brand-500/[0.4] disabled:opacity-50 dark:border-white/10 dark:bg-white/[0.055] dark:text-slate-100 dark:placeholder:text-slate-500"
                       />
                     </div>
                     {refundError && (
@@ -810,7 +906,7 @@ export default function OrderDetailClient({ orderId }: OrderDetailClientProps) {
               <div className="mt-3">
                 <Link
                   href="/admin/refunds"
-                  className="text-xs font-medium text-sky-600 hover:underline dark:text-sky-400"
+                  className="text-xs font-medium text-brand-600 hover:underline dark:text-brand-400"
                 >
                   Ver lista de reembolsos →
                 </Link>
@@ -821,11 +917,17 @@ export default function OrderDetailClient({ orderId }: OrderDetailClientProps) {
           {order.delivery_type === 'PICKUP' && order.order_status === 'READY_FOR_PICKUP' && (
             <PickupActions
               orderId={order.id}
-              // Contra entrega abarca efectivo y electrónico; 'ON_DELIVERY' a
-              // secas no es un valor que el backend emita nunca.
+              /*
+               * Sale de `payment_method` (el método pactado al crear el
+               * pedido), no de `payment.method`. En PICKUP la fila de `payments`
+               * **se crea al cobrar**, así que mirar ahí daba siempre falso
+               * justo antes del cobro, que es cuando el operador necesita ver
+               * el paso. Contra entrega abarca efectivo y electrónico;
+               * 'ON_DELIVERY' a secas no es un valor que el backend emita.
+               */
               isCod={
-                order.payment?.method === 'CASH_ON_DELIVERY' ||
-                order.payment?.method === 'ELECTRONIC_ON_DELIVERY'
+                order.payment_method === 'CASH_ON_DELIVERY' ||
+                order.payment_method === 'ELECTRONIC_ON_DELIVERY'
               }
               onActionComplete={() => { void refetch() }}
             />
@@ -860,7 +962,7 @@ function RefundStatusBadge({ status }: { status: RefundOrderStatus | string }) {
   const colorClasses: Record<Color, string> = {
     slate:  'bg-white/[0.06] text-slate-600 border-slate-200 dark:border-white/10 dark:text-slate-300',
     amber:  'bg-amber-500/[0.12] text-amber-700 border-amber-400/25 dark:text-amber-300',
-    blue:   'bg-sky-500/[0.12] text-sky-700 border-sky-400/25 dark:text-sky-300',
+    blue:   'bg-blue-500/[0.12] text-blue-700 border-blue-400/25 dark:text-blue-300',
     violet: 'bg-violet-500/[0.12] text-violet-700 border-violet-400/25 dark:text-violet-300',
     green:  'bg-emerald-500/[0.12] text-emerald-700 border-emerald-400/25 dark:text-emerald-300',
     red:    'bg-rose-500/[0.12] text-rose-700 border-rose-400/25 dark:text-rose-300',

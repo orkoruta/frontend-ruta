@@ -240,7 +240,7 @@ export default function RecurrenceView() {
                     </div>
                     <div className="mt-3">
                       <Link href={`/c/${slug}/orders/${template.order_id}`}>
-                        <span className="text-xs font-semibold text-sky-600 hover:underline dark:text-sky-400">
+                        <span className="text-xs font-semibold text-brand-600 hover:underline dark:text-brand-400">
                           Ver pedido base #{template.order_id}
                         </span>
                       </Link>

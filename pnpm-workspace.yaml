@@ -2,6 +2,7 @@ packages:
   - 'admin'
   - 'storefront'
   - 'packages/ui'
+  - 'packages/web-shared'
 overrides:
   '@orkoruta/shared': 'link:../packages-ruta/shared'
   '@orkoruta/db': 'link:../packages-ruta/db'

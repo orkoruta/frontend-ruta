@@ -313,7 +313,7 @@ export function ProductEditView({ productId }: { productId: number }) {
   return (
     <div className="mx-auto max-w-3xl space-y-5">
       <div>
-        <Link href="/admin/products" className="text-sm text-sky-700 hover:underline dark:text-sky-300">
+        <Link href="/admin/products" className="text-sm text-brand-700 hover:underline dark:text-brand-300">
           Volver a productos
         </Link>
         <h1 className="mt-2 text-2xl font-black tracking-tight text-slate-900 dark:text-slate-100">
@@ -333,7 +333,7 @@ export function ProductEditView({ productId }: { productId: number }) {
               required
               value={form.name}
               onChange={(event) => setForm({ ...form, name: event.target.value })}
-              className="w-full rounded-md border border-slate-200 bg-white/[0.85] px-3 py-2 text-sm text-slate-900 focus:outline-none focus:ring-2 focus:ring-sky-400/40 dark:border-white/10 dark:bg-white/[0.055] dark:text-slate-100"
+              className="w-full rounded-md border border-slate-200 bg-white/[0.85] px-3 py-2 text-sm text-slate-900 focus:outline-none focus:ring-2 focus:ring-brand-400/40 dark:border-white/10 dark:bg-white/[0.055] dark:text-slate-100"
             />
           </div>
 
@@ -346,7 +346,7 @@ export function ProductEditView({ productId }: { productId: number }) {
               rows={4}
               value={form.description}
               onChange={(event) => setForm({ ...form, description: event.target.value })}
-              className="w-full rounded-md border border-slate-200 bg-white/[0.85] px-3 py-2 text-sm text-slate-900 focus:outline-none focus:ring-2 focus:ring-sky-400/40 dark:border-white/10 dark:bg-white/[0.055] dark:text-slate-100"
+              className="w-full rounded-md border border-slate-200 bg-white/[0.85] px-3 py-2 text-sm text-slate-900 focus:outline-none focus:ring-2 focus:ring-brand-400/40 dark:border-white/10 dark:bg-white/[0.055] dark:text-slate-100"
             />
           </div>
 
@@ -361,7 +361,7 @@ export function ProductEditView({ productId }: { productId: number }) {
                 inputMode="numeric"
                 value={form.unitPrice}
                 onChange={(event) => setForm({ ...form, unitPrice: event.target.value })}
-                className="w-full rounded-md border border-slate-200 bg-white/[0.85] px-3 py-2 text-sm text-slate-900 focus:outline-none focus:ring-2 focus:ring-sky-400/40 dark:border-white/10 dark:bg-white/[0.055] dark:text-slate-100"
+                className="w-full rounded-md border border-slate-200 bg-white/[0.85] px-3 py-2 text-sm text-slate-900 focus:outline-none focus:ring-2 focus:ring-brand-400/40 dark:border-white/10 dark:bg-white/[0.055] dark:text-slate-100"
               />
             </div>
             <div>
@@ -373,7 +373,7 @@ export function ProductEditView({ productId }: { productId: number }) {
                 inputMode="numeric"
                 value={form.stockQuantity}
                 onChange={(event) => setForm({ ...form, stockQuantity: event.target.value })}
-                className="w-full rounded-md border border-slate-200 bg-white/[0.85] px-3 py-2 text-sm text-slate-900 focus:outline-none focus:ring-2 focus:ring-sky-400/40 dark:border-white/10 dark:bg-white/[0.055] dark:text-slate-100"
+                className="w-full rounded-md border border-slate-200 bg-white/[0.85] px-3 py-2 text-sm text-slate-900 focus:outline-none focus:ring-2 focus:ring-brand-400/40 dark:border-white/10 dark:bg-white/[0.055] dark:text-slate-100"
               />
             </div>
           </div>
@@ -387,7 +387,7 @@ export function ProductEditView({ productId }: { productId: number }) {
                 id="productType"
                 value={form.productType}
                 onChange={(event) => setForm({ ...form, productType: event.target.value as ProductType })}
-                className="w-full rounded-md border border-slate-200 bg-white/[0.85] px-3 py-2 text-sm text-slate-900 focus:outline-none focus:ring-2 focus:ring-sky-400/40 dark:border-white/10 dark:bg-[#1d2025] dark:text-slate-100"
+                className="w-full rounded-md border border-slate-200 bg-white/[0.85] px-3 py-2 text-sm text-slate-900 focus:outline-none focus:ring-2 focus:ring-brand-400/40 dark:border-white/10 dark:bg-[#1d2025] dark:text-slate-100"
               >
                 <option value="VENTA_NORMAL">Venta normal</option>
                 <option value="PROMOCION">Promoción</option>
@@ -401,7 +401,7 @@ export function ProductEditView({ productId }: { productId: number }) {
                 id="categoryId"
                 value={form.categoryId}
                 onChange={(event) => setForm({ ...form, categoryId: event.target.value })}
-                className="w-full rounded-md border border-slate-200 bg-white/[0.85] px-3 py-2 text-sm text-slate-900 focus:outline-none focus:ring-2 focus:ring-sky-400/40 dark:border-white/10 dark:bg-[#1d2025] dark:text-slate-100"
+                className="w-full rounded-md border border-slate-200 bg-white/[0.85] px-3 py-2 text-sm text-slate-900 focus:outline-none focus:ring-2 focus:ring-brand-400/40 dark:border-white/10 dark:bg-[#1d2025] dark:text-slate-100"
               >
                 <option value="">Sin categoría</option>
                 {categories.map((category) => (
@@ -417,7 +417,7 @@ export function ProductEditView({ productId }: { productId: number }) {
                 id="status"
                 value={form.status}
                 onChange={(event) => setForm({ ...form, status: event.target.value as ProductStatus })}
-                className="w-full rounded-md border border-slate-200 bg-white/[0.85] px-3 py-2 text-sm text-slate-900 focus:outline-none focus:ring-2 focus:ring-sky-400/40 dark:border-white/10 dark:bg-[#1d2025] dark:text-slate-100"
+                className="w-full rounded-md border border-slate-200 bg-white/[0.85] px-3 py-2 text-sm text-slate-900 focus:outline-none focus:ring-2 focus:ring-brand-400/40 dark:border-white/10 dark:bg-[#1d2025] dark:text-slate-100"
               >
                 <option value="ACTIVE">Activo</option>
                 <option value="INACTIVE">Inactivo</option>
@@ -434,7 +434,7 @@ export function ProductEditView({ productId }: { productId: number }) {
               type="file"
               accept="image/*"
               onChange={(event) => setImage(event.target.files?.[0] ?? null)}
-              className="w-full rounded-md border border-slate-200 bg-white/[0.85] px-3 py-2 text-sm text-slate-700 file:mr-3 file:rounded-md file:border-0 file:bg-sky-500/[0.12] file:px-3 file:py-1.5 file:text-sky-700 dark:border-white/10 dark:bg-white/[0.055] dark:text-slate-300 dark:file:text-sky-300"
+              className="w-full rounded-md border border-slate-200 bg-white/[0.85] px-3 py-2 text-sm text-slate-700 file:mr-3 file:rounded-md file:border-0 file:bg-brand-500/[0.12] file:px-3 file:py-1.5 file:text-brand-700 dark:border-white/10 dark:bg-white/[0.055] dark:text-slate-300 dark:file:text-brand-300"
             />
             {form.imageUrl && (
               <p className="mt-2 break-all text-xs text-slate-500 dark:text-slate-400">

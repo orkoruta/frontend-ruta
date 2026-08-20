@@ -2,9 +2,9 @@
 
 import { useEffect, useMemo, useRef, useState } from 'react'
 import { RutaCard, RutaPill, RutaSectionHeader } from '@orkoruta/ui'
-import { DEFAULT_CENTER, ensureGoogleMaps } from '@/lib/google-maps'
-import { mapStyles, prefersDark, watchColorScheme } from '@/lib/map_theme'
-import { geocodeAddress } from '@/lib/geocoding'
+import { DEFAULT_CENTER, ensureGoogleMaps } from '@orkoruta/web-shared'
+import { mapStyles, prefersDark, watchColorScheme } from '@orkoruta/web-shared'
+import { geocodeAddress, reverseGeocode } from '@/lib/geocoding'
 import type { DeliveryAddress, DeliveryType, PickupPoint } from './CheckoutStepper'
 
 interface AddressStepProps {
@@ -40,7 +40,7 @@ function Field({
         required={required}
         placeholder={placeholder}
         onChange={(event) => onChange(event.target.value)}
-        className="w-full rounded-md border border-slate-200 bg-white/[0.85] px-3 py-2 text-sm text-slate-900 outline-none transition-colors placeholder:text-slate-400 focus:border-sky-400 dark:border-white/10 dark:bg-white/[0.055] dark:text-slate-100 dark:focus:border-sky-400/50"
+        className="w-full rounded-md border border-slate-200 bg-white/[0.85] px-3 py-2 text-sm text-slate-900 outline-none transition-colors placeholder:text-slate-400 focus:border-brand-400 dark:border-white/10 dark:bg-white/[0.055] dark:text-slate-100 dark:focus:border-brand-400/50"
       />
     </label>
   )
@@ -129,11 +129,25 @@ export default function AddressStep({
 
         function commit(latLng: google.maps.LatLng) {
           if (deliveryTypeRef.current !== 'SHIP') return
-          onAddressChange({
-            ...addressRef.current,
-            latitude: Number(latLng.lat().toFixed(6)),
-            longitude: Number(latLng.lng().toFixed(6)),
-          })
+          const lat = Number(latLng.lat().toFixed(6))
+          const lng = Number(latLng.lng().toFixed(6))
+          onAddressChange({ ...addressRef.current, latitude: lat, longitude: lng })
+
+          // Al mover el pin a mano, se saca el código postal de ese punto por
+          // geocodificación inversa. Es un ajuste puntual, no por tecla, así que
+          // no se debouncea; un fallo no rompe nada (queda el postal actual).
+          void reverseGeocode(lat, lng)
+            .then((r) => {
+              if (r?.postalCode) {
+                onAddressChangeRef.current({
+                  ...addressRef.current,
+                  latitude: lat,
+                  longitude: lng,
+                  postal_code: r.postalCode,
+                })
+              }
+            })
+            .catch(() => {})
         }
 
         map.addListener('click', (event: google.maps.MapMouseEvent) => {
@@ -209,6 +223,9 @@ export default function AddressStep({
           ...addressRef.current,
           latitude: result.latitude,
           longitude: result.longitude,
+          // Se toma el código postal del punto ubicado; si Google no lo trae,
+          // se conserva el que el comprador ya haya escrito.
+          postal_code: result.postalCode ?? addressRef.current.postal_code,
         })
       } catch (err) {
         if ((err as Error).name === 'AbortError') return
@@ -276,7 +293,7 @@ export default function AddressStep({
               onChange={(event) =>
                 onAddressChange({ ...address, instructions: event.target.value })
               }
-              className="w-full resize-none rounded-md border border-slate-200 bg-white/[0.85] px-3 py-2 text-sm text-slate-900 outline-none transition-colors placeholder:text-slate-400 focus:border-sky-400 dark:border-white/10 dark:bg-white/[0.055] dark:text-slate-100 dark:focus:border-sky-400/50"
+              className="w-full resize-none rounded-md border border-slate-200 bg-white/[0.85] px-3 py-2 text-sm text-slate-900 outline-none transition-colors placeholder:text-slate-400 focus:border-brand-400 dark:border-white/10 dark:bg-white/[0.055] dark:text-slate-100 dark:focus:border-brand-400/50"
               placeholder="Apto, torre, referencias o indicaciones para el repartidor."
             />
           </label>
@@ -292,7 +309,7 @@ export default function AddressStep({
                 onClick={() => onPickupPointChange(point.id)}
                 className={`rounded-lg border p-4 text-left transition-colors ${
                   selected
-                    ? 'border-sky-400/50 bg-sky-500/[0.12] dark:border-sky-400/25'
+                    ? 'border-brand-400/50 bg-brand-500/[0.12] dark:border-brand-400/25'
                     : 'border-slate-200/90 bg-white/[0.5] hover:bg-white/[0.76] dark:border-white/10 dark:bg-white/[0.04] dark:hover:bg-white/[0.06]'
                 }`}
               >

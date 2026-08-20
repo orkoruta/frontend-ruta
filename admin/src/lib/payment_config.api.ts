@@ -1,3 +1,5 @@
+import { notifyUnauthorized } from './session-events'
+
 const API_BASE = process.env.NEXT_PUBLIC_API_URL ?? 'http://localhost:3001'
 
 /**
@@ -19,6 +21,24 @@ export interface WompiConfigInput {
   /** Opcional al actualizar: vacío = conservar el secreto ya guardado. */
   private_key?: string
   events_secret?: string
+}
+
+/**
+ * Config del link de pago de Nequi Negocios.
+ *
+ * A diferencia de Wompi, el link **no es secreto** (es una URL que el negocio
+ * comparte), así que vuelve entero del backend y se puede editar a la vista.
+ */
+export interface NequiConfig {
+  configured: boolean
+  enabled: boolean
+  payment_link: string
+  updated_at: string | null
+}
+
+export interface NequiConfigInput {
+  enabled: boolean
+  payment_link: string
 }
 
 export interface ApiError {
@@ -45,6 +65,7 @@ export async function getWompiConfig(): Promise<WompiConfig> {
     credentials: 'include',
     cache: 'no-store',
   })
+  if (res.status === 401) notifyUnauthorized()
   if (!res.ok) throw await parseError(res)
   return (await res.json()) as WompiConfig
 }
@@ -59,6 +80,32 @@ export async function saveWompiConfig(input: WompiConfigInput): Promise<WompiCon
     },
     body: JSON.stringify(input),
   })
+  if (res.status === 401) notifyUnauthorized()
   if (!res.ok) throw await parseError(res)
   return (await res.json()) as WompiConfig
+}
+
+export async function getNequiConfig(): Promise<NequiConfig> {
+  const res = await fetch(`${API_BASE}/admin/payment-providers/nequi`, {
+    credentials: 'include',
+    cache: 'no-store',
+  })
+  if (res.status === 401) notifyUnauthorized()
+  if (!res.ok) throw await parseError(res)
+  return (await res.json()) as NequiConfig
+}
+
+export async function saveNequiConfig(input: NequiConfigInput): Promise<NequiConfig> {
+  const res = await fetch(`${API_BASE}/admin/payment-providers/nequi`, {
+    method: 'PUT',
+    credentials: 'include',
+    headers: {
+      'Content-Type': 'application/json',
+      'X-Idempotency-Key': idempotencyKey(),
+    },
+    body: JSON.stringify(input),
+  })
+  if (res.status === 401) notifyUnauthorized()
+  if (!res.ok) throw await parseError(res)
+  return (await res.json()) as NequiConfig
 }

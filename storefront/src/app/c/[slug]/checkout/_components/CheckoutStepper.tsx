@@ -13,7 +13,7 @@ import {
   splitPhone,
   DEFAULT_PHONE_COUNTRY,
   PHONE_COUNTRY_CODES,
-} from '@/lib/phone_country_codes'
+} from '@orkoruta/web-shared'
 import { markOrderAsRecurring, type RecurrencePeriodicity } from '@/lib/recurrence.api'
 import AddressStep from './AddressStep'
 import DeliveryStep from './DeliveryStep'
@@ -23,6 +23,15 @@ const API_BASE = process.env.NEXT_PUBLIC_API_URL ?? 'http://localhost:3001'
 
 export type DeliveryType = 'SHIP' | 'PICKUP'
 export type PaymentMethod = 'ONLINE_AT_ORDER' | 'ELECTRONIC_ON_DELIVERY' | 'CASH_ON_DELIVERY'
+
+/**
+ * Lo que el comprador elige en pantalla. `NEQUI_LINK` **no** es un
+ * `payment_method` de la BD: se guarda como `ONLINE_AT_ORDER` con submétodo
+ * `PAYMENT_LINK`. Se separa aquí porque son dos experiencias distintas —Wompi
+ * redirige a una pasarela y confirma solo; Nequi manda a un link y el negocio
+ * confirma a mano— y mezclarlas en una sola opción confundiría al comprador.
+ */
+export type PaymentChoice = PaymentMethod | 'NEQUI_LINK'
 export type PaymentSubmethod = 'DATAFONO' | 'BANK_TRANSFER' | 'PAYMENT_LINK' | 'QR' | null
 
 export interface DeliveryAddress {
@@ -150,10 +159,15 @@ export default function CheckoutStepper() {
   // solo se ofrece si el Cliente tiene al menos uno; si no, siempre es domicilio.
   const [pickupPoints, setPickupPoints] = useState<PickupPoint[]>([])
   const [selectedPickupPointId, setSelectedPickupPointId] = useState<number | null>(null)
-  const [paymentMethod, setPaymentMethod] = useState<PaymentMethod>('ONLINE_AT_ORDER')
+  const [paymentChoice, setPaymentChoice] = useState<PaymentChoice>('ONLINE_AT_ORDER')
+  // Lo que se manda a la API: Nequi viaja como ONLINE_AT_ORDER + PAYMENT_LINK.
+  const paymentMethod: PaymentMethod =
+    paymentChoice === 'NEQUI_LINK' ? 'ONLINE_AT_ORDER' : paymentChoice
   const [paymentSubmethod, setPaymentSubmethod] = useState<PaymentSubmethod>('DATAFONO')
   // El pago online solo se ofrece si el Cliente tiene Wompi configurado.
   const [onlinePaymentEnabled, setOnlinePaymentEnabled] = useState(false)
+  // Link de Nequi del Cliente. `null` = no ofrece ese medio.
+  const [nequiPaymentLink, setNequiPaymentLink] = useState<string | null>(null)
   // El Cliente ofrece recogida en punto físico (PICKUP).
   const offersPickup = pickupPoints.length > 0
   const { profile } = useStore()
@@ -214,8 +228,9 @@ export default function CheckoutStepper() {
         if (!active) return
         const enabled = Boolean(client.online_payment_enabled)
         setOnlinePaymentEnabled(enabled)
+        setNequiPaymentLink(client.nequi_payment_link ?? null)
         if (!enabled) {
-          setPaymentMethod((current) =>
+          setPaymentChoice((current) =>
             current === 'ONLINE_AT_ORDER' ? 'CASH_ON_DELIVERY' : current,
           )
         }
@@ -223,7 +238,10 @@ export default function CheckoutStepper() {
       .catch(() => {
         // Ante la duda, no ofrecer online: es mejor esconderlo que enviar a una
         // pasarela sin configurar.
-        if (active) setOnlinePaymentEnabled(false)
+        if (active) {
+          setOnlinePaymentEnabled(false)
+          setNequiPaymentLink(null)
+        }
       })
     return () => {
       active = false
@@ -259,6 +277,18 @@ export default function CheckoutStepper() {
       setPaymentSubmethod(null)
     }
   }, [paymentMethod, paymentSubmethod])
+
+  /**
+   * Submétodo que viaja a la API. Nequi lo necesita para que el panel sepa que
+   * ese pago se confirma a mano; en contra entrega electrónico distingue
+   * datáfono/QR/transferencia; en el resto no aplica.
+   */
+  const submethodForApi =
+    paymentChoice === 'NEQUI_LINK'
+      ? 'PAYMENT_LINK'
+      : paymentMethod === 'ELECTRONIC_ON_DELIVERY'
+        ? paymentSubmethod
+        : undefined
 
   const validationMessage = useMemo(() => {
     if (!order || order.items.length === 0) return 'Tu carrito está vacío.'
@@ -303,15 +333,13 @@ export default function CheckoutStepper() {
               instructions: address.instructions.trim() || undefined,
             },
             payment_method: paymentMethod,
-            payment_method_submethod:
-              paymentMethod === 'ELECTRONIC_ON_DELIVERY' ? paymentSubmethod : undefined,
+            payment_method_submethod: submethodForApi,
           }
         : {
             delivery_type: deliveryType,
             pickup_point_id: selectedPickupPointId,
             payment_method: paymentMethod,
-            payment_method_submethod:
-              paymentMethod === 'ELECTRONIC_ON_DELIVERY' ? paymentSubmethod : undefined,
+            payment_method_submethod: submethodForApi,
           }
 
     try {
@@ -334,7 +362,10 @@ export default function CheckoutStepper() {
         }
       }
 
-      if (paymentMethod === 'ONLINE_AT_ORDER') {
+      // Solo Wompi tiene pasarela a la que redirigir. Con Nequi el comprador
+      // paga por su cuenta en el link, así que se le lleva al detalle del
+      // pedido, donde encuentra el enlace y el estado del pago.
+      if (paymentChoice === 'ONLINE_AT_ORDER') {
         const payment = await initiatePayment(order.id)
         window.location.assign(payment.wompi_checkout_url)
         return
@@ -413,7 +444,7 @@ export default function CheckoutStepper() {
                     value={guestName}
                     onChange={(e) => setGuestName(e.target.value)}
                     placeholder="Tu nombre"
-                    className="w-full rounded-md border border-slate-200 bg-white/[0.85] px-3 py-2 text-sm text-slate-900 outline-none focus:border-sky-400 dark:border-white/10 dark:bg-white/[0.055] dark:text-slate-100"
+                    className="w-full rounded-md border border-slate-200 bg-white/[0.85] px-3 py-2 text-sm text-slate-900 outline-none focus:border-brand-400 dark:border-white/10 dark:bg-white/[0.055] dark:text-slate-100"
                   />
                 </label>
                 <label className="block">
@@ -425,7 +456,7 @@ export default function CheckoutStepper() {
                       aria-label="Indicativo de país"
                       value={guestPhoneCountry}
                       onChange={(e) => setGuestPhoneCountry(e.target.value)}
-                      className="w-full rounded-md border border-slate-200 bg-white/[0.85] px-2 py-2 text-sm text-slate-900 outline-none focus:border-sky-400 dark:border-white/10 dark:bg-[#181a1e] dark:text-slate-100"
+                      className="w-full rounded-md border border-slate-200 bg-white/[0.85] px-2 py-2 text-sm text-slate-900 outline-none focus:border-brand-400 dark:border-white/10 dark:bg-[#181a1e] dark:text-slate-100"
                     >
                       {PHONE_COUNTRY_CODES.map((c) => (
                         <option key={c.code} value={c.code} title={c.country}>
@@ -439,14 +470,14 @@ export default function CheckoutStepper() {
                       value={guestPhoneLocal}
                       onChange={(e) => setGuestPhoneLocal(e.target.value)}
                       placeholder="3001234567"
-                      className="w-full rounded-md border border-slate-200 bg-white/[0.85] px-3 py-2 text-sm text-slate-900 outline-none focus:border-sky-400 dark:border-white/10 dark:bg-white/[0.055] dark:text-slate-100"
+                      className="w-full rounded-md border border-slate-200 bg-white/[0.85] px-3 py-2 text-sm text-slate-900 outline-none focus:border-brand-400 dark:border-white/10 dark:bg-white/[0.055] dark:text-slate-100"
                     />
                   </div>
                 </label>
               </div>
               <p className="mt-2 text-xs text-slate-500 dark:text-slate-400">
                 Estás pidiendo como invitado. Para guardar tus pedidos y repetirlos,{' '}
-                <Link href={`/c/${slug}/register`} className="font-medium text-sky-600 dark:text-sky-400">
+                <Link href={`/c/${slug}/register`} className="font-medium text-brand-600 dark:text-brand-400">
                   crea una cuenta
                 </Link>
                 .
@@ -466,10 +497,11 @@ export default function CheckoutStepper() {
             onPickupPointChange={setSelectedPickupPointId}
           />
           <PaymentStep
-            paymentMethod={paymentMethod}
+            paymentChoice={paymentChoice}
             paymentSubmethod={paymentSubmethod}
             onlinePaymentEnabled={onlinePaymentEnabled}
-            onPaymentMethodChange={setPaymentMethod}
+            onPaymentChoiceChange={setPaymentChoice}
+            nequiPaymentLink={nequiPaymentLink}
             onPaymentSubmethodChange={setPaymentSubmethod}
           />
 
@@ -481,7 +513,7 @@ export default function CheckoutStepper() {
               <label className="flex cursor-pointer items-center gap-3">
                 <input
                   type="checkbox"
-                  className="h-4 w-4 rounded border-slate-300 text-sky-600 focus:ring-sky-500 dark:border-white/20"
+                  className="h-4 w-4 rounded border-slate-300 text-brand-600 focus:ring-brand-500 dark:border-white/20"
                   checked={recurringEnabled}
                   onChange={(e) => setRecurringEnabled(e.target.checked)}
                 />
@@ -508,7 +540,7 @@ export default function CheckoutStepper() {
                         onClick={() => setPeriodicity(option.value)}
                         className={`rounded-lg border px-4 py-3 text-left text-sm font-semibold transition-colors ${
                           periodicity === option.value
-                            ? 'border-sky-400/50 bg-sky-500/[0.12] text-sky-700 dark:border-sky-400/25 dark:text-sky-300'
+                            ? 'border-brand-400/50 bg-brand-500/[0.12] text-brand-700 dark:border-brand-400/25 dark:text-brand-300'
                             : 'border-slate-200/90 bg-white/[0.5] text-slate-600 hover:bg-white/[0.76] dark:border-white/10 dark:bg-white/[0.04] dark:text-slate-300 dark:hover:bg-white/[0.06]'
                         }`}
                       >
@@ -533,7 +565,7 @@ export default function CheckoutStepper() {
                       max={365}
                       value={customDays}
                       onChange={(e) => setCustomDays(Math.max(1, Number(e.target.value)))}
-                      className="w-32 rounded-lg border border-slate-200/90 bg-white/[0.5] px-3 py-2 text-sm font-semibold text-slate-900 focus:border-sky-400/60 focus:outline-none focus:ring-1 focus:ring-sky-400/[0.40] dark:border-white/10 dark:bg-white/[0.04] dark:text-slate-100"
+                      className="w-32 rounded-lg border border-slate-200/90 bg-white/[0.5] px-3 py-2 text-sm font-semibold text-slate-900 focus:border-brand-400/60 focus:outline-none focus:ring-1 focus:ring-brand-400/[0.40] dark:border-white/10 dark:bg-white/[0.04] dark:text-slate-100"
                     />
                   </div>
                 )}

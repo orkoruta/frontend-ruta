@@ -256,7 +256,7 @@ export default function ReturnDetailClient({ returnId }: Props) {
                 <dd className="mt-1">
                   <Link
                     href={`/admin/orders/${ret.order_id}`}
-                    className="font-medium text-sky-600 hover:underline dark:text-sky-400"
+                    className="font-medium text-brand-600 hover:underline dark:text-brand-400"
                   >
                     #{ret.order_id}
                   </Link>
@@ -287,7 +287,7 @@ export default function ReturnDetailClient({ returnId }: Props) {
                       'inline-flex items-center rounded-md border px-2.5 py-1 text-xs font-semibold',
                       ret.return_mechanism === 'CLIENT_PICKS_UP'
                         ? 'bg-violet-500/[0.12] text-violet-700 border-violet-400/25 dark:text-violet-300'
-                        : 'bg-sky-500/[0.12] text-sky-700 border-sky-400/25 dark:text-sky-300',
+                        : 'bg-brand-500/[0.12] text-brand-700 border-brand-400/25 dark:text-brand-300',
                     ].join(' ')}
                   >
                     {MECHANISM_LABELS[ret.return_mechanism] ?? ret.return_mechanism}
@@ -346,7 +346,7 @@ export default function ReturnDetailClient({ returnId }: Props) {
                         className={[
                           'mt-1 h-3 w-3 flex-shrink-0 rounded-full',
                           isCurrent
-                            ? 'bg-sky-500'
+                            ? 'bg-brand-500'
                             : isPast
                               ? 'bg-emerald-500'
                               : 'bg-slate-300 dark:bg-slate-600',
@@ -368,7 +368,7 @@ export default function ReturnDetailClient({ returnId }: Props) {
                         className={[
                           'text-sm font-medium',
                           isCurrent
-                            ? 'text-sky-700 dark:text-sky-300'
+                            ? 'text-brand-700 dark:text-brand-300'
                             : isFuture
                               ? 'text-slate-400 dark:text-slate-500'
                               : 'text-slate-900 dark:text-slate-100',
@@ -376,7 +376,7 @@ export default function ReturnDetailClient({ returnId }: Props) {
                       >
                         {step.label}
                         {isCurrent && (
-                          <span className="ml-2 text-[10px] font-bold uppercase tracking-wider text-sky-600 dark:text-sky-400">
+                          <span className="ml-2 text-[10px] font-bold uppercase tracking-wider text-brand-600 dark:text-brand-400">
                             actual
                           </span>
                         )}
@@ -507,7 +507,7 @@ export default function ReturnDetailClient({ returnId }: Props) {
                     <select
                       value={selectedCourierId ?? ''}
                       onChange={(e) => setSelectedCourierId(Number(e.target.value) || null)}
-                      className="w-full rounded-md border border-slate-200 bg-white/[0.85] px-3 py-2 text-sm text-slate-900 focus:outline-none focus:ring-2 focus:ring-sky-500/[0.4] dark:border-white/10 dark:bg-white/[0.055] dark:text-slate-100"
+                      className="w-full rounded-md border border-slate-200 bg-white/[0.85] px-3 py-2 text-sm text-slate-900 focus:outline-none focus:ring-2 focus:ring-brand-500/[0.4] dark:border-white/10 dark:bg-white/[0.055] dark:text-slate-100"
                     >
                       <option value="">— Seleccionar —</option>
                       {couriers.map((c) => (
@@ -541,11 +541,11 @@ export default function ReturnDetailClient({ returnId }: Props) {
 
               {/* Instrucciones para BUYER_SHIPS */}
               {isApproved && ret.return_mechanism === 'BUYER_SHIPS_VIA_COURIER' && (
-                <div className="rounded-md border border-sky-400/25 bg-sky-500/[0.08] p-3">
-                  <p className="text-sm font-medium text-sky-700 dark:text-sky-300">
+                <div className="rounded-md border border-brand-400/25 bg-brand-500/[0.08] p-3">
+                  <p className="text-sm font-medium text-brand-700 dark:text-brand-300">
                     Instrucciones para el comprador
                   </p>
-                  <p className="mt-1 text-xs text-sky-600 dark:text-sky-400">
+                  <p className="mt-1 text-xs text-brand-600 dark:text-brand-400">
                     La devolución está aprobada. El comprador debe enviar el producto a través
                     de un servicio de mensajería y compartir el número de guía. Una vez recibido,
                     marca la devolución como recibida.

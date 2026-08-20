@@ -2,13 +2,14 @@
 
 import Link from 'next/link'
 import { useContext, useEffect, useState } from 'react'
-import { RutaCard, RutaSectionHeader } from '@orkoruta/ui'
+import { RutaCard, RutaSectionHeader, RutaRouteBackdrop } from '@orkoruta/ui'
 import { SessionContext } from '@/lib/session-context'
 import {
   getClientMetrics,
   type ClientMetrics,
   type ApiError,
 } from '@/lib/metrics.api'
+import { useCountUp } from '@/lib/use_count_up'
 
 function formatCOP(amount: number): string {
   return new Intl.NumberFormat('es-CO', {
@@ -18,29 +19,45 @@ function formatCOP(amount: number): string {
   }).format(amount)
 }
 
+/**
+ * Métrica. El número cuenta hacia arriba al cargar: además de dar vida,
+ * marca el momento en que el dato acaba de llegar.
+ */
 function MetricCard({
   label,
   value,
+  format = (n: number) => String(Math.round(n)),
   color = 'slate',
 }: {
   label: string
-  value: string | number
+  value: number
+  /** Cómo se pinta el número en cada fotograma de la cuenta. */
+  format?: (n: number) => string
   color?: 'slate' | 'blue' | 'green' | 'amber'
 }) {
+  const animated = useCountUp(value)
+
   const colorMap: Record<string, string> = {
     slate: 'text-slate-900 dark:text-slate-100',
-    blue: 'text-sky-700 dark:text-sky-300',
+    blue: 'text-brand-700 dark:text-brand-300',
     green: 'text-emerald-700 dark:text-emerald-300',
     amber: 'text-amber-700 dark:text-amber-300',
   }
 
   return (
-    <RutaCard className="flex flex-col gap-1">
+    <RutaCard className="u-lift flex flex-col gap-1">
       <p className="text-[11px] font-bold uppercase tracking-[0.24em] text-slate-500 dark:text-slate-400">
         {label}
       </p>
-      <p className={['text-2xl font-black tracking-tight', colorMap[color]].join(' ')}>
-        {value}
+      {/* `tabular-nums` fija el ancho de los dígitos: sin esto el número
+          tiembla mientras cuenta. */}
+      <p
+        className={[
+          'text-2xl font-black tracking-tight tabular-nums',
+          colorMap[color],
+        ].join(' ')}
+      >
+        {format(animated)}
       </p>
     </RutaCard>
   )
@@ -96,7 +113,10 @@ export default function AdminDashboardPage() {
 
   return (
     <div className="mx-auto flex max-w-7xl flex-col gap-5">
-      <div>
+      {/* Cabecera con la ruta entrando por la esquina: deja limpio el centro,
+          que es donde va el título. */}
+      <div className="u-in relative isolate -mx-4 -mt-4 overflow-hidden px-4 pb-2 pt-4">
+        <RutaRouteBackdrop variant="corner" />
         <p className="text-[11px] font-bold uppercase tracking-[0.24em] text-slate-500 dark:text-slate-400">
           operaciones
         </p>
@@ -119,7 +139,7 @@ export default function AdminDashboardPage() {
           {[...Array(4)].map((_, i) => (
             <div
               key={i}
-              className="h-24 animate-pulse rounded-lg bg-slate-200/60 dark:bg-white/[0.06]"
+              className="u-skeleton h-24 rounded-xl"
             />
           ))}
         </div>
@@ -127,7 +147,7 @@ export default function AdminDashboardPage() {
         <>
           <div>
             <RutaSectionHeader title="Resumen de hoy" subtitle="métricas" />
-            <div className="mt-3 grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
+            <div className="u-stagger mt-3 grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
               <MetricCard
                 label="Pedidos hoy"
                 value={metrics.orders_today}
@@ -145,7 +165,8 @@ export default function AdminDashboardPage() {
               />
               <MetricCard
                 label="Ingresos (7 días)"
-                value={formatCOP(metrics.revenue_last_7_days)}
+                value={metrics.revenue_last_7_days}
+                format={formatCOP}
                 color="amber"
               />
             </div>
@@ -153,22 +174,22 @@ export default function AdminDashboardPage() {
 
           <div>
             <RutaSectionHeader title="Acciones rápidas" subtitle="operaciones" />
-            <div className="mt-3 flex flex-wrap gap-3">
+            <div className="u-stagger mt-3 flex flex-wrap gap-3">
               <Link
                 href="/admin/orders"
-                className="inline-flex items-center rounded-md border border-sky-400/40 bg-sky-500/[0.12] px-4 py-2 text-sm font-medium text-sky-700 transition-colors hover:bg-sky-500/[0.2] dark:border-sky-400/25 dark:text-sky-300"
+                className="u-lift inline-flex items-center rounded-lg border border-brand-400/40 bg-brand-500/[0.12] px-4 py-2 text-sm font-medium text-brand-700 transition-colors hover:bg-brand-500/[0.2] dark:border-brand-400/25 dark:text-brand-300"
               >
                 Ver todos los pedidos
               </Link>
               <Link
                 href="/admin/orders/map"
-                className="inline-flex items-center rounded-md border border-violet-400/40 bg-violet-500/[0.12] px-4 py-2 text-sm font-medium text-violet-700 transition-colors hover:bg-violet-500/[0.2] dark:border-violet-400/25 dark:text-violet-300"
+                className="u-lift inline-flex items-center rounded-lg border border-violet-400/40 bg-violet-500/[0.12] px-4 py-2 text-sm font-medium text-violet-700 transition-colors hover:bg-violet-500/[0.2] dark:border-violet-400/25 dark:text-violet-300"
               >
                 Mapa de asignación
               </Link>
               <Link
                 href="/admin/products"
-                className="inline-flex items-center rounded-md border border-slate-200 bg-white/[0.06] px-4 py-2 text-sm font-medium text-slate-700 transition-colors hover:bg-slate-100/60 dark:border-white/10 dark:text-slate-300 dark:hover:bg-white/[0.04]"
+                className="u-lift inline-flex items-center rounded-lg border border-slate-200 bg-white/[0.06] px-4 py-2 text-sm font-medium text-slate-700 transition-colors hover:bg-slate-100/60 dark:border-white/10 dark:text-slate-300 dark:hover:bg-white/[0.04]"
               >
                 Crear producto
               </Link>

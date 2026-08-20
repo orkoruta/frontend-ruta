@@ -4,12 +4,12 @@
  * AssignmentMap
  *
  * Mapa de pedidos pendientes de asignación, sobre Google Maps.
- * El SDK se carga una vez por página desde `lib/google-maps.ts`.
+ * El SDK se carga una vez por página desde `@orkoruta/web-shared`.
  */
 
 import { useEffect, useRef, useState } from 'react'
-import { DEFAULT_CENTER, ensureGoogleMaps } from '@/lib/google-maps'
-import { mapStyles, prefersDark, watchColorScheme } from '@/lib/map_theme'
+import { DEFAULT_CENTER, ensureGoogleMaps } from '@orkoruta/web-shared'
+import { mapStyles, prefersDark, watchColorScheme } from '@orkoruta/web-shared'
 import { isAssigned, type MapOrder } from '@/lib/assignment.api'
 import { MAP_PIN_COLORS } from './map_legend'
 

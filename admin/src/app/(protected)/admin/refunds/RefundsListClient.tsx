@@ -112,7 +112,7 @@ export default function RefundsListClient() {
             <select
               value={filters.status ?? ''}
               onChange={(e) => setStatus(e.target.value as RefundStatus | '')}
-              className="rounded-md border border-slate-200 bg-white/[0.85] px-3 py-2 text-sm text-slate-900 focus:outline-none focus:ring-2 focus:ring-sky-500/[0.4] dark:border-white/10 dark:bg-white/[0.055] dark:text-slate-100"
+              className="rounded-md border border-slate-200 bg-white/[0.85] px-3 py-2 text-sm text-slate-900 focus:outline-none focus:ring-2 focus:ring-brand-500/[0.4] dark:border-white/10 dark:bg-white/[0.055] dark:text-slate-100"
             >
               {STATUS_OPTIONS.map((o) => (
                 <option key={o.value} value={o.value}>
@@ -130,7 +130,7 @@ export default function RefundsListClient() {
               type="date"
               value={filters.from ?? ''}
               onChange={(e) => setDateFrom(e.target.value)}
-              className="rounded-md border border-slate-200 bg-white/[0.85] px-3 py-2 text-sm text-slate-900 focus:outline-none focus:ring-2 focus:ring-sky-500/[0.4] dark:border-white/10 dark:bg-white/[0.055] dark:text-slate-100"
+              className="rounded-md border border-slate-200 bg-white/[0.85] px-3 py-2 text-sm text-slate-900 focus:outline-none focus:ring-2 focus:ring-brand-500/[0.4] dark:border-white/10 dark:bg-white/[0.055] dark:text-slate-100"
             />
           </div>
 
@@ -142,7 +142,7 @@ export default function RefundsListClient() {
               type="date"
               value={filters.to ?? ''}
               onChange={(e) => setDateTo(e.target.value)}
-              className="rounded-md border border-slate-200 bg-white/[0.85] px-3 py-2 text-sm text-slate-900 focus:outline-none focus:ring-2 focus:ring-sky-500/[0.4] dark:border-white/10 dark:bg-white/[0.055] dark:text-slate-100"
+              className="rounded-md border border-slate-200 bg-white/[0.85] px-3 py-2 text-sm text-slate-900 focus:outline-none focus:ring-2 focus:ring-brand-500/[0.4] dark:border-white/10 dark:bg-white/[0.055] dark:text-slate-100"
             />
           </div>
         </div>
@@ -201,7 +201,7 @@ export default function RefundsListClient() {
                       <td className="py-3 pr-4">
                         <Link
                           href={`/admin/orders/${refund.order_id}`}
-                          className="text-sky-600 hover:underline dark:text-sky-400"
+                          className="text-brand-600 hover:underline dark:text-brand-400"
                         >
                           #{refund.order_id}
                         </Link>
@@ -221,7 +221,7 @@ export default function RefundsListClient() {
                       <td className="py-3 text-right">
                         <Link
                           href={`/admin/refunds/${refund.id}`}
-                          className="text-xs font-medium text-sky-600 hover:underline dark:text-sky-400"
+                          className="text-xs font-medium text-brand-600 hover:underline dark:text-brand-400"
                         >
                           Ver
                         </Link>
@@ -271,7 +271,7 @@ function ModalityBadge({ modality }: { modality: string }) {
         'inline-flex items-center rounded-md border px-2 py-0.5 text-[11px] font-semibold',
         isStore
           ? 'bg-violet-500/[0.12] text-violet-700 border-violet-400/25 dark:text-violet-300'
-          : 'bg-sky-500/[0.12] text-sky-700 border-sky-400/25 dark:text-sky-300',
+          : 'bg-brand-500/[0.12] text-brand-700 border-brand-400/25 dark:text-brand-300',
       ].join(' ')}
     >
       {MODALITY_LABELS[modality] ?? modality}

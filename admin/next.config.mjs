@@ -2,7 +2,7 @@
 const nextConfig = {
   // output: 'export', // deshabilitado para pruebas locales — re-habilitar antes de build de producción
   distDir: process.env.NEXT_BUILD_DIR ?? '.next',
-  transpilePackages: ['@orkoruta/ui'],
+  transpilePackages: ['@orkoruta/ui', '@orkoruta/web-shared'],
   images: { unoptimized: true },
 }
 

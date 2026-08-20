@@ -1,3 +1,5 @@
+import { notifyUnauthorized } from './session-events'
+
 const API_BASE = process.env.NEXT_PUBLIC_API_URL ?? 'http://localhost:3001'
 
 // ─── Types ────────────────────────────────────────────────────────────────────
@@ -17,6 +19,8 @@ export interface MapOrder {
   total: number
   currency: string
   created_at: string
+  /** Día de entrega fijado por el Cliente. `null` si aún no lo ha decidido. */
+  scheduled_delivery_date: string | null
 }
 
 /** Un pedido está asignado cuando ya tiene repartidor encima. */
@@ -73,6 +77,7 @@ async function request<T>(path: string, init?: RequestInit): Promise<T> {
     },
   })
 
+  if (res.status === 401) notifyUnauthorized()
   if (!res.ok) throw await parseError(res)
   if (res.status === 204) return undefined as T
   return (await res.json()) as T

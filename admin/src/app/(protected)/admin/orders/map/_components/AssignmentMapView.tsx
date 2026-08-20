@@ -1,21 +1,32 @@
 'use client'
 
-import { useCallback, useContext, useEffect, useRef, useState } from 'react'
+import { useCallback, useContext, useEffect, useMemo, useRef, useState } from 'react'
 import { RutaCard, RutaSectionHeader } from '@orkoruta/ui'
 import { SessionContext } from '@/lib/session-context'
 import {
   getOrdersForMap,
   getAvailableCouriers,
   assignCourier,
+  isAssigned,
   type MapOrder,
   type AvailableCourier,
   type ApiError,
 } from '@/lib/assignment.api'
 import { AssignmentMap } from './AssignmentMap'
-import { PendingOrdersPanel } from './PendingOrdersPanel'
+import { OrdersPanel } from './OrdersPanel'
 import { AssignmentModal } from './AssignmentModal'
+import { MapLegend } from './map_legend'
 
 const REFRESH_INTERVAL_MS = 30_000
+
+/** Qué pedidos muestra el mapa. Coincide con las opciones del selector. */
+type StatusFilter = 'ALL' | 'PENDING' | 'ASSIGNED'
+
+const STATUS_OPTIONS: { value: StatusFilter; label: string }[] = [
+  { value: 'ASSIGNED', label: 'En reparto' },
+  { value: 'PENDING', label: 'Pedidos por asignar' },
+  { value: 'ALL', label: 'Todos' },
+]
 
 export function AssignmentMapView() {
   const session = useContext(SessionContext)
@@ -23,6 +34,16 @@ export function AssignmentMapView() {
   const [orders, setOrders] = useState<MapOrder[]>([])
   const [loadingOrders, setLoadingOrders] = useState(true)
   const [ordersError, setOrdersError] = useState<string | null>(null)
+
+  // ── Filtros ───────────────────────────────────────────────────────────────
+  const [statusFilter, setStatusFilter] = useState<StatusFilter>('ALL')
+  // Vacío = todas las fechas. Arranca así a propósito: abrir el mapa y no ver
+  // nada porque hoy no hay entregas programadas sería desconcertante.
+  const [dateFilter, setDateFilter] = useState('')
+  // Con un día elegido, el filtro es estricto: solo los programados para ese
+  // día. Los que no tienen fecha se pueden traer de vuelta a mano, porque
+  // esconder trabajo por despachar sin avisar sería peor que no filtrar.
+  const [includeUndated, setIncludeUndated] = useState(false)
 
   const [selectedOrderId, setSelectedOrderId] = useState<number | null>(null)
   const [couriers, setCouriers] = useState<AvailableCourier[]>([])
@@ -89,6 +110,44 @@ export function AssignmentMapView() {
     const interval = setInterval(() => void loadOrders(), REFRESH_INTERVAL_MS)
     return () => clearInterval(interval)
   }, [loadOrders])
+
+  // ── Filtrado ──────────────────────────────────────────────────────────────
+  // Se filtra en el cliente y no en el servidor: el mapa ya trae solo los
+  // pedidos activos (un conjunto acotado), así que cambiar de filtro es
+  // instantáneo y no parpadea con el refresco de cada 30 s.
+  const byStatus = useMemo(
+    () =>
+      orders.filter((order) => {
+        if (statusFilter === 'PENDING' && isAssigned(order)) return false
+        if (statusFilter === 'ASSIGNED' && !isAssigned(order)) return false
+        return true
+      }),
+    [orders, statusFilter],
+  )
+
+  const visibleOrders = useMemo(() => {
+    if (!dateFilter) return byStatus
+    return byStatus.filter((order) => {
+      if (order.scheduled_delivery_date === dateFilter) return true
+      return includeUndated && !order.scheduled_delivery_date
+    })
+  }, [byStatus, dateFilter, includeUndated])
+
+  // Cuántos quedaron fuera solo por no tener día asignado. Se avisa en pantalla
+  // para que el filtro no esconda trabajo en silencio.
+  const undatedHiddenCount = useMemo(() => {
+    if (!dateFilter || includeUndated) return 0
+    return byStatus.filter((o) => !o.scheduled_delivery_date).length
+  }, [byStatus, dateFilter, includeUndated])
+
+  // Si el pedido seleccionado deja de estar visible al cambiar un filtro, la
+  // selección se suelta: mantenerla dejaría el mapa centrado en un pin ausente.
+  useEffect(() => {
+    if (selectedOrderId === null) return
+    if (visibleOrders.some((o) => o.id === selectedOrderId)) return
+    setSelectedOrderId(null)
+    setFocusOrder(null)
+  }, [visibleOrders, selectedOrderId])
 
   // ── Repartidores: solo se piden al abrir el modal ────────────────────────
   // Antes se cargaban al seleccionar un pedido, aunque el operador solo
@@ -171,19 +230,105 @@ export function AssignmentMapView() {
     )
   }
 
-  const selectedOrder = orders.find((o) => o.id === selectedOrderId) ?? null
-
   return (
     <div className="flex h-full flex-col gap-4">
-      {/* Page title */}
-      <div>
-        <p className="text-[11px] font-bold uppercase tracking-[0.24em] text-slate-500 dark:text-slate-400">
-          operaciones
-        </p>
-        <h1 className="mt-1 text-2xl font-black tracking-tight text-slate-900 dark:text-slate-100">
-          Mapa de asignación
-        </h1>
+      {/* Título + filtros: los dos selectores van al lado del título porque
+          gobiernan a la vez el mapa y el panel, no solo una de las dos zonas. */}
+      <div className="u-in flex flex-wrap items-end justify-between gap-4">
+        <div>
+          <p className="text-[11px] font-bold uppercase tracking-[0.24em] text-slate-500 dark:text-slate-400">
+            operaciones
+          </p>
+          <h1 className="mt-1 text-2xl font-black tracking-tight text-slate-900 dark:text-slate-100">
+            Mapa de asignación
+          </h1>
+        </div>
+
+        <div className="flex flex-wrap items-end gap-3">
+          <div>
+            <label
+              htmlFor="map-status-filter"
+              className="block text-[11px] font-bold uppercase tracking-[0.18em] text-slate-500 dark:text-slate-400"
+            >
+              Mostrar
+            </label>
+            <select
+              id="map-status-filter"
+              value={statusFilter}
+              onChange={(e) => setStatusFilter(e.target.value as StatusFilter)}
+              className="mt-1 rounded-lg border border-slate-300 bg-white px-3 py-2 text-sm text-slate-900 transition-colors hover:border-brand-400/60 focus-visible:border-brand-400 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand-400/40 dark:border-white/15 dark:bg-white/[0.04] dark:text-slate-100"
+            >
+              {STATUS_OPTIONS.map((option) => (
+                <option key={option.value} value={option.value}>
+                  {option.label}
+                </option>
+              ))}
+            </select>
+          </div>
+
+          <div>
+            <label
+              htmlFor="map-date-filter"
+              className="block text-[11px] font-bold uppercase tracking-[0.18em] text-slate-500 dark:text-slate-400"
+            >
+              Día de entrega
+            </label>
+            <input
+              id="map-date-filter"
+              type="date"
+              value={dateFilter}
+              onChange={(e) => setDateFilter(e.target.value)}
+              className="mt-1 rounded-lg border border-slate-300 bg-white px-3 py-2 text-sm text-slate-900 transition-colors hover:border-brand-400/60 focus-visible:border-brand-400 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand-400/40 dark:border-white/15 dark:bg-white/[0.04] dark:text-slate-100"
+            />
+          </div>
+
+          {dateFilter && (
+            <button
+              type="button"
+              onClick={() => {
+                setDateFilter('')
+                setIncludeUndated(false)
+              }}
+              className="pb-2 text-xs font-semibold text-brand-700 underline underline-offset-2 dark:text-brand-300"
+            >
+              Ver todas las fechas
+            </button>
+          )}
+        </div>
       </div>
+
+      {/* Convenciones de color: inline, para no gastar una tarjeta del panel. */}
+      <MapLegend />
+
+      {/* El filtro por día es estricto, así que hay que decir en voz alta
+          cuántos pedidos quedaron fuera por no tener fecha asignada. */}
+      {undatedHiddenCount > 0 && (
+        <p className="u-in rounded-lg border border-amber-400/30 bg-amber-500/[0.12] px-3 py-2 text-sm text-amber-800 dark:text-amber-200">
+          {undatedHiddenCount === 1
+            ? 'Hay 1 pedido sin día de entrega asignado que no se muestra con este filtro.'
+            : `Hay ${undatedHiddenCount} pedidos sin día de entrega asignado que no se muestran con este filtro.`}{' '}
+          <button
+            type="button"
+            onClick={() => setIncludeUndated(true)}
+            className="font-semibold underline underline-offset-2"
+          >
+            Incluirlos
+          </button>
+        </p>
+      )}
+
+      {dateFilter && includeUndated && (
+        <p className="u-in rounded-lg border border-slate-300/40 bg-slate-500/[0.08] px-3 py-2 text-sm text-slate-700 dark:text-slate-300">
+          Se están mostrando también los pedidos sin día de entrega asignado.{' '}
+          <button
+            type="button"
+            onClick={() => setIncludeUndated(false)}
+            className="font-semibold underline underline-offset-2"
+          >
+            Ocultarlos
+          </button>
+        </p>
+      )}
 
       {ordersError && (
         <p
@@ -199,7 +344,7 @@ export function AssignmentMapView() {
         <p
           role={toast.kind === 'error' ? 'alert' : 'status'}
           className={[
-            'rounded-md border px-3 py-2 text-sm',
+            'u-in-right rounded-lg border px-3 py-2 text-sm shadow-sm',
             toast.kind === 'success'
               ? 'border-emerald-400/25 bg-emerald-500/[0.12] text-emerald-700 dark:text-emerald-300'
               : 'border-rose-400/25 bg-rose-500/[0.12] text-rose-700 dark:text-rose-300',
@@ -224,7 +369,7 @@ export function AssignmentMapView() {
             </div>
           ) : (
             <AssignmentMap
-              orders={orders}
+              orders={visibleOrders}
               selectedOrderId={selectedOrderId}
               focusOrder={focusOrder}
               onSelectOrder={handleSelectOrder}
@@ -232,10 +377,10 @@ export function AssignmentMapView() {
           )}
         </div>
 
-        {/* Side panel */}
-        <div ref={panelRef} className="w-80 shrink-0 overflow-y-auto lg:w-96">
-          <PendingOrdersPanel
-            orders={orders}
+        {/* Side panel: un solo rectángulo con los pedidos filtrados. */}
+        <div ref={panelRef} className="w-80 shrink-0 lg:w-96">
+          <OrdersPanel
+            orders={visibleOrders}
             selectedOrderId={selectedOrderId}
             onSelectOrder={handleSelectOrder}
             onRequestAssign={handleRequestAssign}

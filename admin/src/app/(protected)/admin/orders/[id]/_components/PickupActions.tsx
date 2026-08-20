@@ -113,7 +113,7 @@ export function PickupActions({ orderId, isCod, onActionComplete }: PickupAction
                   value={docType}
                   onChange={(e) => setDocType(e.target.value)}
                   disabled={identityLoading || identitySuccess}
-                  className="w-full rounded-md border border-slate-200 bg-white/[0.85] px-3 py-2 text-sm text-slate-900 focus:outline-none focus:ring-2 focus:ring-sky-500/40 disabled:opacity-50 dark:border-white/10 dark:bg-white/[0.055] dark:text-slate-100"
+                  className="w-full rounded-md border border-slate-200 bg-white/[0.85] px-3 py-2 text-sm text-slate-900 focus:outline-none focus:ring-2 focus:ring-brand-500/40 disabled:opacity-50 dark:border-white/10 dark:bg-white/[0.055] dark:text-slate-100"
                 >
                   {DOCUMENT_TYPES.map((t) => (
                     <option key={t} value={t}>
@@ -136,7 +136,7 @@ export function PickupActions({ orderId, isCod, onActionComplete }: PickupAction
                   onChange={(e) => setDocNumber(e.target.value)}
                   placeholder="Ej. 1010101010"
                   disabled={identityLoading || identitySuccess}
-                  className="w-full rounded-md border border-slate-200 bg-white/[0.85] px-3 py-2 text-sm text-slate-900 placeholder:text-slate-400 focus:outline-none focus:ring-2 focus:ring-sky-500/40 disabled:opacity-50 dark:border-white/10 dark:bg-white/[0.055] dark:text-slate-100 dark:placeholder:text-slate-500"
+                  className="w-full rounded-md border border-slate-200 bg-white/[0.85] px-3 py-2 text-sm text-slate-900 placeholder:text-slate-400 focus:outline-none focus:ring-2 focus:ring-brand-500/40 disabled:opacity-50 dark:border-white/10 dark:bg-white/[0.055] dark:text-slate-100 dark:placeholder:text-slate-500"
                 />
               </div>
             </div>
@@ -191,7 +191,7 @@ export function PickupActions({ orderId, isCod, onActionComplete }: PickupAction
                   onChange={(e) => setAmount(e.target.value)}
                   placeholder="Ej. 105000"
                   disabled={collectionLoading || collectionSuccess}
-                  className="w-full rounded-md border border-slate-200 bg-white/[0.85] px-3 py-2 text-sm text-slate-900 placeholder:text-slate-400 focus:outline-none focus:ring-2 focus:ring-sky-500/40 disabled:opacity-50 dark:border-white/10 dark:bg-white/[0.055] dark:text-slate-100 dark:placeholder:text-slate-500"
+                  className="w-full rounded-md border border-slate-200 bg-white/[0.85] px-3 py-2 text-sm text-slate-900 placeholder:text-slate-400 focus:outline-none focus:ring-2 focus:ring-brand-500/40 disabled:opacity-50 dark:border-white/10 dark:bg-white/[0.055] dark:text-slate-100 dark:placeholder:text-slate-500"
                 />
               </div>
 

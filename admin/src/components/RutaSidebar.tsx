@@ -3,6 +3,7 @@
 import Link from 'next/link'
 import { usePathname } from 'next/navigation'
 import { useContext } from 'react'
+import { RutaLogo, RutaRouteBackdrop } from '@orkoruta/ui'
 import { SessionContext } from '@/lib/session-context'
 
 interface NavItem {
@@ -48,6 +49,17 @@ function getNavItems(userType: string, clientType?: string): NavItem[] {
   return CLIENT_NAV
 }
 
+/**
+ * A dónde lleva el logo. Va a la primera pantalla del rol y no a `/`, que
+ * redirige a `/login` y este a su vez rebota al panel: dos saltos y un
+ * parpadeo del formulario de acceso para acabar donde ya estabas.
+ */
+function getHomeHref(userType: string): string {
+  if (userType === 'ADMIN_RUTA') return '/ruta-admin/dashboard'
+  if (userType === 'COURIER') return '/courier'
+  return '/admin/dashboard'
+}
+
 interface RutaSidebarProps {
   collapsed: boolean
   onClose?: () => void
@@ -57,6 +69,7 @@ export function RutaSidebar({ collapsed, onClose }: RutaSidebarProps) {
   const session = useContext(SessionContext)
   const pathname = usePathname()
   const navItems = getNavItems(session?.user_type ?? 'ADMIN_CLIENT', session?.client_type)
+  const homeHref = getHomeHref(session?.user_type ?? 'ADMIN_CLIENT')
 
   return (
     <>
@@ -72,18 +85,33 @@ export function RutaSidebar({ collapsed, onClose }: RutaSidebarProps) {
       <aside
         className={[
           'fixed top-0 left-0 z-30 flex h-full w-60 flex-col',
-          'bg-[#17191d]/[0.82] border-r border-white/10 backdrop-blur-sm',
+          // `relative`+`overflow-hidden` para que el fondo de rutas quede
+          // recortado a la columna; en `lg` el `relative` ya lo da la clase.
+          'overflow-hidden bg-[#17191d]/[0.82] border-r border-white/10 backdrop-blur-sm',
           'transition-transform duration-200',
           collapsed ? '-translate-x-full' : 'translate-x-0',
           'lg:relative lg:translate-x-0 lg:z-auto',
         ].join(' ')}
         aria-label="Navegación principal"
       >
+        {/* Muy apagada: aquí compite con los rótulos de navegación, así que
+            va a la mitad de opacidad que en las portadas. */}
+        <RutaRouteBackdrop variant="descend" className="text-brand-500/[0.09]" />
+
         {/* Logo */}
-        <div className="flex h-14 shrink-0 items-center px-5 border-b border-white/10">
-          <span className="text-sm font-black tracking-widest text-slate-100 uppercase">
-            RUTA
-          </span>
+        {/* h-24 (96px) para que el logo quepa a 144px de ancho, que es donde
+            el "by ORKO" empieza a leerse (a 128px todavía se empasta). La
+            cabecera superior sube a la misma altura para que los bordes
+            inferiores sigan alineados. `overflow-hidden` evita desbordes si
+            alguien retoca el tamaño. */}
+        <div className="flex h-24 shrink-0 items-center overflow-hidden px-5 border-b border-white/10">
+          <Link
+            href={homeHref}
+            aria-label="RUTA — inicio"
+            className="group inline-flex items-center rounded-lg transition-transform duration-300 hover:scale-[1.03] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand-400/60"
+          >
+            <RutaLogo className="h-auto w-36 text-brand-500" />
+          </Link>
         </div>
 
         {/* Nav items */}
@@ -98,10 +126,14 @@ export function RutaSidebar({ collapsed, onClose }: RutaSidebarProps) {
                     href={item.href}
                     onClick={onClose}
                     className={[
-                      'flex items-center gap-3 rounded-md px-3 py-2 text-sm font-medium transition-colors',
+                      'relative flex items-center gap-3 rounded-lg px-3 py-2 text-sm font-medium transition-colors',
+                      // La barra de marca en el borde izquierdo marca dónde
+                      // estás sin depender solo del tinte de fondo, que en
+                      // oscuro es muy sutil.
+                      'before:absolute before:left-0 before:top-1/2 before:h-5 before:w-[3px] before:-translate-y-1/2 before:rounded-r-full before:transition-colors',
                       active
-                        ? 'bg-sky-500/[0.12] text-sky-300 border border-sky-400/25'
-                        : 'text-slate-400 hover:text-slate-200 hover:bg-white/[0.06] border border-transparent',
+                        ? 'bg-brand-500/[0.12] text-brand-300 before:bg-brand-500'
+                        : 'text-slate-400 hover:text-slate-200 hover:bg-white/[0.06] before:bg-transparent',
                     ].join(' ')}
                     aria-current={active ? 'page' : undefined}
                   >

@@ -1,13 +1,20 @@
+import type { BuyerStatus } from '@orkoruta/shared'
 'use client'
 
 import Link from 'next/link'
 import { useEffect, useState, type FormEvent } from 'react'
 import { RutaButton, RutaCard, RutaPill, RutaSectionHeader } from '@orkoruta/ui'
-import { getBuyer, updateBuyer, type ApiError, type Buyer } from '@/lib/users.api'
+import { getBuyer, updateBuyer, type ApiError, type Buyer, toBuyerStatus } from '@/lib/users.api'
 
 export default function BuyerDetailClient({ id }: { id: string }) {
   const [buyer, setBuyer] = useState<Buyer | null>(null)
-  const [form, setForm] = useState({ full_name: '', phone: '', status: 'ACTIVE' })
+  // El estado se tipa con el enum del contrato: así el <select> no puede
+  // ofrecer un valor que el backend rechace.
+  const [form, setForm] = useState<{ full_name: string; phone: string; status: BuyerStatus }>({
+    full_name: '',
+    phone: '',
+    status: 'ACTIVE',
+  })
   const [loading, setLoading] = useState(true)
   const [saving, setSaving] = useState(false)
   const [error, setError] = useState<string | null>(null)
@@ -21,7 +28,7 @@ export default function BuyerDetailClient({ id }: { id: string }) {
         const data = await getBuyer(id)
         if (!active) return
         setBuyer(data)
-        setForm({ full_name: data.full_name, phone: data.phone ?? '', status: data.status ?? 'ACTIVE' })
+        setForm({ full_name: data.full_name, phone: data.phone ?? '', status: toBuyerStatus(data.status) })
       } catch (err) {
         const apiErr = err as ApiError
         if (active) setError(apiErr.message ?? 'No pudimos cargar el comprador.')
@@ -43,7 +50,7 @@ export default function BuyerDetailClient({ id }: { id: string }) {
     try {
       const data = await updateBuyer(id, {
         full_name: form.full_name.trim(),
-        phone: form.phone.trim() || null,
+        phone: form.phone.trim() || undefined,
         status: form.status,
       })
       setBuyer(data)
@@ -87,7 +94,7 @@ export default function BuyerDetailClient({ id }: { id: string }) {
               </label>
               <label className="block">
                 <span className="mb-1 block text-xs font-medium text-slate-600 dark:text-slate-400">Estado</span>
-                <select value={form.status} onChange={(event) => setForm((value) => ({ ...value, status: event.target.value }))} className="w-full rounded-md border border-slate-200 bg-white/[0.85] px-3 py-2 text-sm text-slate-900 dark:border-white/10 dark:bg-[#252930] dark:text-slate-100">
+                <select value={form.status} onChange={(event) => setForm((value) => ({ ...value, status: toBuyerStatus(event.target.value) }))} className="w-full rounded-md border border-slate-200 bg-white/[0.85] px-3 py-2 text-sm text-slate-900 dark:border-white/10 dark:bg-[#252930] dark:text-slate-100">
                   <option value="ACTIVE">Activo</option>
                   <option value="SUSPENDED">Suspendido</option>
                   <option value="INACTIVE">Inactivo</option>
