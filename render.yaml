@@ -1,3 +1,25 @@
+# Render blueprint — frontends RUTA (admin y storefront)
+#
+# Los secretos (sync: false) se rellenan en el panel de Render o en un env group.
+#
+# Sobre el clonado de `packages-ruta` en el buildCommand:
+# `pnpm-workspace.yaml` resuelve `@orkoruta/shared` y `@orkoruta/db` con
+# `link:../packages-ruta/...`, una ruta **fuera del repo**. Render clona un solo
+# repositorio, así que sin este paso el enlace queda colgando y el build no
+# resuelve los paquetes internos. Se clona como hermano (`../packages-ruta`) para
+# que la ruta del override siga siendo válida tal cual, sin tocar los lockfiles
+# ni el flujo local.
+#
+# `pnpm` se instala en /tmp/pnpm-bin y no en ./node_modules: al recrear
+# node_modules, `pnpm install` borraba su propio binario a mitad de ejecución.
+#
+# Sobre `routes`: las dos apps son export estático (`output: 'export'`, activado
+# por NEXT_OUTPUT_EXPORT). Cada ruta dinámica se exporta una sola vez con el
+# marcador `_` (`generateStaticParams([{ id: '_' }])`) y el rewrite manda
+# cualquier valor real a ese HTML, que resuelve el parámetro en el navegador.
+# El orden importa: Render aplica la primera regla que casa, así que las rutas
+# estáticas que caen bajo un comodín van antes que el comodín.
+
 services:
   - type: web
     name: ruta-admin
@@ -5,28 +27,134 @@ services:
     repo: https://github.com/orkoruta/frontend-ruta
     rootDir: .
     buildCommand: >-
+      rm -rf ../packages-ruta &&
+      git clone --depth 1 "https://x-access-token:$NPM_TOKEN@github.com/orkoruta/packages-ruta.git" ../packages-ruta &&
       npm install pnpm@11.3.0 --prefix=/tmp/pnpm-bin --no-save &&
+      /tmp/pnpm-bin/node_modules/.bin/pnpm --dir ../packages-ruta install --frozen-lockfile &&
+      /tmp/pnpm-bin/node_modules/.bin/pnpm --dir ../packages-ruta build &&
       /tmp/pnpm-bin/node_modules/.bin/pnpm install --frozen-lockfile &&
       /tmp/pnpm-bin/node_modules/.bin/pnpm --filter @ruta/admin build
     staticPublishPath: ./admin/out
+    routes:
+      # Estáticas bajo un comodín — antes que el comodín.
+      - type: rewrite
+        source: /admin/orders/corporate/new
+        destination: /admin/orders/corporate/new.html
+      - type: rewrite
+        source: /admin/orders/map
+        destination: /admin/orders/map.html
+      - type: rewrite
+        source: /admin/products/new
+        destination: /admin/products/new.html
+      - type: rewrite
+        source: /ruta-admin/clients/new
+        destination: /ruta-admin/clients/new.html
+      # Detalles dinámicos.
+      - type: rewrite
+        source: /admin/buyers/*
+        destination: /admin/buyers/_.html
+      - type: rewrite
+        source: /admin/couriers/*
+        destination: /admin/couriers/_.html
+      - type: rewrite
+        source: /admin/disputes/*
+        destination: /admin/disputes/_.html
+      - type: rewrite
+        source: /admin/orders/*
+        destination: /admin/orders/_.html
+      - type: rewrite
+        source: /admin/pickup-points/*
+        destination: /admin/pickup-points/_.html
+      - type: rewrite
+        source: /admin/products/*
+        destination: /admin/products/_.html
+      - type: rewrite
+        source: /admin/recurrence/*
+        destination: /admin/recurrence/_.html
+      - type: rewrite
+        source: /admin/refunds/*
+        destination: /admin/refunds/_.html
+      - type: rewrite
+        source: /admin/returns/*
+        destination: /admin/returns/_.html
+      - type: rewrite
+        source: /courier/*
+        destination: /courier/_.html
+      - type: rewrite
+        source: /ruta-admin/clients/*
+        destination: /ruta-admin/clients/_.html
     envVars:
+      - key: NODE_VERSION
+        value: "22"
+      # Activa `output: 'export'` en next.config.mjs. En local se deja apagado
+      # para no pelear con el servidor de desarrollo.
+      - key: NEXT_OUTPUT_EXPORT
+        value: "1"
+      - key: NEXT_PUBLIC_API_URL
+        value: https://ruta-orko-api.onrender.com
+      # Clave de NAVEGADOR de Google Maps, restringida por dominio (referrer).
+      # No es la misma que la del backend (GOOGLE_MAPS_API_KEY, restringida por IP).
+      - key: NEXT_PUBLIC_GOOGLE_MAPS_API_KEY
+        sync: false
       - key: NPM_TOKEN
         sync: false
-      - key: NEXT_PUBLIC_API_URL
-        value: https://ruta-api.onrender.com
 
   - type: web
-    name: ruta-storefront
+    name: ruta-by-orko
     runtime: static
     repo: https://github.com/orkoruta/frontend-ruta
     rootDir: .
     buildCommand: >-
+      rm -rf ../packages-ruta &&
+      git clone --depth 1 "https://x-access-token:$NPM_TOKEN@github.com/orkoruta/packages-ruta.git" ../packages-ruta &&
       npm install pnpm@11.3.0 --prefix=/tmp/pnpm-bin --no-save &&
+      /tmp/pnpm-bin/node_modules/.bin/pnpm --dir ../packages-ruta install --frozen-lockfile &&
+      /tmp/pnpm-bin/node_modules/.bin/pnpm --dir ../packages-ruta build &&
       /tmp/pnpm-bin/node_modules/.bin/pnpm install --frozen-lockfile &&
       /tmp/pnpm-bin/node_modules/.bin/pnpm --filter @ruta/storefront build
     staticPublishPath: ./storefront/out
+    routes:
+      - type: rewrite
+        source: /c/*/checkout/confirmation
+        destination: /c/_/checkout/confirmation.html
+      - type: rewrite
+        source: /c/*/checkout
+        destination: /c/_/checkout.html
+      - type: rewrite
+        source: /c/*/cart
+        destination: /c/_/cart.html
+      - type: rewrite
+        source: /c/*/orders/*
+        destination: /c/_/orders/_.html
+      - type: rewrite
+        source: /c/*/orders
+        destination: /c/_/orders.html
+      - type: rewrite
+        source: /c/*/recurrence/*
+        destination: /c/_/recurrence/_.html
+      - type: rewrite
+        source: /c/*/recurrence
+        destination: /c/_/recurrence.html
+      - type: rewrite
+        source: /c/*/product/*
+        destination: /c/_/product/_.html
+      - type: rewrite
+        source: /c/*/login
+        destination: /c/_/login.html
+      - type: rewrite
+        source: /c/*/register
+        destination: /c/_/register.html
+      - type: rewrite
+        source: /c/*
+        destination: /c/_.html
     envVars:
+      - key: NODE_VERSION
+        value: "22"
+      - key: NEXT_OUTPUT_EXPORT
+        value: "1"
+      - key: NEXT_PUBLIC_API_URL
+        value: https://ruta-orko-api.onrender.com
+      - key: NEXT_PUBLIC_GOOGLE_MAPS_API_KEY
+        sync: false
       - key: NPM_TOKEN
         sync: false
-      - key: NEXT_PUBLIC_API_URL
-        value: https://ruta-api.onrender.com
