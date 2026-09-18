@@ -6,23 +6,54 @@ on:
   pull_request:
     branches: [main]
 
+# Igual que en backend-ruta: `pnpm-workspace.yaml` resuelve @orkoruta/shared y
+# @orkoruta/db con `link:../packages-ruta/...`, fuera de este repo. Con un
+# checkout normal el enlace queda colgando y el build muere con «Cannot find
+# module '@orkoruta/shared'» — que es exactamente como fallaba el deploy del
+# admin en Render. Los dos repos se clonan como hermanos.
+
 jobs:
   ci:
     runs-on: ubuntu-latest
     permissions:
       contents: read
       packages: read
+    defaults:
+      run:
+        working-directory: frontend-ruta
     steps:
       - uses: actions/checkout@v4
+        with:
+          path: frontend-ruta
+
+      - name: Checkout packages-ruta (hermano)
+        uses: actions/checkout@v4
+        with:
+          repository: orkoruta/packages-ruta
+          token: ${{ secrets.NPM_PUBLISH_TOKEN }}
+          path: packages-ruta
+
       - uses: pnpm/action-setup@v4
         with:
           version: 11.3.0
+
       - uses: actions/setup-node@v4
         with:
           node-version: '22'
-          cache: 'pnpm'
           registry-url: https://npm.pkg.github.com
           scope: '@orkoruta'
+
+      - name: Install packages-ruta
+        working-directory: packages-ruta
+        run: pnpm install --frozen-lockfile
+        env:
+          NPM_TOKEN: ${{ secrets.NPM_PUBLISH_TOKEN }}
+
+      - name: Build packages-ruta
+        working-directory: packages-ruta
+        run: pnpm build
+        env:
+          DATABASE_URL: postgresql://postgres:postgres@localhost:5432/ruta
 
       - name: Install dependencies
         run: pnpm install --frozen-lockfile
@@ -35,11 +66,17 @@ jobs:
       - name: Build @orkoruta/ui
         run: pnpm --filter @orkoruta/ui build
 
+      # Con NEXT_OUTPUT_EXPORT, igual que en Render: así el CI ejerce el export
+      # estático de verdad y no una variante que solo existe en integración.
       - name: Build admin
         run: pnpm --filter @ruta/admin build
+        env:
+          NEXT_OUTPUT_EXPORT: '1'
 
       - name: Build storefront
         run: pnpm --filter @ruta/storefront build
+        env:
+          NEXT_OUTPUT_EXPORT: '1'
 
       - name: Lint
         run: pnpm lint
