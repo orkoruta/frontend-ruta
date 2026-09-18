@@ -1,12 +1,17 @@
 import type { BuyerStatus } from '@orkoruta/shared'
 'use client'
 
+import { useRouteSegment } from '@orkoruta/web-shared'
+
 import Link from 'next/link'
 import { useEffect, useState, type FormEvent } from 'react'
 import { RutaButton, RutaCard, RutaPill, RutaSectionHeader } from '@orkoruta/ui'
 import { getBuyer, updateBuyer, type ApiError, type Buyer, toBuyerStatus } from '@/lib/users.api'
 
-export default function BuyerDetailClient({ id }: { id: string }) {
+export default function BuyerDetailClient() {
+  // De la URL, no de `params`: la página es estática y se sirve desde el HTML
+  // del marcador `_`, así que el id del build no es el que se pidió.
+  const id = useRouteSegment() ?? ''
   const [buyer, setBuyer] = useState<Buyer | null>(null)
   // El estado se tipa con el enum del contrato: así el <select> no puede
   // ofrecer un valor que el backend rechace.

@@ -1,5 +1,7 @@
 'use client'
 
+import { useRouteId } from '@orkoruta/web-shared'
+
 import Link from 'next/link'
 import { useEffect, useState } from 'react'
 import { RutaButton, RutaCard, RutaSectionHeader } from '@orkoruta/ui'
@@ -32,7 +34,10 @@ interface Props {
   templateId: number
 }
 
-export default function RecurrenceDetailClient({ templateId }: Props) {
+export default function RecurrenceDetailClient() {
+  // De la URL, no de `params`: la página es estática y se sirve desde el HTML
+  // del marcador `_`, así que el id del build no es el que se pidió.
+  const templateId = useRouteId() ?? NaN
   const [template, setTemplate] = useState<RecurrenceTemplate | null>(null)
   const [loading, setLoading] = useState(true)
   const [acting, setActing] = useState(false)

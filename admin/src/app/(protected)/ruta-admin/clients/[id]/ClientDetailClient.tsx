@@ -1,5 +1,7 @@
 'use client'
 
+import { useRouteId } from '@orkoruta/web-shared'
+
 import Link from 'next/link'
 import { useContext, useEffect, useMemo, useState, type FormEvent } from 'react'
 import { useRouter } from 'next/navigation'
@@ -48,7 +50,10 @@ interface ClientDetailClientProps {
   clientId: number
 }
 
-export default function ClientDetailClient({ clientId }: ClientDetailClientProps) {
+export default function ClientDetailClient() {
+  // De la URL, no de `params`: la página es estática y se sirve desde el HTML
+  // del marcador `_`, así que el id del build no es el que se pidió.
+  const clientId = useRouteId() ?? NaN
   const session = useContext(SessionContext)
   const router = useRouter()
   const [client, setClient] = useState<RutaClient | null>(null)

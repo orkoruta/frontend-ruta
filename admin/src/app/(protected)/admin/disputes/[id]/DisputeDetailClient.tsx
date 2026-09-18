@@ -1,5 +1,7 @@
 'use client'
 
+import { useRouteId } from '@orkoruta/web-shared'
+
 import Link from 'next/link'
 import { useContext, useEffect, useState } from 'react'
 import { RutaButton, RutaCard, RutaSectionHeader } from '@orkoruta/ui'
@@ -154,7 +156,10 @@ interface Props {
   disputeId: number
 }
 
-export default function DisputeDetailClient({ disputeId }: Props) {
+export default function DisputeDetailClient() {
+  // De la URL, no de `params`: la página es estática y se sirve desde el HTML
+  // del marcador `_`, así que el id del build no es el que se pidió.
+  const disputeId = useRouteId() ?? NaN
   const session = useContext(SessionContext)
   const [dispute, setDispute] = useState<Dispute | null>(null)
   const [loading, setLoading] = useState(true)

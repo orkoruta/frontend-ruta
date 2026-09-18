@@ -25,3 +25,4 @@ export * from './delivery_date';
 export * from './google-maps';
 export * from './map_theme';
 export * from './phone_country_codes';
+export * from './route_params';

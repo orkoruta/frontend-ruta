@@ -3,6 +3,7 @@
 import Link from 'next/link'
 import { useContext, useEffect, useState } from 'react'
 import { RutaButton, RutaCard, RutaSectionHeader } from '@orkoruta/ui'
+import { useRouteId } from '@orkoruta/web-shared'
 import { SessionContext } from '@/lib/session-context'
 import {
   getOrder,
@@ -139,11 +140,14 @@ const CANCELLABLE_STATUSES: OrderStatus[] = [
   'CUSTOMER_CANCEL_REQUEST',
 ]
 
-interface OrderDetailClientProps {
-  orderId: number
-}
-
-export default function OrderDetailClient({ orderId }: OrderDetailClientProps) {
+export default function OrderDetailClient() {
+  /*
+   * De la URL, no de `params`: la página es estática y se sirve desde el HTML
+   * del marcador `_`, así que el id del build no es el que el usuario pidió.
+   * `null` mientras no ha montado — el efecto de abajo ya lo trata como
+   * «todavía no».
+   */
+  const orderId = useRouteId() ?? NaN
   const session = useContext(SessionContext)
   const [order, setOrder] = useState<OrderDetail | null>(null)
   const [loading, setLoading] = useState(true)

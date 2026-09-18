@@ -1,5 +1,7 @@
 'use client'
 
+import { useRouteId } from '@orkoruta/web-shared'
+
 import Link from 'next/link'
 import { useContext, useEffect, useState } from 'react'
 import { RutaButton, RutaCard, RutaSectionHeader } from '@orkoruta/ui'
@@ -52,7 +54,10 @@ interface Props {
   refundId: number
 }
 
-export default function RefundDetailClient({ refundId }: Props) {
+export default function RefundDetailClient() {
+  // De la URL, no de `params`: la página es estática y se sirve desde el HTML
+  // del marcador `_`, así que el id del build no es el que se pidió.
+  const refundId = useRouteId() ?? NaN
   const session = useContext(SessionContext)
   const [refund, setRefund] = useState<Refund | null>(null)
   const [history, setHistory] = useState<OrderStateHistoryEntry[]>([])

@@ -9,9 +9,13 @@ import {
   splitPhone,
   DEFAULT_PHONE_COUNTRY,
   PHONE_COUNTRY_CODES,
+  useRouteSegment,
 } from '@orkoruta/web-shared'
 
-export default function CourierDetailClient({ id }: { id: string }) {
+export default function CourierDetailClient() {
+  // De la URL, no de `params`: la página es estática y se sirve desde el HTML
+  // del marcador `_`, así que el id del build no es el que se pidió.
+  const id = useRouteSegment() ?? ''
   const [courier, setCourier] = useState<Courier | null>(null)
   const [form, setForm] = useState({
     full_name: '',

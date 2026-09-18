@@ -1,5 +1,7 @@
 'use client'
 
+import { useRouteSegment } from '@orkoruta/web-shared'
+
 import Link from 'next/link'
 import { useEffect, useState, type FormEvent } from 'react'
 import { RutaButton, RutaCard, RutaPill, RutaSectionHeader } from '@orkoruta/ui'
@@ -24,7 +26,10 @@ const FIELDS = [
   { key: 'longitude', label: 'Longitud', required: false },
 ] as const
 
-export default function PickupPointDetailClient({ id }: { id: string }) {
+export default function PickupPointDetailClient() {
+  // De la URL, no de `params`: la página es estática y se sirve desde el HTML
+  // del marcador `_`, así que el id del build no es el que se pidió.
+  const id = useRouteSegment() ?? ''
   const [point, setPoint] = useState<PickupPoint | null>(null)
   const [form, setForm] = useState({
     name: '',
