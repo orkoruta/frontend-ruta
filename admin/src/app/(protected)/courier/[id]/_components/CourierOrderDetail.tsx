@@ -21,14 +21,10 @@ import {
   formatDeliveryAddress,
   isCollectOnDelivery,
 } from '@/lib/courier_orders.api'
-import { formatDeliveryDate } from '@orkoruta/web-shared'
+import { formatDeliveryDate, useRouteId } from '@orkoruta/web-shared'
 import { useCourierLocationReporter } from '@/lib/use_courier_location_reporter'
 import CollectionForm from './CollectionForm'
 import { CollectionEvidenceCard } from '@/components/CollectionEvidenceCard'
-
-interface Props {
-  orderId: number
-}
 
 function formatCOP(amount: number) {
   return new Intl.NumberFormat('es-CO', {
@@ -72,7 +68,10 @@ function StatusBadge({ status }: { status: CourierOrderStatus }) {
   )
 }
 
-export default function CourierOrderDetail({ orderId }: Props) {
+export default function CourierOrderDetail() {
+  // De la URL, no de `params`: la página estática se sirve desde el HTML del
+  // marcador `_`, así que el id del build no es el pedido que se abrió.
+  const orderId = useRouteId() ?? NaN
   const [order, setOrder] = useState<CourierOrderDetailType | null>(null)
 
   /**
