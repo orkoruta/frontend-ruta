@@ -93,7 +93,16 @@ export async function getProducts(
   slug: string,
   params?: ProductListParams,
 ): Promise<PaginatedProducts> {
-  const url = new URL(`${API_BASE}/public/clients/${encodeURIComponent(slug)}/products`)
+  /*
+   * La base se resuelve contra el origen actual porque `NEXT_PUBLIC_API_URL`
+   * es una ruta relativa (`/api`): la API se sirve por un proxy del propio
+   * dominio para que la cookie de sesión sea de primera parte. `new URL()` con
+   * una ruta relativa y sin base lanza «Invalid URL».
+   */
+  const url = new URL(
+    `${API_BASE}/public/clients/${encodeURIComponent(slug)}/products`,
+    typeof window === 'undefined' ? 'http://localhost' : window.location.origin,
+  )
   if (params?.category_id != null) url.searchParams.set('category_id', String(params.category_id))
   if (params?.search) url.searchParams.set('search', params.search)
   if (params?.page) url.searchParams.set('page', String(params.page))
