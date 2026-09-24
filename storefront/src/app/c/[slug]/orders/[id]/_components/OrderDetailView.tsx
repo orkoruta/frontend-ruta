@@ -1,7 +1,9 @@
 'use client'
 
+import { useStoreSlug } from '@/lib/store_route'
+
 import Link from 'next/link'
-import { useParams, useRouter } from 'next/navigation'
+import { useRouter } from 'next/navigation'
 import { useCallback, useEffect, useMemo, useState } from 'react'
 import { RutaButton, RutaCard, RutaPill, RutaSectionHeader } from '@orkoruta/ui'
 import {
@@ -20,7 +22,7 @@ import {
 } from '@/lib/buyer_orders.api'
 import { requestReturn, type ReturnStatus, type ReturnMechanism } from '@/lib/returns.api'
 import { openDispute, type DisputeStatus } from '@/lib/disputes.api'
-import { formatDeliveryDate } from '@orkoruta/web-shared'
+import { formatDeliveryDate, useRouteId } from '@orkoruta/web-shared'
 import { getClientBySlug } from '@/lib/catalog.api'
 import { CourierTrackingCard } from './CourierTrackingCard'
 
@@ -450,7 +452,9 @@ function OrderDetailSkeleton() {
 }
 
 export default function OrderDetailView() {
-  const { slug, id } = useParams<{ slug: string; id: string }>()
+  // slug del layout; id de la URL (con export estático `params` trae `_`).
+  const slug = useStoreSlug()
+  const id = String(useRouteId() ?? '')
   const router = useRouter()
   const orderId = Number(id)
 

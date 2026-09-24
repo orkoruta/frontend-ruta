@@ -1,7 +1,10 @@
 'use client'
 
+import { useRouteId } from '@orkoruta/web-shared'
+import { useStoreSlug } from '@/lib/store_route'
+
 import { useState, useEffect } from 'react'
-import { useParams, useRouter } from 'next/navigation'
+import { useRouter } from 'next/navigation'
 import Link from 'next/link'
 import Image from 'next/image'
 import { RutaCard, RutaButton, RutaPill, RutaSectionHeader } from '@orkoruta/ui'
@@ -33,7 +36,9 @@ function ProductSkeleton() {
 }
 
 export default function ProductView() {
-  const { slug, id } = useParams<{ slug: string; id: string }>()
+  // slug del layout; id de la URL (con export estático `params` trae `_`).
+  const slug = useStoreSlug()
+  const id = String(useRouteId() ?? '')
   const router = useRouter()
 
   const [product, setProduct] = useState<Product | null>(null)

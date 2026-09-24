@@ -1,7 +1,9 @@
 'use client'
 
+import { useStoreSlug } from '@/lib/store_route'
+
 import { useState } from 'react'
-import { useParams, useRouter } from 'next/navigation'
+import { useRouter } from 'next/navigation'
 import Link from 'next/link'
 import { RutaButton, RutaCard, RutaPasswordInput } from '@orkoruta/ui'
 import { registerBuyer } from '@/lib/auth.api'
@@ -24,8 +26,8 @@ const inputClass =
 const labelClass = 'block text-sm font-medium text-slate-700 dark:text-slate-300 mb-1'
 
 export function RegisterForm() {
-  const params = useParams()
-  const slug = params.slug as string
+  // El slug viene del layout, ya resuelto desde la URL.
+  const slug = useStoreSlug()
   const router = useRouter()
   const { refresh } = useStore()
 

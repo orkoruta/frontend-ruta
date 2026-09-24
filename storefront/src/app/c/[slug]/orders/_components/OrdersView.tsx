@@ -1,7 +1,9 @@
 'use client'
 
+import { useStoreSlug } from '@/lib/store_route'
+
 import Link from 'next/link'
-import { useParams, useRouter } from 'next/navigation'
+import { useRouter } from 'next/navigation'
 import { useCallback, useEffect, useMemo, useState } from 'react'
 import { RutaButton, RutaCard, RutaPill, RutaSectionHeader } from '@orkoruta/ui'
 import {
@@ -188,7 +190,8 @@ function OrdersSkeleton() {
 }
 
 export default function OrdersView() {
-  const { slug } = useParams<{ slug: string }>()
+  // El slug viene del layout, ya resuelto desde la URL.
+  const slug = useStoreSlug()
   const router = useRouter()
   const [orders, setOrders] = useState<BuyerOrder[]>([])
   const [filter, setFilter] = useState<OrderFilter>('all')

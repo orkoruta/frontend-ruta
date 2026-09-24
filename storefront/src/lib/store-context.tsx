@@ -1,5 +1,7 @@
 'use client'
 
+import { useStoreSlug } from '@/lib/store_route'
+
 /**
  * Estado compartido de la tienda: sesión del comprador y carrito.
  *
@@ -18,7 +20,7 @@ import {
   useMemo,
   useState,
 } from 'react'
-import { useParams } from 'next/navigation'
+
 import { getBuyerProfile, startGuestSession, type BuyerProfile } from '@/lib/auth.api'
 import {
   addItemsToCart,
@@ -44,7 +46,8 @@ interface StoreContextValue {
 const StoreContext = createContext<StoreContextValue | null>(null)
 
 export function StoreProvider({ children }: { children: React.ReactNode }) {
-  const { slug } = useParams<{ slug: string }>()
+  // El slug viene del layout, ya resuelto desde la URL.
+  const slug = useStoreSlug()
   const [profile, setProfile] = useState<BuyerProfile | null>(null)
   const [loadingSession, setLoadingSession] = useState(true)
   const [cart, setCart] = useState<DraftOrder | null>(null)

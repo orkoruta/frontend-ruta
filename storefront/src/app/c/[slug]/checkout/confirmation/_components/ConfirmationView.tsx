@@ -1,7 +1,9 @@
 'use client'
 
+import { useStoreSlug } from '@/lib/store_route'
+
 import Link from 'next/link'
-import { useParams, useSearchParams } from 'next/navigation'
+import { useSearchParams } from 'next/navigation'
 import { useCallback, useEffect, useMemo, useState } from 'react'
 import { RutaButton, RutaCard, RutaPill } from '@orkoruta/ui'
 import {
@@ -166,7 +168,8 @@ function toneClasses(tone: string): string {
 }
 
 export default function ConfirmationView() {
-  const { slug } = useParams<{ slug: string }>()
+  // El slug viene del layout, ya resuelto desde la URL.
+  const slug = useStoreSlug()
   const searchParams = useSearchParams()
   const [order, setOrder] = useState<BuyerOrder | null>(null)
   const [attempts, setAttempts] = useState(0)

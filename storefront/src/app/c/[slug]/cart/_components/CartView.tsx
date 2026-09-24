@@ -1,7 +1,9 @@
 'use client'
 
+import { useStoreSlug } from '@/lib/store_route'
+
 import { useState, useEffect, useCallback } from 'react'
-import { useParams, useRouter } from 'next/navigation'
+import { useRouter } from 'next/navigation'
 import Link from 'next/link'
 import { RutaCard, RutaButton, RutaSectionHeader, RutaPill } from '@orkoruta/ui'
 import {
@@ -120,7 +122,8 @@ function CartItemRow({ item, onUpdate, onRemove, disabled }: CartItemRowProps) {
 }
 
 export default function CartView() {
-  const { slug } = useParams<{ slug: string }>()
+  // El slug viene del layout, ya resuelto desde la URL.
+  const slug = useStoreSlug()
   const router = useRouter()
 
   const [order, setOrder] = useState<DraftOrder | null>(null)

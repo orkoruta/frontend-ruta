@@ -1,7 +1,9 @@
 'use client'
 
+import { useStoreSlug } from '@/lib/store_route'
+
 import { useCallback, useEffect, useMemo, useState } from 'react'
-import { useParams, useRouter } from 'next/navigation'
+import { useRouter } from 'next/navigation'
 import Link from 'next/link'
 import { RutaButton, RutaCard, RutaPill, RutaSectionHeader } from '@orkoruta/ui'
 import { CartApiError, getDraftOrder, type DraftOrder } from '@/lib/cart.api'
@@ -146,7 +148,8 @@ function CheckoutSkeleton() {
 }
 
 export default function CheckoutStepper() {
-  const { slug } = useParams<{ slug: string }>()
+  // El slug viene del layout, ya resuelto desde la URL.
+  const slug = useStoreSlug()
   const router = useRouter()
 
   const [order, setOrder] = useState<DraftOrder | null>(null)

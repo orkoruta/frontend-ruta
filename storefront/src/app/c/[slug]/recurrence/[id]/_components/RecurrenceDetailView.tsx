@@ -1,7 +1,10 @@
 'use client'
 
+import { useRouteId } from '@orkoruta/web-shared'
+import { useStoreSlug } from '@/lib/store_route'
+
 import Link from 'next/link'
-import { useParams, useRouter } from 'next/navigation'
+import { useRouter } from 'next/navigation'
 import { useCallback, useEffect, useState } from 'react'
 import { RutaButton, RutaCard, RutaPill, RutaSectionHeader } from '@orkoruta/ui'
 import {
@@ -83,7 +86,9 @@ function DetailSkeleton() {
 }
 
 export default function RecurrenceDetailView() {
-  const { slug, id } = useParams<{ slug: string; id: string }>()
+  // slug del layout; id de la URL (con export estático `params` trae `_`).
+  const slug = useStoreSlug()
+  const id = String(useRouteId() ?? '')
   const router = useRouter()
   const [template, setTemplate] = useState<RecurrenceTemplate | null>(null)
   const [loading, setLoading] = useState(true)

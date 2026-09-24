@@ -1,7 +1,9 @@
 'use client'
 
 import { useState, useEffect } from 'react'
-import { useParams, usePathname, useRouter } from 'next/navigation'
+import { usePathname, useRouter } from 'next/navigation'
+import { useRouteSegmentAt } from '@orkoruta/web-shared'
+import { StoreSlugProvider } from '@/lib/store_route'
 import Link from 'next/link'
 import Image from 'next/image'
 import { getClientBySlug, type ClientPublicInfo } from '@/lib/catalog.api'
@@ -114,7 +116,13 @@ function HeaderActions({ slug }: { slug: string }) {
 }
 
 export default function ClientLayout({ children }: { children: React.ReactNode }) {
-  const { slug } = useParams<{ slug: string }>()
+  /*
+   * El slug sale de la URL, no de `useParams()`: con export estático el árbol
+   * de rutas lleva horneado el marcador `_` y `useParams()` devolvería eso en
+   * vez de la tienda que pidió el visitante. Índice 1 porque la ruta es
+   * `/c/{slug}/...`.
+   */
+  const slug = useRouteSegmentAt(1)
   const pathname = usePathname()
   // En login/registro no tiene sentido el botón "Iniciar sesión" (apuntaría a la
   // misma página) ni el carrito: se ocultan las acciones del header.
@@ -128,7 +136,21 @@ export default function ClientLayout({ children }: { children: React.ReactNode }
       .catch(() => setClientInfo(null))
   }, [slug])
 
+  /*
+   * Nada se pinta hasta resolver el slug. Así el resto del storefront lo recibe
+   * por contexto siempre con valor, y ninguna pantalla tiene que comprobar si
+   * llegó: es donde se colaban los fallos.
+   */
+  if (!slug) {
+    return (
+      <div className="flex min-h-screen items-center justify-center bg-[#f3f4f6] dark:bg-[#111214]">
+        <p className="text-sm text-slate-500 dark:text-slate-400">Cargando la tienda…</p>
+      </div>
+    )
+  }
+
   return (
+    <StoreSlugProvider slug={slug}>
     <StoreProvider>
       <div className="flex min-h-screen flex-col bg-[#f3f4f6] text-slate-950 dark:bg-[#111214] dark:text-slate-100">
         {/* Header */}
@@ -183,5 +205,6 @@ export default function ClientLayout({ children }: { children: React.ReactNode }
         </footer>
       </div>
     </StoreProvider>
+    </StoreSlugProvider>
   )
 }

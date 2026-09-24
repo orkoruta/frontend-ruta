@@ -38,6 +38,26 @@ export function useRouteSegment(posicionDesdeElFinal = 0): string | null {
   return valor
 }
 
+/**
+ * Lee un segmento contando **desde el principio** de la ruta.
+ *
+ * Hace falta para parámetros cuya posición desde el final cambia según la
+ * pantalla. El slug del storefront es el caso: en `/c/{slug}` es el último, en
+ * `/c/{slug}/cart` el penúltimo y en `/c/{slug}/orders/{id}` el antepenúltimo.
+ * Desde el principio siempre es el índice 1.
+ */
+export function useRouteSegmentAt(indice: number): string | null {
+  const [valor, setValor] = useState<string | null>(null)
+
+  useEffect(() => {
+    const partes = window.location.pathname.split('/').filter(Boolean)
+    const bruto = partes[indice]
+    setValor(bruto && bruto !== '_' ? decodeURIComponent(bruto) : null)
+  }, [indice])
+
+  return valor
+}
+
 /** Igual que `useRouteSegment` pero numérico, para los ids BIGINT de RUTA. */
 export function useRouteId(posicionDesdeElFinal = 0): number | null {
   const bruto = useRouteSegment(posicionDesdeElFinal)

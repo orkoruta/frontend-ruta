@@ -1,7 +1,9 @@
 'use client'
 
+import { useStoreSlug } from '@/lib/store_route'
+
 import Link from 'next/link'
-import { useParams, useRouter } from 'next/navigation'
+import { useRouter } from 'next/navigation'
 import { useCallback, useEffect, useState } from 'react'
 import { RutaButton, RutaCard, RutaPill, RutaSectionHeader } from '@orkoruta/ui'
 import {
@@ -81,7 +83,8 @@ function RecurrenceSkeleton() {
 }
 
 export default function RecurrenceView() {
-  const { slug } = useParams<{ slug: string }>()
+  // El slug viene del layout, ya resuelto desde la URL.
+  const slug = useStoreSlug()
   const router = useRouter()
   const [templates, setTemplates] = useState<RecurrenceTemplate[]>([])
   const [loading, setLoading] = useState(true)
