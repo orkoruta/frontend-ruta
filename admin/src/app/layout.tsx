@@ -1,5 +1,6 @@
 import type { Metadata } from 'next'
 import './globals.css'
+import { SessionRefresh } from '@/components/SessionRefresh'
 
 export const metadata: Metadata = {
   // El favicon lo resuelve Next con `src/app/icon.svg` (el imagotipo).
@@ -13,6 +14,7 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
     // modo 'media'), así que no hace falta script anti-FOUC ni clase en <html>.
     <html lang="es">
       <body className="bg-[#f3f4f6] dark:bg-[#111214] text-slate-950 dark:text-slate-100 font-sans antialiased">
+        <SessionRefresh />
         {children}
       </body>
     </html>

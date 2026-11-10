@@ -1,5 +1,6 @@
 import type { Metadata } from 'next'
 import './globals.css'
+import { SessionRefresh } from '@/components/SessionRefresh'
 
 export const metadata: Metadata = {
   // El favicon lo resuelve Next con `src/app/icon.svg` (el imagotipo). El
@@ -11,7 +12,10 @@ export const metadata: Metadata = {
 export default function RootLayout({ children }: { children: React.ReactNode }) {
   return (
     <html lang="es" suppressHydrationWarning>
-      <body>{children}</body>
+      <body>
+        <SessionRefresh />
+        {children}
+      </body>
     </html>
   )
 }
