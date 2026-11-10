@@ -11,7 +11,24 @@ const NOW = '2026-05-29T12:00:00.000Z'
 
 type UserType = 'ADMIN_CLIENT' | 'OPERATOR_CLIENT'
 type OrderStatus = string
-type PaymentMethod = 'ONLINE_AT_ORDER' | 'ON_DELIVERY'
+// Valores reales del backend. `ON_DELIVERY` a secas no existe: con él el panel
+// no trataba el pedido como contra entrega y el paso de cobro no aparecía.
+type PaymentMethod = 'ONLINE_AT_ORDER' | 'CASH_ON_DELIVERY'
+
+/*
+ * La API mockeada está en otro origen (3001) que el panel (3002): sin
+ * preflight ni cabeceras CORS el navegador corta la petición y la pantalla
+ * muestra «Failed to fetch» en vez de la respuesta simulada.
+ */
+const CORS = {
+  'Access-Control-Allow-Origin': 'http://127.0.0.1:3002',
+  'Access-Control-Allow-Credentials': 'true',
+}
+const PREFLIGHT = {
+  ...CORS,
+  'Access-Control-Allow-Methods': 'GET,POST,OPTIONS',
+  'Access-Control-Allow-Headers': 'Content-Type,X-Idempotency-Key',
+}
 
 async function setSession(page: Page, userType: UserType) {
   await page.addInitScript(({ type }) => {
@@ -133,18 +150,20 @@ test.describe('Flujo PICKUP completo', () => {
     await page.route('http://127.0.0.1:3001/**', async (route) => {
       const path = new URL(route.request().url()).pathname
       const method = route.request().method()
-      if (path === `/admin/orders/${orderId}` && method === 'GET') {
-        await route.fulfill({ status: 200, contentType: 'application/json', body: JSON.stringify(makePickupOrder(orderId, status, 'ON_DELIVERY', collectionDone ? 'PAYMENT_COLLECTED' : 'PENDING_COLLECTION')) })
+      if (method === 'OPTIONS') {
+        await route.fulfill({ status: 204, headers: PREFLIGHT })
+      } else if (path === `/admin/orders/${orderId}` && method === 'GET') {
+        await route.fulfill({ status: 200, contentType: 'application/json', headers: CORS, body: JSON.stringify(makePickupOrder(orderId, status, 'CASH_ON_DELIVERY', collectionDone ? 'PAYMENT_COLLECTED' : 'PENDING_COLLECTION')) })
       } else if (path === `/admin/orders/${orderId}/verify-pickup-identity`) {
         // No cambiar status: PickupActions sigue visible (condición READY_FOR_PICKUP)
-        await route.fulfill({ status: 204 })
+        await route.fulfill({ status: 204, headers: CORS })
       } else if (path === `/admin/orders/${orderId}/pickup-collection`) {
         collectionDone = true
         // No cambiar status: PickupActions sigue visible
-        await route.fulfill({ status: 204 })
+        await route.fulfill({ status: 204, headers: CORS })
       } else if (path === `/admin/orders/${orderId}/mark-pickup-delivered`) {
         status = 'DELIVERED'
-        await route.fulfill({ status: 204 })
+        await route.fulfill({ status: 204, headers: CORS })
       } else {
         await route.continue()
       }
@@ -260,16 +279,21 @@ test.describe('Flujo PICKUP completo', () => {
     await page.route('http://127.0.0.1:3001/**', async (route) => {
       const path = new URL(route.request().url()).pathname
       const method = route.request().method()
-      if (path === `/admin/orders/${orderId}` && method === 'GET') {
-        await route.fulfill({ status: 200, contentType: 'application/json', body: JSON.stringify(makePickupOrder(orderId, 'READY_FOR_PICKUP', 'ONLINE_AT_ORDER', 'PAID')) })
+      if (method === 'OPTIONS') {
+        await route.fulfill({ status: 204, headers: PREFLIGHT })
+      } else if (path === `/admin/orders/${orderId}` && method === 'GET') {
+        await route.fulfill({ status: 200, contentType: 'application/json', headers: CORS, body: JSON.stringify(makePickupOrder(orderId, 'READY_FOR_PICKUP', 'ONLINE_AT_ORDER', 'PAID')) })
       } else if (path === `/admin/orders/${orderId}/verify-pickup-identity`) {
         await route.fulfill({
           status: 422,
           contentType: 'application/json',
+          headers: CORS,
           body: JSON.stringify({ code: 'INVALID_STATE_TRANSITION', message: 'Documento no coincide con el comprador del pedido.' }),
         })
       } else {
-        await route.continue()
+        // Lo que no se simula responde 404: dejarlo pasar a una API que no
+        // existe producía otra alerta («Failed to fetch») antes que esta.
+        await route.fulfill({ status: 404, contentType: 'application/json', headers: CORS, body: JSON.stringify({ code: 'RESOURCE_NOT_FOUND', message: 'No simulado' }) })
       }
     })
 
@@ -282,7 +306,9 @@ test.describe('Flujo PICKUP completo', () => {
     await expect(btn).toBeEnabled()
     await btn.click()
 
-    await expect(page.getByRole('alert').first()).toContainText('Documento no coincide con el comprador del pedido.')
+    await expect(
+      page.getByRole('alert').filter({ hasText: 'Documento no coincide con el comprador del pedido.' }),
+    ).toBeVisible()
     await expect(page.getByRole('button', { name: 'Verificar identidad' })).toBeEnabled()
   })
 })

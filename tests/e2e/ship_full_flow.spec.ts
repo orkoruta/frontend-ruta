@@ -51,9 +51,15 @@ test.describe('Sprint 3 SHIP flow', () => {
                 latitude: 4.676,
                 longitude: -74.048,
                 buyer_id: 41,
+                // Sin repartidor: `courier_user_id` tiene que venir en null
+                // (undefined lo daba por asignado y no ofrecía «Asignar»).
+                courier_user_id: null,
+                courier_name: null,
+                courier_phone: null,
                 total: 125000,
                 currency: 'COP',
                 created_at: NOW,
+                scheduled_delivery_date: null,
               },
             ],
       })
@@ -68,6 +74,9 @@ test.describe('Sprint 3 SHIP flow', () => {
             email: 'courier@example.test',
             phone: '+573001112233',
             status: 'ACTIVE',
+            active_orders: 1,
+            max_concurrent_orders: 3,
+            remaining_capacity: 2,
           },
         ],
       })
@@ -82,14 +91,16 @@ test.describe('Sprint 3 SHIP flow', () => {
 
     await expect(page.getByRole('heading', { name: /Mapa de asignaci.n/ })).toBeVisible()
     await page.getByRole('button', { name: /#501/ }).click()
-    await expect(page.getByText('Carlos Courier')).toBeVisible()
 
-    await page.getByRole('button', { name: 'Asignar' }).click()
-    await expect(page.getByRole('dialog', { name: 'Asignar repartidor' })).toBeVisible()
-    await page.getByRole('button', { name: /Confirmar asignaci.n/ }).click()
+    // Los repartidores se piden al abrir el modal, no al seleccionar el pedido.
+    await page.getByRole('button', { name: 'Asignar', exact: true }).click()
+    const dialog = page.getByRole('dialog', { name: 'Pedido #501' })
+    await expect(dialog).toBeVisible()
+    await dialog.getByRole('button', { name: /Carlos Courier/ }).click()
+    await dialog.getByRole('button', { name: 'Asignar a Carlos Courier' }).click()
 
     await expect(page.getByText('Repartidor Carlos Courier asignado correctamente.')).toBeVisible()
-    await expect(page.getByText(/No hay pedidos pendientes de asignaci.n./)).toBeVisible()
+    await expect(page.getByText('Ningún pedido coincide')).toBeVisible()
   })
 
   test('courier completes COD delivery from assigned to delivered', async ({ page }) => {
@@ -101,7 +112,17 @@ test.describe('Sprint 3 SHIP flow', () => {
     const orderDetail = () => ({
       id: 501,
       order_status: status,
-      delivery_address: 'Calle 93 #15-20, Bogota',
+      delivery_address: {
+        line: 'Calle 93 #15-20',
+        city: 'Bogota',
+        state: 'Bogotá D.C.',
+        country: 'CO',
+        postal_code: null,
+        latitude: 4.676,
+        longitude: -74.048,
+        instructions: null,
+      },
+      scheduled_delivery_date: null,
       buyer: {
         name: 'Ana Compradora',
         phone: '+573004445566',
@@ -116,7 +137,9 @@ test.describe('Sprint 3 SHIP flow', () => {
         },
       ],
       total: 125000,
-      payment_method: 'ON_DELIVERY',
+      // `ON_DELIVERY` no es un método real: con él el pedido no se trataba
+      // como contra entrega y nunca aparecía el formulario de cobro.
+      payment_method: 'CASH_ON_DELIVERY',
       collection_recorded: collectionRecorded,
       history: [
         {
@@ -166,7 +189,7 @@ test.describe('Sprint 3 SHIP flow', () => {
     await expect(page.getByText('Marcado en camino.')).toBeVisible()
 
     await page.getByRole('button', { name: /Llegu. al cliente/ }).click()
-    await expect(page.getByText('Registrar cobro')).toBeVisible()
+    await expect(page.getByText('Registrar cobro', { exact: true })).toBeVisible()
 
     await page.locator('input[type="file"]').setInputFiles({
       name: 'recibo.jpg',
@@ -189,7 +212,17 @@ test.describe('Sprint 3 SHIP flow', () => {
     const orderDetail = () => ({
       id: 502,
       order_status: status,
-      delivery_address: 'Carrera 7 #72-10, Bogota',
+      delivery_address: {
+        line: 'Carrera 7 #72-10',
+        city: 'Bogota',
+        state: 'Bogotá D.C.',
+        country: 'CO',
+        postal_code: null,
+        latitude: null,
+        longitude: null,
+        instructions: null,
+      },
+      scheduled_delivery_date: null,
       buyer: {
         name: 'Luis Cliente',
         phone: '+573007778899',
@@ -232,7 +265,7 @@ test.describe('Sprint 3 SHIP flow', () => {
     await page.getByRole('button', { name: 'Confirmar' }).click()
 
     await expect(page.getByText('Intento de entrega registrado.')).toBeVisible()
-    await expect(page.getByText('Intento fallido').first()).toBeVisible()
+    await expect(page.getByText('Intento de entrega fallido').first()).toBeVisible()
   })
 
   test('courier dashboard shows system-confirmed completed orders', async ({ page }) => {
@@ -244,7 +277,17 @@ test.describe('Sprint 3 SHIP flow', () => {
           {
             id: 503,
             order_status: 'CONFIRMED_BY_SYSTEM',
-            delivery_address: 'Avenida Chile #10-10',
+            delivery_address: {
+              line: 'Avenida Chile #10-10',
+              city: 'Bogota',
+              state: 'Bogotá D.C.',
+              country: 'CO',
+              postal_code: null,
+              latitude: null,
+              longitude: null,
+              instructions: null,
+            },
+            scheduled_delivery_date: null,
             buyer_name: 'Marta Cliente',
             buyer_phone: '+573009990000',
             total: 72000,
@@ -258,7 +301,7 @@ test.describe('Sprint 3 SHIP flow', () => {
 
     await page.goto('/courier')
 
-    await expect(page.getByText('Confirmado').first()).toBeVisible()
+    await expect(page.getByText('Entrega confirmada automáticamente').first()).toBeVisible()
     await page.getByRole('button', { name: /Completados hoy/ }).click()
     await expect(page.getByText('entregas completadas hoy')).toBeVisible()
     await expect(page.getByText('1', { exact: true }).last()).toBeVisible()

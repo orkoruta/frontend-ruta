@@ -94,7 +94,9 @@ test.describe('Cancelación solicitada por buyer', () => {
         return
       }
 
-      if (path === `/admin/orders/${orderId}/cancel-request/approve`) {
+      // Ruta real del backend (antes la prueba simulaba `/cancel-request/approve`,
+      // que no existe: pasaba aquí y daba 404 en producción).
+      if (path === `/admin/orders/${orderId}/approve-cancel-request`) {
         status = 'CANCELLED_BY_ADMIN'
         await route.fulfill({
           status: 200,
@@ -180,8 +182,10 @@ test.describe('Auditoría ADMIN_CLIENT', () => {
           status: 200,
           contentType: 'application/json',
           headers: { 'Access-Control-Allow-Origin': 'http://127.0.0.1:3002', 'Access-Control-Allow-Credentials': 'true' },
+          // La API responde `data` (no `items`): con `items` la tabla leía
+          // `undefined.length` y la página reventaba.
           body: JSON.stringify({
-            items: EVENTS,
+            data: EVENTS,
             pagination: { page: 1, page_size: 25, total: 1 },
           }),
         })
@@ -217,7 +221,7 @@ test.describe('Vista de Control ADMIN_RUTA', () => {
         status: 200,
         contentType: 'application/json',
         body: JSON.stringify({
-          items: [{ id: 1, name: 'Piloto Demo', slug: 'piloto', status: 'ACTIVE', client_type: 'FULL', frontend_mode: 'NATIVE_RUTA' }],
+          data: [{ id: 1, name: 'Piloto Demo', slug: 'piloto', status: 'ACTIVE', client_type: 'FULL', frontend_mode: 'NATIVE_RUTA' }],
           pagination: { page: 1, page_size: 200, total: 1 },
         }),
       })
