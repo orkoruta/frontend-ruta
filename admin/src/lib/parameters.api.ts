@@ -10,6 +10,8 @@ export interface Parameter {
   /** GLOBAL = heredado del default de plataforma; CLIENT = personalizado por este Cliente. */
   source?: 'GLOBAL' | 'CLIENT'
   is_overrideable_by_client?: boolean
+  /** INTEGER | DECIMAL | STRING | BOOLEAN | JSON */
+  value_type?: string
 }
 
 export interface ApiError {

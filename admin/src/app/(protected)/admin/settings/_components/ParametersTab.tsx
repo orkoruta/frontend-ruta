@@ -8,6 +8,14 @@ import {
   type ApiError,
   type Parameter,
 } from '@/lib/parameters.api'
+import {
+  SECTION_LABELS,
+  SECTION_ORDER,
+  humanizeDuration,
+  parameterInfo,
+  type ParameterInfo,
+  type ParameterSection,
+} from '@/lib/parameter_catalog'
 
 type SaveState = 'idle' | 'saving' | 'success' | 'error'
 
@@ -18,39 +26,31 @@ interface RowState {
 }
 
 /**
- * El backend no envía `group`; el grupo es el prefijo de la clave
- * (`limits.max_couriers_per_client` → `limits`). Sin esto todo caía en un solo
- * bloque "General".
+ * Agrupa por sección del catálogo (`lib/parameter_catalog.ts`), no por el
+ * prefijo de la clave: el Cliente piensa en «Repartidores» o «Pedidos», no en
+ * `limits.*` u `order.*`. Dentro de cada sección, los que el Cliente ya
+ * personalizó van primero.
  */
-function paramGroup(p: Parameter): string {
-  if (p.group) return p.group
-  const [prefix, ...rest] = p.parameter_key.split('.')
-  return rest.length > 0 && prefix ? prefix : 'general'
+interface CatalogedParameter {
+  param: Parameter
+  info: ParameterInfo
 }
 
-function groupParams(params: Parameter[]): Map<string, Parameter[]> {
-  const map = new Map<string, Parameter[]>()
-  for (const p of params) {
-    const group = paramGroup(p)
-    const existing = map.get(group)
-    if (existing) {
-      existing.push(p)
-    } else {
-      map.set(group, [p])
-    }
+function groupBySection(params: Parameter[]): Map<ParameterSection, CatalogedParameter[]> {
+  const map = new Map<ParameterSection, CatalogedParameter[]>()
+  for (const param of params) {
+    const info = parameterInfo(param.parameter_key, param.is_overrideable_by_client === false)
+    const list = map.get(info.section) ?? []
+    list.push({ param, info })
+    map.set(info.section, list)
   }
-  return map
+  return new Map(
+    SECTION_ORDER.filter((s) => map.has(s)).map((s) => [s, map.get(s)!] as const),
+  )
 }
 
-function formatGroupLabel(group: string): string {
-  return group.replace(/_/g, ' ').replace(/\b\w/g, (c) => c.toUpperCase())
-}
-
-function formatParamKey(key: string): string {
-  const parts = key.split('.')
-  const last = parts[parts.length - 1] ?? key
-  return last.replace(/_/g, ' ').replace(/\b\w/g, (c) => c.toUpperCase())
-}
+/** Secciones que se muestran plegadas: no tienen efecto o no son del Cliente. */
+const COLLAPSED_SECTIONS: ReadonlySet<ParameterSection> = new Set(['inactive', 'technical'])
 
 const INPUT_CLASS =
   'flex-1 rounded-md border border-slate-200 bg-white/[0.85] px-3 py-2 text-sm text-slate-900 placeholder-slate-400 focus:outline-none focus:ring-2 focus:ring-brand-400/[0.4] dark:border-white/10 dark:bg-white/[0.055] dark:text-slate-100'
@@ -180,79 +180,129 @@ export function ParametersTab() {
     )
   }
 
-  const grouped = groupParams(params)
+  const grouped = groupBySection(params)
+
+  function renderRow({ param: p, info }: CatalogedParameter) {
+    const row = rowStates[p.parameter_key]
+    const isDirty = row?.draft !== p.parameter_value
+    const isSaving = row?.saveState === 'saving'
+    const fixed = p.is_overrideable_by_client === false
+    const draft = row?.draft ?? p.parameter_value
+    const isBoolean = p.value_type === 'BOOLEAN' || draft === 'true' || draft === 'false'
+    const hint = humanizeDuration(draft, info.unit)
+
+    return (
+      <div key={p.parameter_key} className="flex flex-col gap-1">
+        <div className="flex flex-wrap items-center gap-2">
+          <label
+            htmlFor={`param-${p.parameter_key}`}
+            className="text-sm font-semibold text-slate-900 dark:text-slate-100"
+          >
+            {info.label}
+          </label>
+          {fixed ? (
+            <span className="rounded border border-slate-200 bg-white/[0.06] px-1.5 py-0.5 text-[10px] font-semibold text-slate-500 dark:border-white/10 dark:text-slate-400">
+              lo administra RUTA
+            </span>
+          ) : p.source === 'CLIENT' ? (
+            <span className="rounded border border-brand-400/25 bg-brand-500/[0.12] px-1.5 py-0.5 text-[10px] font-semibold text-brand-700 dark:text-brand-300">
+              valor tuyo
+            </span>
+          ) : (
+            <span className="rounded border border-slate-200 bg-white/[0.06] px-1.5 py-0.5 text-[10px] font-semibold text-slate-500 dark:border-white/10 dark:text-slate-400">
+              valor por defecto
+            </span>
+          )}
+        </div>
+        {(info.help || p.description) && (
+          <p className="text-xs text-slate-500 dark:text-slate-400">{info.help || p.description}</p>
+        )}
+        <div className="flex flex-wrap items-center gap-2">
+          {isBoolean ? (
+            <select
+              id={`param-${p.parameter_key}`}
+              value={draft}
+              onChange={(e) => handleChange(p.parameter_key, e.target.value)}
+              className={INPUT_CLASS + ' max-w-[10rem]'}
+              disabled={isSaving || fixed}
+            >
+              <option value="true">Sí</option>
+              <option value="false">No</option>
+            </select>
+          ) : (
+            <input
+              id={`param-${p.parameter_key}`}
+              value={draft}
+              inputMode={p.value_type === 'INTEGER' || p.value_type === 'DECIMAL' ? 'decimal' : undefined}
+              onChange={(e) => handleChange(p.parameter_key, e.target.value)}
+              className={INPUT_CLASS + ' max-w-[12rem]'}
+              disabled={isSaving || fixed}
+            />
+          )}
+          {info.unit && (
+            <span className="text-sm text-slate-600 dark:text-slate-300">{info.unit}</span>
+          )}
+          {hint && <span className="text-xs text-slate-500 dark:text-slate-400">{hint}</span>}
+          {!fixed && (
+            <RutaButton
+              type="button"
+              size="sm"
+              variant={row?.saveState === 'success' ? 'success' : 'primary'}
+              disabled={!isDirty || isSaving}
+              onClick={() => void handleSave(p.parameter_key)}
+            >
+              {isSaving ? 'Guardando…' : row?.saveState === 'success' ? 'Guardado' : 'Guardar'}
+            </RutaButton>
+          )}
+        </div>
+        {row?.saveState === 'error' && row.errorMsg && (
+          <p role="alert" className="text-xs text-rose-600 dark:text-rose-400">
+            {row.errorMsg}
+          </p>
+        )}
+        {row?.saveState === 'success' && (
+          <p role="status" className="text-xs text-emerald-600 dark:text-emerald-400">
+            Guardado. Aplica desde ya.
+          </p>
+        )}
+      </div>
+    )
+  }
 
   return (
     <div className="flex flex-col gap-4">
-      {Array.from(grouped.entries()).map(([group, groupParams]) => (
-        <RutaCard key={group}>
-          <RutaSectionHeader
-            title={formatGroupLabel(group)}
-            subtitle="parámetros"
-          />
+      {Array.from(grouped.entries()).map(([section, items]) => {
+        const labels = SECTION_LABELS[section]
+        const rows = <div className="flex flex-col gap-5">{items.map(renderRow)}</div>
 
-          <div className="flex flex-col gap-3">
-            {groupParams.map((p) => {
-              const row = rowStates[p.parameter_key]
-              const isDirty = row?.draft !== p.parameter_value
-              const isSaving = row?.saveState === 'saving'
+        if (COLLAPSED_SECTIONS.has(section)) {
+          return (
+            <RutaCard key={section}>
+              <details>
+                <summary className="cursor-pointer select-none text-sm font-semibold text-slate-700 dark:text-slate-300">
+                  {labels.title}{' '}
+                  <span className="font-normal text-slate-500 dark:text-slate-400">
+                    ({items.length}) — {labels.subtitle}
+                  </span>
+                </summary>
+                <p className="mb-4 mt-2 rounded-md border border-amber-400/30 bg-amber-500/[0.1] px-3 py-2 text-xs text-amber-800 dark:text-amber-200">
+                  {section === 'inactive'
+                    ? 'Estos ajustes todavía no cambian nada en el sistema: están reservados para funciones que vienen. Puedes dejarlos como están.'
+                    : 'Ajustes internos de la plataforma. No se pueden cambiar desde aquí.'}
+                </p>
+                {rows}
+              </details>
+            </RutaCard>
+          )
+        }
 
-              return (
-                <div key={p.parameter_key} className="flex flex-col gap-1">
-                  <div className="flex items-center gap-2">
-                    <label className="text-[11px] font-bold uppercase tracking-[0.18em] text-slate-500 dark:text-slate-400">
-                      {formatParamKey(p.parameter_key)}
-                    </label>
-                    {p.is_overrideable_by_client === false ? (
-                      <span className="rounded border border-slate-200 bg-white/[0.06] px-1.5 py-0.5 text-[10px] font-semibold text-slate-500 dark:border-white/10 dark:text-slate-400">
-                        fijado por RUTA
-                      </span>
-                    ) : p.source === 'CLIENT' ? (
-                      <span className="rounded border border-brand-400/25 bg-brand-500/[0.12] px-1.5 py-0.5 text-[10px] font-semibold text-brand-700 dark:text-brand-300">
-                        personalizado
-                      </span>
-                    ) : (
-                      <span className="rounded border border-slate-200 bg-white/[0.06] px-1.5 py-0.5 text-[10px] font-semibold text-slate-500 dark:border-white/10 dark:text-slate-400">
-                        heredado
-                      </span>
-                    )}
-                  </div>
-                  {p.description && (
-                    <p className="text-xs text-slate-500 dark:text-slate-400">{p.description}</p>
-                  )}
-                  <div className="flex items-center gap-2">
-                    <input
-                      value={row?.draft ?? p.parameter_value}
-                      onChange={(e) => handleChange(p.parameter_key, e.target.value)}
-                      className={INPUT_CLASS}
-                      disabled={isSaving || p.is_overrideable_by_client === false}
-                    />
-                    <RutaButton
-                      type="button"
-                      size="sm"
-                      variant={row?.saveState === 'success' ? 'success' : 'primary'}
-                      disabled={!isDirty || isSaving || p.is_overrideable_by_client === false}
-                      onClick={() => void handleSave(p.parameter_key)}
-                    >
-                      {isSaving ? 'Guardando…' : row?.saveState === 'success' ? 'Guardado' : 'Guardar'}
-                    </RutaButton>
-                  </div>
-                  {row?.saveState === 'error' && row.errorMsg && (
-                    <p role="alert" className="text-xs text-rose-600 dark:text-rose-400">
-                      {row.errorMsg}
-                    </p>
-                  )}
-                  {row?.saveState === 'success' && (
-                    <p role="status" className="text-xs text-emerald-600 dark:text-emerald-400">
-                      Parámetro actualizado correctamente.
-                    </p>
-                  )}
-                </div>
-              )
-            })}
-          </div>
-        </RutaCard>
-      ))}
+        return (
+          <RutaCard key={section}>
+            <RutaSectionHeader title={labels.title} subtitle={labels.subtitle} />
+            {rows}
+          </RutaCard>
+        )
+      })}
     </div>
   )
 }
