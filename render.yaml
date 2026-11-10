@@ -36,6 +36,12 @@ services:
       /tmp/pnpm-bin/node_modules/.bin/pnpm --filter @ruta/admin build
     staticPublishPath: ./admin/out
     routes:
+      # Proxy de la API en el mismo dominio: la cookie de sesión queda de
+      # primera parte. Sin esto Safari/Firefox la descartan (onrender.com es
+      # sufijo público) y la sesión muere al instante. Va primero.
+      - type: rewrite
+        source: /api/*
+        destination: https://ruta-orko-api.onrender.com/*
       # Estáticas bajo un comodín — antes que el comodín.
       - type: rewrite
         source: /admin/orders/corporate/new
@@ -99,8 +105,10 @@ services:
       # para no pelear con el servidor de desarrollo.
       - key: NEXT_OUTPUT_EXPORT
         value: "1"
+      # Relativa: pasa por el proxy `/api/*` de arriba (ver ahí el porqué).
+      # Así está en producción desde 2bb6143; el yaml se había quedado atrás.
       - key: NEXT_PUBLIC_API_URL
-        value: https://ruta-orko-api.onrender.com
+        value: /api
       # Clave de NAVEGADOR de Google Maps, restringida por dominio (referrer).
       # No es la misma que la del backend (GOOGLE_MAPS_API_KEY, restringida por IP).
       - key: NEXT_PUBLIC_GOOGLE_MAPS_API_KEY
@@ -123,6 +131,12 @@ services:
       /tmp/pnpm-bin/node_modules/.bin/pnpm --filter @ruta/storefront build
     staticPublishPath: ./storefront/out
     routes:
+      # Proxy de la API en el mismo dominio: la cookie de sesión queda de
+      # primera parte. Sin esto Safari/Firefox la descartan (onrender.com es
+      # sufijo público) y la sesión muere al instante. Va primero.
+      - type: rewrite
+        source: /api/*
+        destination: https://ruta-orko-api.onrender.com/*
       - type: rewrite
         source: /c/*/checkout/confirmation
         destination: /c/_/checkout/confirmation.html
@@ -161,8 +175,10 @@ services:
         value: "22"
       - key: NEXT_OUTPUT_EXPORT
         value: "1"
+      # Relativa: pasa por el proxy `/api/*` de arriba (ver ahí el porqué).
+      # Así está en producción desde 2bb6143; el yaml se había quedado atrás.
       - key: NEXT_PUBLIC_API_URL
-        value: https://ruta-orko-api.onrender.com
+        value: /api
       - key: NEXT_PUBLIC_GOOGLE_MAPS_API_KEY
         sync: false
       - key: NPM_TOKEN
