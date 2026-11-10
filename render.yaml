@@ -44,6 +44,15 @@ services:
         source: /admin/orders/map
         destination: /admin/orders/map.html
       - type: rewrite
+        source: /admin/orders/retail/new
+        destination: /admin/orders/retail/new.html
+      - type: rewrite
+        source: /admin/orders/dispatch
+        destination: /admin/orders/dispatch.html
+      - type: rewrite
+        source: /admin/orders/collections
+        destination: /admin/orders/collections.html
+      - type: rewrite
         source: /admin/products/new
         destination: /admin/products/new.html
       - type: rewrite

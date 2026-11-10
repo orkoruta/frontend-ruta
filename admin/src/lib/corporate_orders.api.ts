@@ -13,9 +13,18 @@ export interface CorporateContact {
   phone?: string
 }
 
-export interface CorporateOrderItem {
-  product_id: number
-  quantity: number
+/**
+ * Un producto del catálogo **o** una línea libre (descripción + precio), para
+ * lo que cada restaurante pide distinto y no está en el catálogo.
+ */
+export type CorporateOrderItem =
+  | { product_id: number; quantity: number }
+  | { description: string; unit_price: number; quantity: number }
+
+/** Comprador registrado en el momento, sin cuenta (como un invitado). */
+export interface NewBuyerInput {
+  full_name: string
+  phone: string
 }
 
 /** Destino en SHIP. Las coordenadas son obligatorias: el mapa de asignación
@@ -32,7 +41,11 @@ export interface CorporateDeliveryAddressInput {
 }
 
 export interface CreateCorporateOrderInput {
-  buyer_id: number
+  /** Comprador existente. Alternativa: `new_buyer`. */
+  buyer_id?: number
+  new_buyer?: NewBuyerInput
+  /** `INDIVIDUAL` = pedido al detal tomado por el staff. Por defecto, corporativo. */
+  buyer_type?: 'CORPORATE' | 'INDIVIDUAL'
   corporate_contact: CorporateContact
   items: CorporateOrderItem[]
   delivery_type: DeliveryType

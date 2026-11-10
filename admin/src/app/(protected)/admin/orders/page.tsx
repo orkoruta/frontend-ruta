@@ -19,6 +19,7 @@ import {
   adminStatusColor,
   STATUS_BADGE_CLASSES,
 } from '@/lib/admin_status_labels'
+import { listCouriers, type Courier } from '@/lib/users.api'
 
 const PAGE_SIZE = 20
 
@@ -116,6 +117,9 @@ export default function AdminOrdersPage() {
   const [dateFrom, setDateFrom] = useState('')
   const [dateTo, setDateTo] = useState('')
   const [orderOrigin, setOrderOrigin] = useState<OrderOrigin | ''>('')
+  // El backend ya filtraba por repartidor; la pantalla no lo ofrecía.
+  const [courierId, setCourierId] = useState('')
+  const [couriers, setCouriers] = useState<Courier[]>([])
 
   const totalPages = useMemo(() => Math.max(1, Math.ceil(total / PAGE_SIZE)), [total])
 
@@ -123,6 +127,13 @@ export default function AdminOrdersPage() {
     session?.user_type === 'ADMIN_RUTA' ||
     session?.user_type === 'ADMIN_CLIENT' ||
     session?.user_type === 'OPERATOR_CLIENT'
+
+  useEffect(() => {
+    if (!isAllowed) return
+    listCouriers({ page_size: 100 })
+      .then((res) => setCouriers(res.data ?? []))
+      .catch(() => setCouriers([]))
+  }, [isAllowed])
 
   useEffect(() => {
     if (!isAllowed) return
@@ -142,6 +153,7 @@ export default function AdminOrdersPage() {
         date_from: dateFrom || undefined,
         date_to: dateTo || undefined,
         order_origin: orderOrigin || undefined,
+        courier_id: courierId ? Number(courierId) : undefined,
       }
 
       try {
@@ -161,7 +173,7 @@ export default function AdminOrdersPage() {
     void load()
 
     return () => { active = false }
-  }, [isAllowed, page, q, status, paymentStatus, dateFrom, dateTo, orderOrigin])
+  }, [isAllowed, page, q, status, paymentStatus, dateFrom, dateTo, orderOrigin, courierId])
 
   function applySearch(e: FormEvent) {
     e.preventDefault()
@@ -177,6 +189,7 @@ export default function AdminOrdersPage() {
     setDateFrom('')
     setDateTo('')
     setOrderOrigin('')
+    setCourierId('')
     setPage(1)
   }
 
@@ -193,7 +206,7 @@ export default function AdminOrdersPage() {
 
   return (
     <div className="mx-auto flex max-w-7xl flex-col gap-5">
-      <div className="flex items-start justify-between gap-4">
+      <div className="flex flex-wrap items-start justify-between gap-4">
         <div>
           <p className="text-[11px] font-bold uppercase tracking-[0.24em] text-slate-500 dark:text-slate-400">
             operaciones
@@ -202,12 +215,32 @@ export default function AdminOrdersPage() {
             Pedidos
           </h1>
         </div>
-        <Link
-          href="/admin/orders/corporate/new"
-          className="mt-1 inline-flex items-center rounded-md border border-violet-400/40 bg-violet-500/[0.12] px-4 py-2 text-sm font-medium text-violet-700 hover:bg-violet-500/[0.2] dark:border-violet-400/25 dark:text-violet-300"
-        >
-          + Nuevo pedido corporativo
-        </Link>
+        <div className="mt-1 flex flex-wrap gap-2">
+          <Link
+            href="/admin/orders/dispatch"
+            className="inline-flex items-center rounded-md border border-slate-300 px-4 py-2 text-sm font-medium text-slate-700 hover:bg-white/[0.06] dark:border-white/15 dark:text-slate-300"
+          >
+            📦 Despacho del día
+          </Link>
+          <Link
+            href="/admin/orders/collections"
+            className="inline-flex items-center rounded-md border border-slate-300 px-4 py-2 text-sm font-medium text-slate-700 hover:bg-white/[0.06] dark:border-white/15 dark:text-slate-300"
+          >
+            💵 Recaudo por repartidor
+          </Link>
+          <Link
+            href="/admin/orders/retail/new"
+            className="inline-flex items-center rounded-md border border-brand-400/40 bg-brand-500/[0.12] px-4 py-2 text-sm font-medium text-brand-700 hover:bg-brand-500/[0.2] dark:border-brand-400/25 dark:text-brand-300"
+          >
+            + Pedido al detal
+          </Link>
+          <Link
+            href="/admin/orders/corporate/new"
+            className="inline-flex items-center rounded-md border border-violet-400/40 bg-violet-500/[0.12] px-4 py-2 text-sm font-medium text-violet-700 hover:bg-violet-500/[0.2] dark:border-violet-400/25 dark:text-violet-300"
+          >
+            + Pedido corporativo
+          </Link>
+        </div>
       </div>
 
       <RutaCard>
@@ -239,7 +272,7 @@ export default function AdminOrdersPage() {
           ))}
         </div>
 
-        <form onSubmit={applySearch} className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-[1fr_1fr_1fr_1fr_auto]">
+        <form onSubmit={applySearch} className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-[1fr_1fr_1fr_1fr_1fr_auto]">
           <input
             value={draftQ}
             onChange={(e) => setDraftQ(e.target.value)}
@@ -264,6 +297,18 @@ export default function AdminOrdersPage() {
           >
             {PAYMENT_STATUS_OPTIONS.map(([val, label]) => (
               <option key={val} value={val}>{label}</option>
+            ))}
+          </select>
+
+          <select
+            value={courierId}
+            onChange={(e) => { setCourierId(e.target.value); setPage(1) }}
+            className={SELECT_CLASS}
+            aria-label="Repartidor"
+          >
+            <option value="">Todos los repartidores</option>
+            {couriers.map((c) => (
+              <option key={c.id} value={String(c.id)}>{c.full_name}</option>
             ))}
           </select>
 

@@ -29,6 +29,8 @@ import {
   type RefundModality,
 } from '@/lib/refunds.api'
 import { PickupActions } from './_components/PickupActions'
+import { StaffDeliveryAction, STAFF_DELIVERABLE_STATUSES } from './_components/StaffDeliveryAction'
+import { unassignCourier } from '@/lib/assignment.api'
 import { DeliveryDateCard } from './_components/DeliveryDateCard'
 import { CollectionEvidenceCard } from '@/components/CollectionEvidenceCard'
 import {
@@ -132,6 +134,8 @@ const CANCELLABLE_STATUSES: OrderStatus[] = [
   'MANUAL_REVIEW',
   'PREPARING',
   'AWAITING_COURIER_ASSIGNMENT',
+  // El backend lo devuelve primero a la cola de asignación y luego cancela.
+  'COURIER_ASSIGNED',
   'READY_TO_SHIP',
   'READY_FOR_PICKUP',
   'SHIPMENT_HOLD',
@@ -301,6 +305,30 @@ export default function OrderDetailClient() {
   const showGoToMap = status === 'AWAITING_COURIER_ASSIGNMENT'
   const showCancel = CANCELLABLE_STATUSES.includes(status)
   const showApproveCancelRequest = status === 'CUSTOMER_CANCEL_REQUEST'
+  // Lo entrega el propio negocio. Solo domicilio: la recogida tiene su flujo.
+  const showStaffDelivery =
+    !isApiOrder &&
+    order.delivery_type === 'SHIP' &&
+    STAFF_DELIVERABLE_STATUSES.has(status) &&
+    order.payment_status !== 'PENDING_ONLINE_PAYMENT'
+  // Quitar el repartidor solo antes de que salga: después el pedido ya va
+  // en camino y el state machine no lo devuelve a la cola.
+  const showUnassign = status === 'COURIER_ASSIGNED'
+
+  async function handleUnassign() {
+    setActing(true)
+    setError(null)
+    setSuccess(null)
+    try {
+      await unassignCourier(orderId)
+      await refetch()
+      setSuccess('Repartidor quitado. El pedido volvió a la cola de asignación.')
+    } catch (err) {
+      setError((err as ApiError).message ?? 'No pudimos quitar el repartidor.')
+    } finally {
+      setActing(false)
+    }
+  }
 
   const refundStatus = order.refund_status as RefundOrderStatus
   const showRefundSection = refundStatus !== 'REFUND_NOT_REQUIRED'
@@ -438,12 +466,36 @@ export default function OrderDetailClient() {
                   <dd className="mt-1 text-slate-700 dark:text-slate-300">{order.pickup_point_name}</dd>
                 </div>
               )}
+              {/* Lo que el comprador escribió para el repartidor: apartamento,
+                  torre, portería. Antes no se mostraba en ningún lado del panel. */}
+              {order.delivery_instructions_text && (
+                <div className="sm:col-span-2">
+                  <dt className="text-[11px] font-bold uppercase tracking-[0.18em] text-slate-500 dark:text-slate-400">
+                    Indicaciones del cliente
+                  </dt>
+                  <dd className="mt-1 whitespace-pre-line rounded-md border border-amber-400/30 bg-amber-500/[0.08] px-3 py-2 text-slate-800 dark:text-slate-200">
+                    {order.delivery_instructions_text}
+                  </dd>
+                </div>
+              )}
+              {order.corporate_contact && (
+                <div className="sm:col-span-2">
+                  <dt className="text-[11px] font-bold uppercase tracking-[0.18em] text-slate-500 dark:text-slate-400">
+                    Contacto del pedido
+                  </dt>
+                  <dd className="mt-1 text-slate-700 dark:text-slate-300">
+                    {[order.corporate_contact.name, order.corporate_contact.phone, order.corporate_contact.email]
+                      .filter(Boolean)
+                      .join(' · ')}
+                  </dd>
+                </div>
+              )}
               {order.notes && (
                 <div className="sm:col-span-2">
                   <dt className="text-[11px] font-bold uppercase tracking-[0.18em] text-slate-500 dark:text-slate-400">
-                    Notas
+                    Notas internas
                   </dt>
-                  <dd className="mt-1 text-slate-700 dark:text-slate-300">{order.notes}</dd>
+                  <dd className="mt-1 whitespace-pre-line text-slate-700 dark:text-slate-300">{order.notes}</dd>
                 </div>
               )}
             </dl>
@@ -481,6 +533,18 @@ export default function OrderDetailClient() {
                   </div>
                 )}
               </dl>
+              {showUnassign && (
+                <div className="mt-3">
+                  <RutaButton
+                    type="button"
+                    variant="neutral"
+                    disabled={acting}
+                    onClick={() => void handleUnassign()}
+                  >
+                    Quitar repartidor
+                  </RutaButton>
+                </div>
+              )}
             </RutaCard>
           )}
 
@@ -740,6 +804,22 @@ export default function OrderDetailClient() {
                 >
                   Ir al mapa de asignación
                 </Link>
+              )}
+
+              {showStaffDelivery && (
+                <StaffDeliveryAction
+                  order={order}
+                  disabled={acting}
+                  onDelivered={(updated) => {
+                    setOrder(updated)
+                    setError(null)
+                    setSuccess('Pedido marcado como entregado.')
+                  }}
+                  onError={(message) => {
+                    setSuccess(null)
+                    setError(message)
+                  }}
+                />
               )}
 
               {showApproveCancelRequest && (

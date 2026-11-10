@@ -23,8 +23,9 @@ import {
   isCollectOnDelivery,
 } from '@/lib/courier_orders.api'
 import { formatDeliveryDateShort } from '@orkoruta/web-shared'
+import CourierOrdersMap from './CourierOrdersMap'
 
-type Tab = 'active' | 'completed'
+type Tab = 'active' | 'map' | 'completed'
 
 function formatCOP(amount: number) {
   return new Intl.NumberFormat('es-CO', {
@@ -190,6 +191,13 @@ export default function CourierDashboard() {
         </button>
         <button
           type="button"
+          onClick={() => setTab('map')}
+          className={tab === 'map' ? TAB_SELECTED : TAB_IDLE}
+        >
+          Mapa
+        </button>
+        <button
+          type="button"
           onClick={() => setTab('completed')}
           className={tab === 'completed' ? TAB_SELECTED : TAB_IDLE}
         >
@@ -232,6 +240,20 @@ export default function CourierDashboard() {
             </div>
           )}
         </>
+      )}
+
+      {!loading && tab === 'map' && (
+        active.length === 0 ? (
+          <div className="rounded-xl border border-dashed border-slate-300 dark:border-white/10">
+            <RutaEmptyState
+              illustration={<IllustrationAllDone className="w-full" />}
+              title="Sin pedidos en el mapa"
+              description="Cuando te asignen pedidos, aparecerán aquí con su ubicación."
+            />
+          </div>
+        ) : (
+          <CourierOrdersMap orders={active} />
+        )
       )}
 
       {!loading && tab === 'completed' && (

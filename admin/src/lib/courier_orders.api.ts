@@ -74,6 +74,8 @@ export interface CourierOrderDetail {
     name: string
     phone: string | null
   }
+  /** Notas que el negocio dejó al registrar el pedido (corporativo / detal). */
+  notes?: string | null
   items: CourierOrderItem[]
   total: number
   payment_method: PaymentMethod

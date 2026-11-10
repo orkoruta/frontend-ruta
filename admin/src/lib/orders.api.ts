@@ -208,8 +208,16 @@ export interface OrderDetail {
   subtotal: number
   shipping_fee: number | null
   total: number
+  /** Notas internas que el staff escribió al registrar el pedido. */
   notes: string | null
   delivery_address: string | null
+  /**
+   * Indicaciones de entrega del comprador («Apto 502, portería») ya legibles.
+   * El campo crudo `delivery_instructions` puede ser un JSON interno.
+   */
+  delivery_instructions_text: string | null
+  /** Contacto anotado al registrar un pedido corporativo. */
+  corporate_contact: { name: string; email: string | null; phone: string | null } | null
   pickup_point_name: string | null
   /** Día de entrega fijado por el Cliente (`YYYY-MM-DD`). `null` si no lo ha fijado. */
   scheduled_delivery_date: string | null
@@ -382,16 +390,118 @@ export function cancelOrder(orderId: number, reason?: string): Promise<OrderDeta
   })
 }
 
+/*
+ * Las rutas son `/approve-cancel-request` y `/reject-cancel-request`. Aquí
+ * apuntaban a `/cancel-request/approve|reject`, que no existen: los dos botones
+ * del detalle respondían 404 y la solicitud del comprador quedaba sin resolver.
+ */
 export function approveCancelRequest(orderId: number): Promise<OrderDetail> {
-  return request<OrderDetail>(`/admin/orders/${orderId}/cancel-request/approve`, {
+  return request<OrderDetail>(`/admin/orders/${orderId}/approve-cancel-request`, {
     method: 'POST',
     headers: { 'X-Idempotency-Key': idempotencyKey() },
   })
 }
 
-export function rejectCancelRequest(orderId: number): Promise<OrderDetail> {
-  return request<OrderDetail>(`/admin/orders/${orderId}/cancel-request/reject`, {
+/** La API exige un motivo: sin él respondía 400. */
+export function rejectCancelRequest(
+  orderId: number,
+  reason = 'El pedido ya está en camino y no se puede cancelar.',
+): Promise<OrderDetail> {
+  return request<OrderDetail>(`/admin/orders/${orderId}/reject-cancel-request`, {
     method: 'POST',
     headers: { 'X-Idempotency-Key': idempotencyKey() },
+    body: JSON.stringify({ reason }),
   })
+}
+
+/** Lo cobra el propio negocio al entregar: efectivo o medio electrónico. */
+export type StaffCollectionMethod = 'CASH' | 'ELECTRONIC'
+
+/**
+ * El propio negocio entregó el pedido (sin repartidor o en su lugar). Si es
+ * contra entrega y no había cobro registrado, lo registra con el importe dado
+ * (por defecto, el total del pedido).
+ */
+export function markDeliveredByStaff(
+  orderId: number,
+  input: { collected_amount?: number; collection_method?: StaffCollectionMethod; notes?: string } = {},
+): Promise<OrderDetail> {
+  return request<OrderDetail>(`/admin/orders/${orderId}/mark-delivered`, {
+    method: 'POST',
+    headers: { 'X-Idempotency-Key': idempotencyKey() },
+    body: JSON.stringify(input),
+  })
+}
+
+// ─── Despacho del día ─────────────────────────────────────────────────────────
+
+export interface DailyDispatchProduct {
+  product_id: number | null
+  product_name: string
+  sku: string | null
+  quantity: number
+  /** En cuántos pedidos aparece. */
+  orders: number
+}
+
+export interface DailyDispatchOrder {
+  id: number
+  order_status: OrderStatus
+  buyer_type: BuyerType
+  buyer_name: string
+  buyer_phone: string | null
+  courier_name: string | null
+  address: string | null
+  payment_method: string
+  total: number
+  units: number
+  items: { product_name: string; quantity: number }[]
+}
+
+export interface DailyDispatch {
+  date: string
+  orders_count: number
+  delivered_count: number
+  pending_count: number
+  total_units: number
+  /** Pedidos activos sin día de entrega: no entran en el resumen. */
+  undated_pending_count: number
+  products: DailyDispatchProduct[]
+  orders: DailyDispatchOrder[]
+}
+
+export function getDailyDispatch(date: string): Promise<DailyDispatch> {
+  return request<DailyDispatch>(`/admin/orders/daily-dispatch?date=${encodeURIComponent(date)}`)
+}
+
+// ─── Recaudo por repartidor ───────────────────────────────────────────────────
+
+export interface CourierCollectionRow {
+  /** `null` = lo cobró el propio negocio. */
+  courier_id: number | null
+  courier_name: string
+  courier_phone: string | null
+  cash_total: number
+  electronic_total: number
+  collections_count: number
+  collections: {
+    payment_id: number
+    order_id: number
+    amount: number
+    method: 'CASH' | 'ELECTRONIC'
+    collected_at: string
+  }[]
+}
+
+export interface CourierCollectionsReport {
+  date_from: string
+  date_to: string
+  cash_total: number
+  electronic_total: number
+  couriers: CourierCollectionRow[]
+}
+
+export function getCourierCollections(dateFrom: string, dateTo: string): Promise<CourierCollectionsReport> {
+  const params = new URLSearchParams({ date_from: dateFrom, date_to: dateTo })
+  return request<CourierCollectionsReport>(`/admin/orders/courier-collections?${params}`)
 }

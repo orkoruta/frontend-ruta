@@ -10,24 +10,21 @@
 import { useEffect, useRef, useState } from 'react'
 import { DEFAULT_CENTER, ensureGoogleMaps } from '@orkoruta/web-shared'
 import { mapStyles, prefersDark, watchColorScheme } from '@orkoruta/web-shared'
-import { isAssigned, type MapOrder } from '@/lib/assignment.api'
-import { MAP_PIN_COLORS } from './map_legend'
+import { type MapOrder } from '@/lib/assignment.api'
+import { orderColor, type CourierSwatch } from './map_legend'
 
 interface AssignmentMapProps {
   orders: MapOrder[]
   selectedOrderId: number | null
   focusOrder: MapOrder | null
   onSelectOrder: (orderId: number) => void
+  /** Color de cada repartidor; los pines asignados toman el de quien los lleva. */
+  swatches: Map<number, CourierSwatch>
 }
 
 const DEFAULT_ZOOM = 11
 const FOCUS_ZOOM = 15
 
-/** Color del pin según en qué punto de la operación está el pedido. */
-function pinColor(order: MapOrder, selected: boolean): string {
-  if (selected) return MAP_PIN_COLORS.selected
-  return isAssigned(order) ? MAP_PIN_COLORS.assigned : MAP_PIN_COLORS.pending
-}
 
 /** Tooltip nativo del pin: con el mapa lleno, dice de un vistazo de quién es. */
 function markerTitle(order: MapOrder): string {
@@ -109,6 +106,7 @@ export function AssignmentMap({
   selectedOrderId,
   focusOrder,
   onSelectOrder,
+  swatches,
 }: AssignmentMapProps) {
   const containerRef = useRef<HTMLDivElement>(null)
   const mapRef = useRef<google.maps.Map | null>(null)
@@ -192,7 +190,7 @@ export function AssignmentMap({
       const existing = markers.get(order.id)
 
       if (existing) {
-        existing.setIcon(buildIcon(pinColor(order, isSelected), isSelected))
+        existing.setIcon(buildIcon(orderColor(order, isSelected, swatches), isSelected))
         existing.setTitle(markerTitle(order))
         existing.setZIndex(isSelected ? 1 : 0)
         continue
@@ -205,7 +203,7 @@ export function AssignmentMap({
         },
         map,
         title: markerTitle(order),
-        icon: buildIcon(pinColor(order, isSelected), isSelected),
+        icon: buildIcon(orderColor(order, isSelected, swatches), isSelected),
       })
       marker.addListener('click', () => onSelectRef.current(order.id))
       markers.set(order.id, marker)
@@ -220,7 +218,7 @@ export function AssignmentMap({
       })
       map.fitBounds(bounds, 64)
     }
-  }, [orders, selectedOrderId, ready])
+  }, [orders, selectedOrderId, ready, swatches])
 
   // ── Centrado al seleccionar ───────────────────────────────────────────────
   useEffect(() => {

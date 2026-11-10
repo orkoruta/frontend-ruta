@@ -304,6 +304,11 @@ export default function CourierOrderDetail() {
             {address.instructions}
           </p>
         )}
+        {order.notes && (
+          <p className="mt-2 whitespace-pre-line rounded-md border border-amber-400/30 bg-amber-500/[0.1] px-3 py-2 text-sm text-amber-900 dark:text-amber-200">
+            📝 {order.notes}
+          </p>
+        )}
         {/* Dos navegadores: cada repartidor usa el que prefiere, y Waze suele
             ir mejor con el tráfico de Bogotá. */}
         <div className="mt-3 flex gap-2">

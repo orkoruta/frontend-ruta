@@ -7,6 +7,7 @@ import {
   getOrdersForMap,
   getAvailableCouriers,
   assignCourier,
+  unassignCourier,
   isAssigned,
   type MapOrder,
   type AvailableCourier,
@@ -15,7 +16,8 @@ import {
 import { AssignmentMap } from './AssignmentMap'
 import { OrdersPanel } from './OrdersPanel'
 import { AssignmentModal } from './AssignmentModal'
-import { MapLegend } from './map_legend'
+import { MapLegend, buildCourierSwatches } from './map_legend'
+import { cancelOrder } from '@/lib/orders.api'
 
 const REFRESH_INTERVAL_MS = 30_000
 
@@ -44,6 +46,10 @@ export function AssignmentMapView() {
   // día. Los que no tienen fecha se pueden traer de vuelta a mano, porque
   // esconder trabajo por despachar sin avisar sería peor que no filtrar.
   const [includeUndated, setIncludeUndated] = useState(false)
+  // Repartidor: '' = todos. Sirve para ver de un vistazo la ruta de uno solo.
+  const [courierFilter, setCourierFilter] = useState('')
+  // Pedido con una acción (quitar repartidor, cancelar) en curso.
+  const [busyOrderId, setBusyOrderId] = useState<number | null>(null)
 
   const [selectedOrderId, setSelectedOrderId] = useState<number | null>(null)
   const [couriers, setCouriers] = useState<AvailableCourier[]>([])
@@ -115,14 +121,19 @@ export function AssignmentMapView() {
   // Se filtra en el cliente y no en el servidor: el mapa ya trae solo los
   // pedidos activos (un conjunto acotado), así que cambiar de filtro es
   // instantáneo y no parpadea con el refresco de cada 30 s.
+  // Colores por repartidor sobre **todos** los pedidos, no los filtrados: así
+  // un repartidor no cambia de color al mover un filtro.
+  const swatches = useMemo(() => buildCourierSwatches(orders), [orders])
+
   const byStatus = useMemo(
     () =>
       orders.filter((order) => {
         if (statusFilter === 'PENDING' && isAssigned(order)) return false
         if (statusFilter === 'ASSIGNED' && !isAssigned(order)) return false
+        if (courierFilter && String(order.courier_user_id) !== courierFilter) return false
         return true
       }),
-    [orders, statusFilter],
+    [orders, statusFilter, courierFilter],
   )
 
   const visibleOrders = useMemo(() => {
@@ -214,6 +225,33 @@ export function AssignmentMapView() {
     void loadOrders()
   }
 
+  // ── Quitar repartidor / cancelar desde el mapa ───────────────────────────
+  async function handleUnassign(order: MapOrder) {
+    setBusyOrderId(order.id)
+    try {
+      await unassignCourier(order.id)
+      showToast('success', `Pedido #${order.id}: repartidor quitado. Vuelve a estar por asignar.`)
+      await loadOrders()
+    } catch (err) {
+      showToast('error', (err as ApiError).message ?? 'No pudimos quitar el repartidor.')
+    } finally {
+      setBusyOrderId(null)
+    }
+  }
+
+  async function handleCancelOrder(order: MapOrder) {
+    setBusyOrderId(order.id)
+    try {
+      await cancelOrder(order.id, 'Cancelado desde el mapa de asignación')
+      showToast('success', `Pedido #${order.id} cancelado.`)
+      await loadOrders()
+    } catch (err) {
+      showToast('error', (err as ApiError).message ?? 'No pudimos cancelar el pedido.')
+    } finally {
+      setBusyOrderId(null)
+    }
+  }
+
   // ── Cancel modal ─────────────────────────────────────────────────────────
   function handleCancelModal() {
     setAssigningOrder(null)
@@ -268,6 +306,28 @@ export function AssignmentMapView() {
 
           <div>
             <label
+              htmlFor="map-courier-filter"
+              className="block text-[11px] font-bold uppercase tracking-[0.18em] text-slate-500 dark:text-slate-400"
+            >
+              Repartidor
+            </label>
+            <select
+              id="map-courier-filter"
+              value={courierFilter}
+              onChange={(e) => setCourierFilter(e.target.value)}
+              className="mt-1 rounded-lg border border-slate-300 bg-white px-3 py-2 text-sm text-slate-900 transition-colors hover:border-brand-400/60 focus-visible:border-brand-400 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand-400/40 dark:border-white/15 dark:bg-white/[0.04] dark:text-slate-100"
+            >
+              <option value="">Todos</option>
+              {[...swatches.values()].map((s) => (
+                <option key={s.id} value={String(s.id)}>
+                  {s.name} ({s.count})
+                </option>
+              ))}
+            </select>
+          </div>
+
+          <div>
+            <label
               htmlFor="map-date-filter"
               className="block text-[11px] font-bold uppercase tracking-[0.18em] text-slate-500 dark:text-slate-400"
             >
@@ -298,7 +358,7 @@ export function AssignmentMapView() {
       </div>
 
       {/* Convenciones de color: inline, para no gastar una tarjeta del panel. */}
-      <MapLegend />
+      <MapLegend swatches={swatches} />
 
       {/* El filtro por día es estricto, así que hay que decir en voz alta
           cuántos pedidos quedaron fuera por no tener fecha asignada. */}
@@ -373,6 +433,7 @@ export function AssignmentMapView() {
               selectedOrderId={selectedOrderId}
               focusOrder={focusOrder}
               onSelectOrder={handleSelectOrder}
+              swatches={swatches}
             />
           )}
         </div>
@@ -382,8 +443,12 @@ export function AssignmentMapView() {
           <OrdersPanel
             orders={visibleOrders}
             selectedOrderId={selectedOrderId}
+            swatches={swatches}
+            busyOrderId={busyOrderId}
             onSelectOrder={handleSelectOrder}
             onRequestAssign={handleRequestAssign}
+            onUnassign={(order) => void handleUnassign(order)}
+            onCancel={(order) => void handleCancelOrder(order)}
           />
         </div>
       </div>
