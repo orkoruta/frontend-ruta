@@ -153,6 +153,8 @@ export interface OrderListFilters {
 
 export interface OrderItem {
   id: number
+  /** `null` = línea libre (no viene del catálogo). */
+  product_id: number | null
   product_name: string
   product_sku: string | null
   quantity: number
@@ -504,4 +506,27 @@ export interface CourierCollectionsReport {
 export function getCourierCollections(dateFrom: string, dateTo: string): Promise<CourierCollectionsReport> {
   const params = new URLSearchParams({ date_from: dateFrom, date_to: dateTo })
   return request<CourierCollectionsReport>(`/admin/orders/courier-collections?${params}`)
+}
+
+// ─── Editar productos de un pedido ────────────────────────────────────────────
+
+/** Producto del catálogo o línea libre (descripción + precio). */
+export type EditableOrderItem =
+  | { product_id: number; quantity: number }
+  | { description: string; unit_price: number; quantity: number }
+
+/**
+ * Reemplaza los productos del pedido por esta lista. Solo antes de que salga a
+ * reparto y sin pago hecho; si no, la API responde 422 con el motivo.
+ */
+export function updateOrderItems(
+  orderId: number,
+  items: EditableOrderItem[],
+  reason?: string,
+): Promise<OrderDetail> {
+  return request<OrderDetail>(`/admin/orders/${orderId}/items`, {
+    method: 'PUT',
+    headers: { 'X-Idempotency-Key': idempotencyKey() },
+    body: JSON.stringify({ items, ...(reason ? { reason } : {}) }),
+  })
 }

@@ -30,6 +30,7 @@ import {
 } from '@/lib/refunds.api'
 import { PickupActions } from './_components/PickupActions'
 import { StaffDeliveryAction, STAFF_DELIVERABLE_STATUSES } from './_components/StaffDeliveryAction'
+import { EditOrderItems, canEditOrderItems } from './_components/EditOrderItems'
 import { unassignCourier } from '@/lib/assignment.api'
 import { DeliveryDateCard } from './_components/DeliveryDateCard'
 import { CollectionEvidenceCard } from '@/components/CollectionEvidenceCard'
@@ -158,6 +159,8 @@ export default function OrderDetailClient() {
   const [acting, setActing] = useState(false)
   const [error, setError] = useState<string | null>(null)
   const [success, setSuccess] = useState<string | null>(null)
+  // Edición de los productos del pedido (antes de salir a reparto).
+  const [editingItems, setEditingItems] = useState(false)
 
   // Estado del formulario de iniciar reembolso
   // Solo aplica a SHIP: decide si el pedido va a asignación de repartidor
@@ -576,7 +579,30 @@ export default function OrderDetailClient() {
         <div className="flex flex-col gap-5">
           {/* Order summary */}
           <RutaCard>
-            <RutaSectionHeader title="Resumen del pedido" subtitle="items y totales" />
+            <div className="flex items-start justify-between gap-2">
+              <RutaSectionHeader title="Resumen del pedido" subtitle="items y totales" />
+              {!isApiOrder && !editingItems && canEditOrderItems(order) && (
+                <button
+                  type="button"
+                  onClick={() => { setEditingItems(true); setSuccess(null); setError(null) }}
+                  className="shrink-0 rounded-md border border-brand-400/30 bg-brand-500/[0.08] px-3 py-1.5 text-xs font-semibold text-brand-700 hover:bg-brand-500/[0.15] dark:text-brand-300"
+                >
+                  Editar productos
+                </button>
+              )}
+            </div>
+            {editingItems ? (
+              <EditOrderItems
+                order={order}
+                onCancel={() => setEditingItems(false)}
+                onSaved={(updated) => {
+                  setOrder(updated)
+                  setEditingItems(false)
+                  setSuccess('Productos actualizados. El total del pedido se recalculó.')
+                }}
+              />
+            ) : (
+            <>
             <div className="mt-2 divide-y divide-slate-200/70 dark:divide-white/10">
               {order.items.map((item) => (
                 <div key={item.id} className="flex items-start justify-between py-2.5">
@@ -616,6 +642,8 @@ export default function OrderDetailClient() {
                 <span>{formatCOP(order.total)}</span>
               </div>
             </div>
+            </>
+            )}
           </RutaCard>
 
           {/* Payment */}
