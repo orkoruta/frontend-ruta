@@ -273,7 +273,7 @@ export default function AdminOrdersPage() {
           ))}
         </div>
 
-        <form onSubmit={applySearch} className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-[1fr_1fr_1fr_1fr_1fr_auto]">
+        <form onSubmit={applySearch} className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 [&>*]:min-w-0">
           <input
             value={draftQ}
             onChange={(e) => setDraftQ(e.target.value)}
@@ -313,26 +313,28 @@ export default function AdminOrdersPage() {
             ))}
           </select>
 
-          <div className="flex gap-2">
+          <div className="flex gap-2 sm:col-span-2 lg:col-span-1 xl:col-span-2">
             <input
               type="date"
+              aria-label="Desde"
               value={dateFrom}
               onChange={(e) => { setDateFrom(e.target.value); setPage(1) }}
-              className={INPUT_CLASS + ' flex-1'}
+              className={INPUT_CLASS + ' min-w-0 flex-1'}
             />
             <input
               type="date"
+              aria-label="Hasta"
               value={dateTo}
               onChange={(e) => { setDateTo(e.target.value); setPage(1) }}
-              className={INPUT_CLASS + ' flex-1'}
+              className={INPUT_CLASS + ' min-w-0 flex-1'}
             />
           </div>
 
-          <div className="flex gap-2">
-            <RutaButton type="submit" variant="primary" className="justify-center">
+          <div className="flex gap-2 sm:col-span-2 lg:col-span-1 xl:col-span-2 xl:justify-end">
+            <RutaButton type="submit" variant="primary" className="flex-1 justify-center xl:flex-none">
               Filtrar
             </RutaButton>
-            <RutaButton type="button" variant="neutral" onClick={resetFilters}>
+            <RutaButton type="button" variant="neutral" onClick={resetFilters} className="flex-1 justify-center xl:flex-none">
               Limpiar
             </RutaButton>
           </div>

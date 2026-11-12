@@ -129,28 +129,34 @@ export function EditOrderItems({ order, onSaved, onCancel }: Props) {
 
   return (
     <div className="mt-2 flex flex-col gap-3">
+      {/* Cada línea en dos renglones: el nombre a todo el ancho y debajo precio,
+          cantidad y subtotal. En una sola fila, dentro de la tarjeta angosta
+          del detalle, el nombre quedaba aplastado a unos pocos píxeles. */}
       {rows.map((row, idx) => (
-        <div key={idx} className="flex flex-wrap items-center gap-2 sm:flex-nowrap">
-          {row.kind === 'product' ? (
-            <select
-              value={row.product_id || ''}
-              onChange={(e) => update(idx, { product_id: Number(e.target.value) })}
-              aria-label="Producto"
-              className={inputClass + ' min-w-0 flex-1'}
-            >
-              <option value="">Selecciona un producto…</option>
-              {/* Un producto del pedido que ya no está activo sigue apareciendo. */}
-              {row.product_id && !products.some((p) => p.id === row.product_id) && (
-                <option value={row.product_id}>{knownNames.get(row.product_id) ?? `Producto #${row.product_id}`}</option>
-              )}
-              {products.map((p) => (
-                <option key={p.id} value={p.id}>
-                  {p.name} — {formatCOP(agreed.get(p.id) ?? p.unit_price)}
-                </option>
-              ))}
-            </select>
-          ) : (
-            <>
+        <div
+          key={idx}
+          className="flex flex-col gap-2 rounded-lg border border-slate-200/90 p-2.5 dark:border-white/10"
+        >
+          <div className="flex items-center gap-2">
+            {row.kind === 'product' ? (
+              <select
+                value={row.product_id || ''}
+                onChange={(e) => update(idx, { product_id: Number(e.target.value) })}
+                aria-label="Producto"
+                className={inputClass + ' min-w-0 flex-1'}
+              >
+                <option value="">Selecciona un producto…</option>
+                {/* Un producto del pedido que ya no está activo sigue apareciendo. */}
+                {row.product_id && !products.some((p) => p.id === row.product_id) && (
+                  <option value={row.product_id}>{knownNames.get(row.product_id) ?? `Producto #${row.product_id}`}</option>
+                )}
+                {products.map((p) => (
+                  <option key={p.id} value={p.id}>
+                    {p.name} — {formatCOP(agreed.get(p.id) ?? p.unit_price)}
+                  </option>
+                ))}
+              </select>
+            ) : (
               <input
                 value={row.description}
                 onChange={(e) => update(idx, { description: e.target.value })}
@@ -158,33 +164,50 @@ export function EditOrderItems({ order, onSaved, onCancel }: Props) {
                 aria-label="Descripción"
                 className={inputClass + ' min-w-0 flex-1'}
               />
+            )}
+            <button
+              type="button"
+              onClick={() => setRows((prev) => prev.filter((_, i) => i !== idx))}
+              aria-label="Quitar producto"
+              className="shrink-0 rounded-md border border-rose-400/30 bg-rose-500/[0.08] px-2.5 py-2 text-xs font-medium text-rose-700 dark:text-rose-300"
+            >
+              ×
+            </button>
+          </div>
+          <div className="flex flex-wrap items-end gap-2">
+            {row.kind === 'custom' ? (
+              <label className="flex min-w-0 flex-1 flex-col gap-0.5">
+                <span className="text-[10px] font-semibold uppercase tracking-wide text-slate-500">Precio unit.</span>
+                <input
+                  type="number"
+                  min={0}
+                  value={row.unit_price}
+                  onChange={(e) => update(idx, { unit_price: e.target.value })}
+                  placeholder="Precio"
+                  aria-label="Precio unitario"
+                  className={inputClass}
+                />
+              </label>
+            ) : (
+              <p className="min-w-0 flex-1 self-center text-xs text-slate-500 dark:text-slate-400">
+                {row.product_id ? `${formatCOP(unitPrice(row))} c/u` : ' '}
+              </p>
+            )}
+            <label className="flex w-20 flex-col gap-0.5">
+              <span className="text-[10px] font-semibold uppercase tracking-wide text-slate-500">Cant.</span>
               <input
                 type="number"
-                min={0}
-                value={row.unit_price}
-                onChange={(e) => update(idx, { unit_price: e.target.value })}
-                placeholder="Precio"
-                aria-label="Precio unitario"
-                className={inputClass + ' w-28'}
+                min={1}
+                value={row.quantity}
+                onChange={(e) => update(idx, { quantity: Number(e.target.value) })}
+                aria-label="Cantidad"
+                className={inputClass}
               />
-            </>
-          )}
-          <input
-            type="number"
-            min={1}
-            value={row.quantity}
-            onChange={(e) => update(idx, { quantity: Number(e.target.value) })}
-            aria-label="Cantidad"
-            className={inputClass + ' w-20'}
-          />
-          <button
-            type="button"
-            onClick={() => setRows((prev) => prev.filter((_, i) => i !== idx))}
-            aria-label="Quitar producto"
-            className="rounded-md border border-rose-400/30 bg-rose-500/[0.08] px-2 py-2 text-xs font-medium text-rose-700 dark:text-rose-300"
-          >
-            ×
-          </button>
+            </label>
+            <p className="ml-auto self-center whitespace-nowrap pl-1 text-sm font-semibold tabular-nums text-slate-900 dark:text-slate-100">
+              {formatCOP(unitPrice(row) * row.quantity)}
+            </p>
+          </div>
         </div>
       ))}
 
