@@ -20,6 +20,7 @@ import {
   STATUS_BADGE_CLASSES,
 } from '@/lib/admin_status_labels'
 import { listCouriers, type Courier } from '@/lib/users.api'
+import { OrderItemsSummary } from '@/components/OrderItemsSummary'
 
 const PAGE_SIZE = 20
 
@@ -369,7 +370,7 @@ export default function AdminOrdersPage() {
                 <tr className="text-left text-[11px] font-bold uppercase tracking-[0.18em] text-slate-500 dark:text-slate-400">
                   <th className="px-4 py-3">#</th>
                   <th className="px-4 py-3">Comprador</th>
-                  <th className="px-4 py-3">Items</th>
+                  <th className="px-4 py-3">Productos</th>
                   <th className="px-4 py-3">Total</th>
                   <th className="px-4 py-3">Estado</th>
                   <th className="px-4 py-3">Repartidor</th>
@@ -416,8 +417,8 @@ export default function AdminOrdersPage() {
                         </a>
                       )}
                     </td>
-                    <td className="px-4 py-3 text-slate-600 dark:text-slate-400">
-                      {order.item_count}
+                    <td className="px-4 py-3 align-top">
+                      <OrderItemsSummary items={order.items} />
                     </td>
                     <td className="px-4 py-3 font-medium text-slate-900 dark:text-slate-100">
                       {formatCOP(order.total)}

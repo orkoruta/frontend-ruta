@@ -122,12 +122,19 @@ export interface OrderSummary {
   buyer_phone: string | null
   /** Pidió sin cuenta: su correo es sintético y no lleva a ninguna bandeja. */
   buyer_is_guest: boolean
-  item_count: number
+  /** Líneas del pedido; el listado las muestra para alistar sin abrirlo. */
+  items: OrderListItem[]
   total: number
   courier_name: string | null
   created_at: string
   order_origin: OrderOrigin | null
   buyer_type: BuyerType | null
+}
+
+export interface OrderListItem {
+  product_id: number | null
+  product_name: string
+  quantity: number
 }
 
 export interface OrderListResponse {
